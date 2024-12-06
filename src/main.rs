@@ -400,6 +400,16 @@ impl Expr {
                 arg.to_string(),
                 Box::new(Expr::parse(body.to_string())?),
             )))
+        } else if token.contains('(') && token.ends_with(')') {
+            let token = token.get(..token.len() - 1)?.to_string();
+            let (name, arg) = token.split_once("(")?;
+            Expr::Infix(Box::new(Infix {
+                operator: Operator::Apply,
+                values: (
+                    Expr::parse(name.to_string())?,
+                    Expr::parse(arg.to_string())?,
+                ),
+            }))
         } else {
             Expr::Value(Type::Symbol(token))
         };
