@@ -2,7 +2,8 @@
 name = "lamuta"
 version = "0.2.0"
 edition = "2021"
+authors = ["梶塚太智 <kajizukataichi@outlook.jp>"]
+license = "MIT"
 
 [dependencies]
-clap = { version = "4.5.23", features = ["derive"] }
 colored = "2.0"
