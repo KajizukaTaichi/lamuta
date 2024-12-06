@@ -1,12 +1,1 @@
-let fizzbuzz = λn.{
-    match [n % 3, n % 5] {
-        [0, 0] = "FizzBuzz",
-        [0, _] = "Fizz",
-        [_, 0] = "Buzz",
-        [_, _] = n
-    }
-};
-
-for i in (range [1, 101, 1]) {
-    print fizzbuzz i, new-line;
-}
+λf.λg.λx.(f (g x)) λx.(x * 2) λx.(x + 1) 5
