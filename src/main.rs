@@ -1,13 +1,20 @@
+use clap::Parser;
+use colored::*;
 use std::{
     collections::BTreeMap,
     env::{self, args},
     fs::read_to_string,
     io::{self, Write},
     path::Path,
+    process::exit,
 };
 
-const VERSION: &str = "0.1.0";
+const VERSION: &str = "0.2.0";
 const SPACE: [char; 5] = [' ', '　', '\n', '\t', '\r'];
+
+#[derive(Parser)]
+#[command(name = "Lamuta",version = VERSION)]
+struct App {}
 
 fn main() {
     let args: Vec<String> = args().collect();
@@ -20,31 +27,51 @@ fn main() {
             if let Some(ast) = Engine::parse(code) {
                 let mut engine = Engine::new();
                 if engine.eval(ast).is_none() {
-                    println!("Error! something is wrong at runtime")
+                    println!("{} unexcepted fault is happend at runtime", "Error!".red())
                 }
             } else {
-                println!("Error! something is wrong at syntax")
+                println!(
+                    "{} could not parse program. check is it correct syntax",
+                    "Error!".red()
+                )
             }
         } else {
-            eprintln!("Error! the file can't be opened")
+            eprintln!("{} the file can't be opened", "Error!".red())
         }
     } else {
-        println!("Lamuta {VERSION}");
+        println!("{title} {VERSION}", title = "Lamuta".blue().bold());
         let mut engine = Engine::new();
+        let mut code = String::new();
+        let mut session = 1;
+        let mut line = 1;
+
         loop {
-            print!("> ");
+            print!("[{session}:{line}]{} ", ">".green());
             io::stdout().flush().unwrap();
+
             let mut buffer = String::new();
-            if io::stdin().read_line(&mut buffer).is_ok() {
-                let buffer = buffer.trim().to_string();
-                if buffer == ":q" {
-                    break;
+            io::stdin().read_line(&mut buffer).unwrap();
+            let buffer = buffer.trim().to_string();
+            code += &format!("{buffer}\n");
+
+            if buffer == ":q" {
+                code.clear();
+                session += 1;
+                line = 1;
+                continue;
+            }
+
+            if let Some(ast) = Engine::parse(code.clone()) {
+                if let Some(result) = engine.eval(ast) {
+                    println!("{navi} {}", result.get_symbol(), navi = "=>".red());
+                    code.clear();
+                    session += 1;
+                    line = 1;
+                } else {
+                    line += 1;
                 }
-                if let Some(ast) = Engine::parse(buffer) {
-                    if let Some(result) = engine.eval(ast) {
-                        println!("{}", result.get_symbol())
-                    }
-                }
+            } else {
+                line += 1;
             }
         }
     }
@@ -134,6 +161,10 @@ impl Engine {
                             None
                         }
                     })),
+                ),
+                (
+                    "exit".to_string(),
+                    Type::Function(Function::BuiltIn(|_, _| exit(0))),
                 ),
                 ("new-line".to_string(), Type::Text("\n".to_string())),
                 ("carriage-return".to_string(), Type::Text("\r".to_string())),
