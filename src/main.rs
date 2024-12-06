@@ -208,7 +208,7 @@ impl Engine {
                     }
                     result
                 }
-                Statement::Import(path) => {
+                Statement::Load(path) => {
                     if let Ok(module) = read_to_string(path) {
                         let module = Engine::parse(module)?;
                         self.eval(module)?
@@ -233,7 +233,7 @@ enum Statement {
     Match(Expr, Vec<(Vec<Expr>, Expr)>),
     For(String, Expr, Expr),
     While(Expr, Expr),
-    Import(String),
+    Load(String),
     Fault,
 }
 
@@ -254,8 +254,8 @@ impl Statement {
                 exprs.push(Expr::parse(i)?)
             }
             Some(Statement::Print(exprs))
-        } else if code.starts_with("import") {
-            Some(Statement::Import(code["import".len()..].trim().to_string()))
+        } else if code.starts_with("load") {
+            Some(Statement::Load(code["load".len()..].trim().to_string()))
         } else if code.starts_with("input") {
             Some(Statement::Input(Expr::parse(
                 code["input".len()..].to_string(),
