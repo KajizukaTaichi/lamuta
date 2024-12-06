@@ -327,6 +327,58 @@ impl Statement {
             Some(Statement::Value(Expr::parse(code.to_string())?))
         }
     }
+
+    fn reparse(&self) -> String {
+        match self {
+            Statement::Value(expr) => format!("{}", expr.reparse()),
+            Statement::If(cond, then, r#else) => {
+                if let Some(r#else) = r#else {
+                    format!(
+                        "if {} {} else {}",
+                        cond.reparse(),
+                        then.reparse(),
+                        r#else.reparse()
+                    )
+                } else {
+                    format!("if {} {}", cond.reparse(), then.reparse())
+                }
+            }
+            Statement::While(cond, code) => {
+                format!("while {} {}", cond.reparse(), code.reparse())
+            }
+            Statement::For(counter, iterator, code) => {
+                format!("for {counter} in {} {}", iterator.reparse(), code.reparse())
+            }
+            Statement::Match(expr, cond) => {
+                format!("match {} {{ {} }}", expr.reparse(), {
+                    cond.iter()
+                        .map(|case| {
+                            format!(
+                                "{} => {}",
+                                case.0
+                                    .iter()
+                                    .map(|i| i.reparse())
+                                    .collect::<Vec<String>>()
+                                    .join(" | "),
+                                case.1.reparse()
+                            )
+                        })
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                })
+            }
+            Statement::Fault => "fault".to_string(),
+            Statement::Let(name, val) => format!("let {name} = {}", val.reparse()),
+            Statement::Print(exprs) => format!(
+                "print {}",
+                exprs
+                    .iter()
+                    .map(|i| i.reparse())
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -533,6 +585,28 @@ impl Expr {
             }
         }
     }
+
+    fn reparse(&self) -> String {
+        match self {
+            Expr::List(list) => format!(
+                "[{}]",
+                list.iter()
+                    .map(|i| i.reparse())
+                    .collect::<Vec<String>>()
+                    .join(", "),
+            ),
+            Expr::Infix(infix) => format!("({})", infix.reparse()),
+            Expr::Value(val) => val.get_symbol(),
+            Expr::Block(block) => format!(
+                "{{ {} }}",
+                block
+                    .iter()
+                    .map(|i| i.reparse())
+                    .collect::<Vec<String>>()
+                    .join("; ")
+            ),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -679,6 +753,42 @@ impl Infix {
             },
         })
     }
+
+    fn reparse(&self) -> String {
+        let operator = match self.operator {
+            Operator::Add => "+",
+            Operator::Sub => "-",
+            Operator::Mul => "*",
+            Operator::Div => "/",
+            Operator::Mod => "%",
+            Operator::Pow => "^",
+            Operator::Equal => "==",
+            Operator::NotEq => "!=",
+            Operator::LessThan => "<",
+            Operator::LessThanEq => "<=",
+            Operator::GreaterThan => ">",
+            Operator::GreaterThanEq => ">=",
+            Operator::And => "&",
+            Operator::Or => "|",
+            Operator::Access => "::",
+            Operator::As => "as",
+            Operator::Apply => "",
+        }
+        .to_string();
+        if let Expr::Infix(infix) = self.values.1.clone() {
+            format!(
+                "{} {operator} ({})",
+                self.values.0.reparse(),
+                infix.reparse()
+            )
+        } else {
+            format!(
+                "{} {operator} {}",
+                self.values.0.reparse(),
+                self.values.1.reparse()
+            )
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -733,7 +843,10 @@ impl Type {
             Type::Text(s) => format!("\"{s}\""),
             Type::Number(n) => n.to_string(),
             Type::Null => "null".to_string(),
-            Type::Function(_) => "function".to_string(),
+            Type::Function(Function::BuiltIn(obj)) => format!("λx.{obj:?}"),
+            Type::Function(Function::UserDefined(arg, code)) => {
+                format!("λ{arg}.{}", code.reparse())
+            }
             Type::List(l) => format!(
                 "[{}]",
                 l.iter()
