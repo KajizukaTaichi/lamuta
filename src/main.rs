@@ -37,6 +37,9 @@ fn main() {
             let mut buffer = String::new();
             if io::stdin().read_line(&mut buffer).is_ok() {
                 let buffer = buffer.trim().to_string();
+                if buffer == ":q" {
+                    break;
+                }
                 if let Some(ast) = Engine::parse(buffer) {
                     if let Some(result) = engine.eval(ast) {
                         println!("{}", result.get_symbol())
