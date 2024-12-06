@@ -29,7 +29,7 @@ fn main() {
             eprintln!("Error! the file can't be opened")
         }
     } else {
-        println!("Zick {VERSION}");
+        println!("Lamuta {VERSION}");
         let mut engine = Engine::new();
         loop {
             print!("> ");
