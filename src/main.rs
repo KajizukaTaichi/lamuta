@@ -607,6 +607,80 @@ impl Expr {
             ),
         }
     }
+
+    fn replace(&self, from: &Expr, to: &Expr) -> Expr {
+        match self {
+            Expr::List(list) => Expr::List(
+                list.iter()
+                    .map(|i| i.replace(from, to))
+                    .collect::<Vec<Expr>>(),
+            ),
+            Expr::Infix(infix) => Expr::Infix(Box::new(Infix {
+                operator: infix.operator.clone(),
+                values: (
+                    infix.values.0.replace(from, to),
+                    infix.values.1.replace(from, to),
+                ),
+            })),
+            Expr::Block(block) => Expr::Block(
+                block
+                    .iter()
+                    .map(|i| match i {
+                        Statement::If(cond, then, r#else) => Statement::If(
+                            cond.replace(from, to),
+                            then.replace(from, to),
+                            r#else.clone().and_then(|j| Some(j.replace(from, to))),
+                        ),
+                        Statement::While(cond, code) => {
+                            Statement::While(cond.replace(from, to), code.replace(from, to))
+                        }
+                        Statement::Value(val) => Statement::Value(val.replace(from, to)),
+                        Statement::Match(expr, cond) => Statement::Match(
+                            expr.replace(from, to),
+                            cond.iter()
+                                .map(|j| {
+                                    (
+                                        j.0.iter().map(|k| k.replace(from, to)).collect(),
+                                        j.1.replace(from, to),
+                                    )
+                                })
+                                .collect(),
+                        ),
+                        Statement::Print(vals) => {
+                            Statement::Print(vals.iter().map(|j| j.replace(from, to)).collect())
+                        }
+                        Statement::For(counter, iter, code) => Statement::For(
+                            counter.clone(),
+                            iter.replace(from, to),
+                            code.replace(from, to),
+                        ),
+                        Statement::Let(name, val) => {
+                            Statement::Let(name.clone(), val.replace(from, to))
+                        }
+                        Statement::Fault => Statement::Fault,
+                    })
+                    .collect(),
+            ),
+            Expr::Value(Type::Function(Function::UserDefined(arg, func))) => {
+                Expr::Value(Type::Function(Function::UserDefined(
+                    arg.to_string(),
+                    Box::new(func.replace(from, to)),
+                )))
+            }
+            Expr::Value(val) => {
+                dbg!(from, val);
+                if let (Type::Symbol(val), Expr::Value(Type::Symbol(from))) = (val, from) {
+                    if val == from {
+                        to.clone()
+                    } else {
+                        self.clone()
+                    }
+                } else {
+                    self.clone()
+                }
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -747,7 +821,9 @@ impl Infix {
             Operator::Apply => match left?.get_function()? {
                 Function::BuiltIn(func) => func(right?, engine)?,
                 Function::UserDefined(paramater, code) => {
-                    engine.scope.insert(paramater.to_string(), right?);
+                    let code =
+                        code.replace(&Expr::Value(Type::Symbol(paramater)), &Expr::Value(right?));
+                    dbg!(&code);
                     code.eval(engine)?
                 }
             },
