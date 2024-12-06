@@ -668,7 +668,6 @@ impl Expr {
                 )))
             }
             Expr::Value(val) => {
-                dbg!(from, val);
                 if let (Type::Symbol(val), Expr::Value(Type::Symbol(from))) = (val, from) {
                     if val == from {
                         to.clone()
@@ -823,7 +822,6 @@ impl Infix {
                 Function::UserDefined(paramater, code) => {
                     let code =
                         code.replace(&Expr::Value(Type::Symbol(paramater)), &Expr::Value(right?));
-                    dbg!(&code);
                     code.eval(engine)?
                 }
             },
