@@ -665,7 +665,11 @@ impl Expr {
             Expr::Value(Type::Function(Function::UserDefined(arg, func))) => {
                 Expr::Value(Type::Function(Function::UserDefined(
                     arg.to_string(),
-                    Box::new(func.replace(from, to)),
+                    if from.format() != *arg {
+                        Box::new(func.replace(from, to))
+                    } else {
+                        func.clone()
+                    },
                 )))
             }
             Expr::Value(val) => {
