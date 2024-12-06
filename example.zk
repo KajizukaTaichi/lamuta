@@ -1,0 +1,14 @@
+let fizzbuzz = λn.{
+    match [n % 3, n % 5] {
+        [0, 0] = "FizzBuzz",
+        [0, _] = "Fizz",
+        [_, 0] = "Buzz",
+        [_, _] = n
+    }
+};
+
+for i in (range @ [1, 101, 1]) {
+    print fizzbuzz @ i, new-line;
+}
+
+let add = λa.(λb.(a + b))
