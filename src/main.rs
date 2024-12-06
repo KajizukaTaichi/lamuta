@@ -390,6 +390,13 @@ impl Expr {
                 arg.to_string(),
                 Box::new(Expr::parse(body.to_string())?),
             )))
+        } else if token.starts_with('\\') && token.contains('.') {
+            let token = token.replacen('\\', "", 1);
+            let (arg, body) = token.split_once(".")?;
+            Expr::Value(Type::Function(Function::UserDefined(
+                arg.to_string(),
+                Box::new(Expr::parse(body.to_string())?),
+            )))
         } else {
             Expr::Value(Type::Symbol(token))
         };
