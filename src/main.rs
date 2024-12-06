@@ -78,6 +78,31 @@ impl Engine {
                     })),
                 ),
                 (
+                    "load".to_string(),
+                    Type::Function(Function::BuiltIn(|expr, engine| {
+                        if let Ok(module) = read_to_string(expr.get_text()) {
+                            let module = Engine::parse(module)?;
+                            Some(engine.eval(module)?)
+                        } else {
+                            None
+                        }
+                    })),
+                ),
+                (
+                    "input".to_string(),
+                    Type::Function(Function::BuiltIn(|expr, _| {
+                        let prompt = expr.get_text();
+                        print!("{prompt}");
+                        io::stdout().flush().unwrap();
+                        let mut buffer = String::new();
+                        if io::stdin().read_line(&mut buffer).is_ok() {
+                            Some(Type::Text(buffer.trim().to_string()))
+                        } else {
+                            None
+                        }
+                    })),
+                ),
+                (
                     "range".to_string(),
                     Type::Function(Function::BuiltIn(|params, _| {
                         let params = params.get_list();
@@ -149,17 +174,6 @@ impl Engine {
                     io::stdout().flush().unwrap();
                     Type::Null
                 }
-                Statement::Input(expr) => {
-                    let prompt = expr.eval(self)?.get_text();
-                    print!("{prompt}");
-                    io::stdout().flush().unwrap();
-                    let mut buffer = String::new();
-                    if io::stdin().read_line(&mut buffer).is_ok() {
-                        Type::Text(buffer.trim().to_string())
-                    } else {
-                        return None;
-                    }
-                }
                 Statement::Let(name, expr) => {
                     let val = expr.eval(self)?;
                     if name != "_" {
@@ -211,14 +225,6 @@ impl Engine {
                     }
                     result
                 }
-                Statement::Load(path) => {
-                    if let Ok(module) = read_to_string(path) {
-                        let module = Engine::parse(module)?;
-                        self.eval(module)?
-                    } else {
-                        return None;
-                    }
-                }
                 Statement::Fault => return None,
             };
         }
@@ -230,13 +236,11 @@ impl Engine {
 enum Statement {
     Value(Expr),
     Print(Vec<Expr>),
-    Input(Expr),
     Let(String, Expr),
     If(Expr, Expr, Option<Expr>),
     Match(Expr, Vec<(Vec<Expr>, Expr)>),
     For(String, Expr, Expr),
     While(Expr, Expr),
-    Load(String),
     Fault,
 }
 
@@ -257,12 +261,6 @@ impl Statement {
                 exprs.push(Expr::parse(i)?)
             }
             Some(Statement::Print(exprs))
-        } else if code.starts_with("load") {
-            Some(Statement::Load(code["load".len()..].trim().to_string()))
-        } else if code.starts_with("input") {
-            Some(Statement::Input(Expr::parse(
-                code["input".len()..].to_string(),
-            )?))
         } else if code.starts_with("if") {
             let code = code["if".len()..].to_string();
             let code = tokenize(code, SPACE.to_vec())?;
