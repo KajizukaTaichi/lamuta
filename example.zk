@@ -10,5 +10,3 @@ let fizzbuzz = λn.{
 for i in (range [1, 101, 1]) {
     print fizzbuzz i, new-line;
 }
-
-let add = λa.(λb.(a + b))
