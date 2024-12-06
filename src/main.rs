@@ -443,7 +443,7 @@ impl Expr {
                 let mut result = Some(Expr::Infix(Box::new(Infix {
                     operator,
                     values: (
-                        Expr::parse(token_list.get(..token_list.len() - 2)?.to_vec().join(" "))?,
+                        Expr::parse(token_list.get(..token_list.len() - 2)?.join(" "))?,
                         token,
                     ),
                 })))?;
@@ -453,7 +453,7 @@ impl Expr {
                 let mut result = Some(Expr::Infix(Box::new(Infix {
                     operator: Operator::Apply,
                     values: (
-                        Expr::parse(token_list.get(..token_list.len() - 1)?.to_vec().join(" "))?,
+                        Expr::parse(token_list.get(..token_list.len() - 1)?.join(" "))?,
                         token,
                     ),
                 })))?;
