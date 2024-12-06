@@ -1,78 +1,48 @@
-use clap::Parser;
 use colored::*;
 use std::{
     collections::BTreeMap,
-    env::{self, args},
     fs::read_to_string,
     io::{self, Write},
-    path::Path,
     process::exit,
 };
 
 const VERSION: &str = "0.2.0";
 const SPACE: [char; 5] = [' ', '　', '\n', '\t', '\r'];
 
-#[derive(Parser)]
-#[command(name = "Lamuta",version = VERSION)]
-struct App {}
-
 fn main() {
-    let args: Vec<String> = args().collect();
-    if let Some(path) = args.get(1) {
-        if let Ok(code) = read_to_string(path) {
-            if let Some(parent_dir) = Path::new(path).parent() {
-                env::set_current_dir(parent_dir).unwrap_or_default();
-            }
+    println!("{title} {VERSION}", title = "Lamuta".blue().bold());
+    let mut engine = Engine::new();
+    let mut code = String::new();
+    let mut session = 1;
+    let mut line = 1;
 
-            if let Some(ast) = Engine::parse(code) {
-                let mut engine = Engine::new();
-                if engine.eval(ast).is_none() {
-                    println!("{} unexcepted fault is happend at runtime", "Error!".red())
-                }
-            } else {
-                println!(
-                    "{} could not parse program. check is it correct syntax",
-                    "Error!".red()
-                )
-            }
-        } else {
-            eprintln!("{} the file can't be opened", "Error!".red())
+    loop {
+        print!("[{session}:{line}]> ");
+        io::stdout().flush().unwrap();
+
+        let mut buffer = String::new();
+        io::stdin().read_line(&mut buffer).unwrap();
+        let buffer = buffer.trim().to_string();
+        code += &format!("{buffer}\n");
+
+        if buffer == ":q" {
+            code.clear();
+            session += 1;
+            line = 1;
+            continue;
         }
-    } else {
-        println!("{title} {VERSION}", title = "Lamuta".blue().bold());
-        let mut engine = Engine::new();
-        let mut code = String::new();
-        let mut session = 1;
-        let mut line = 1;
 
-        loop {
-            print!("[{session}:{line}]{} ", ">".green());
-            io::stdout().flush().unwrap();
-
-            let mut buffer = String::new();
-            io::stdin().read_line(&mut buffer).unwrap();
-            let buffer = buffer.trim().to_string();
-            code += &format!("{buffer}\n");
-
-            if buffer == ":q" {
-                code.clear();
-                session += 1;
-                line = 1;
-                continue;
-            }
-
-            if let Some(ast) = Engine::parse(code.clone()) {
-                if let Some(result) = engine.eval(ast) {
-                    println!("{navi} {}", result.get_symbol(), navi = "=>".red());
-                    code.clear();
-                    session += 1;
-                    line = 1;
-                } else {
-                    line += 1;
-                }
+        if let Some(ast) = Engine::parse(code.clone()) {
+            if let Some(result) = engine.eval(ast) {
+                println!("{navi} {}", result.get_symbol(), navi = "=>".green());
             } else {
-                line += 1;
+                println!("{navi} {}", "Fault", navi = "=>".red());
             }
+            code.clear();
+            session += 1;
+            line = 1;
+        } else {
+            line += 1;
         }
     }
 }
@@ -164,7 +134,7 @@ impl Engine {
                 ),
                 (
                     "exit".to_string(),
-                    Type::Function(Function::BuiltIn(|_, _| exit(0))),
+                    Type::Function(Function::BuiltIn(|arg, _| exit(arg.get_number()? as i32))),
                 ),
                 ("new-line".to_string(), Type::Text("\n".to_string())),
                 ("carriage-return".to_string(), Type::Text("\r".to_string())),
