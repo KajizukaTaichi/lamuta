@@ -328,39 +328,39 @@ impl Statement {
         }
     }
 
-    fn reparse(&self) -> String {
+    fn format(&self) -> String {
         match self {
-            Statement::Value(expr) => format!("{}", expr.reparse()),
+            Statement::Value(expr) => format!("{}", expr.format()),
             Statement::If(cond, then, r#else) => {
                 if let Some(r#else) = r#else {
                     format!(
                         "if {} {} else {}",
-                        cond.reparse(),
-                        then.reparse(),
-                        r#else.reparse()
+                        cond.format(),
+                        then.format(),
+                        r#else.format()
                     )
                 } else {
-                    format!("if {} {}", cond.reparse(), then.reparse())
+                    format!("if {} {}", cond.format(), then.format())
                 }
             }
             Statement::While(cond, code) => {
-                format!("while {} {}", cond.reparse(), code.reparse())
+                format!("while {} {}", cond.format(), code.format())
             }
             Statement::For(counter, iterator, code) => {
-                format!("for {counter} in {} {}", iterator.reparse(), code.reparse())
+                format!("for {counter} in {} {}", iterator.format(), code.format())
             }
             Statement::Match(expr, cond) => {
-                format!("match {} {{ {} }}", expr.reparse(), {
+                format!("match {} {{ {} }}", expr.format(), {
                     cond.iter()
                         .map(|case| {
                             format!(
                                 "{} => {}",
                                 case.0
                                     .iter()
-                                    .map(|i| i.reparse())
+                                    .map(|i| i.format())
                                     .collect::<Vec<String>>()
                                     .join(" | "),
-                                case.1.reparse()
+                                case.1.format()
                             )
                         })
                         .collect::<Vec<String>>()
@@ -368,12 +368,12 @@ impl Statement {
                 })
             }
             Statement::Fault => "fault".to_string(),
-            Statement::Let(name, val) => format!("let {name} = {}", val.reparse()),
+            Statement::Let(name, val) => format!("let {name} = {}", val.format()),
             Statement::Print(exprs) => format!(
                 "print {}",
                 exprs
                     .iter()
-                    .map(|i| i.reparse())
+                    .map(|i| i.format())
                     .collect::<Vec<String>>()
                     .join(", ")
             ),
@@ -586,22 +586,22 @@ impl Expr {
         }
     }
 
-    fn reparse(&self) -> String {
+    fn format(&self) -> String {
         match self {
             Expr::List(list) => format!(
                 "[{}]",
                 list.iter()
-                    .map(|i| i.reparse())
+                    .map(|i| i.format())
                     .collect::<Vec<String>>()
                     .join(", "),
             ),
-            Expr::Infix(infix) => format!("({})", infix.reparse()),
+            Expr::Infix(infix) => format!("({})", infix.format()),
             Expr::Value(val) => val.get_symbol(),
             Expr::Block(block) => format!(
                 "{{ {} }}",
                 block
                     .iter()
-                    .map(|i| i.reparse())
+                    .map(|i| i.format())
                     .collect::<Vec<String>>()
                     .join("; ")
             ),
@@ -754,7 +754,7 @@ impl Infix {
         })
     }
 
-    fn reparse(&self) -> String {
+    fn format(&self) -> String {
         let operator = match self.operator {
             Operator::Add => "+",
             Operator::Sub => "-",
@@ -776,16 +776,12 @@ impl Infix {
         }
         .to_string();
         if let Expr::Infix(infix) = self.values.1.clone() {
-            format!(
-                "{} {operator} ({})",
-                self.values.0.reparse(),
-                infix.reparse()
-            )
+            format!("{} {operator} ({})", self.values.0.format(), infix.format())
         } else {
             format!(
                 "{} {operator} {}",
-                self.values.0.reparse(),
-                self.values.1.reparse()
+                self.values.0.format(),
+                self.values.1.format()
             )
         }
     }
@@ -845,7 +841,7 @@ impl Type {
             Type::Null => "null".to_string(),
             Type::Function(Function::BuiltIn(obj)) => format!("λx.{obj:?}"),
             Type::Function(Function::UserDefined(arg, code)) => {
-                format!("λ{arg}.{}", code.reparse())
+                format!("λ{arg}.{}", code.format())
             }
             Type::List(l) => format!(
                 "[{}]",
