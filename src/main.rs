@@ -179,7 +179,7 @@ impl Engine {
                     if name != "_" {
                         self.scope.insert(name, val.clone());
                     }
-                    Type::Null
+                    val
                 }
                 Statement::If(expr, then, r#else) => {
                     if let Some(it) = expr.eval(self) {
