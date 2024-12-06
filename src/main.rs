@@ -846,7 +846,7 @@ impl Infix {
             Operator::Or => "|",
             Operator::Access => "::",
             Operator::As => "as",
-            Operator::Apply => "",
+            Operator::Apply => "\x08",
         }
         .to_string();
         if let Expr::Infix(infix) = self.values.1.clone() {
@@ -854,8 +854,16 @@ impl Infix {
         } else {
             format!(
                 "{} {operator} {}",
-                self.values.0.format(),
-                self.values.1.format()
+                if let Expr::Infix(infix) = self.values.0.clone() {
+                    infix.format()
+                } else {
+                    self.values.0.format()
+                },
+                if let Expr::Infix(infix) = self.values.1.clone() {
+                    infix.format()
+                } else {
+                    self.values.1.format()
+                },
             )
         }
     }
