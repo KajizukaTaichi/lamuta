@@ -8,7 +8,10 @@ let len = \l.{
 let slice = \l.\s.{
     let result = { if (type(l) == "text") "" else [] };
     for index in s {
-        let result = result + [(l :: index)];
+        let result = result + {
+            if (type(l) == "text") (l :: index)
+            else [(l :: index)]
+        };
     }
 };
 
