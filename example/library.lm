@@ -1,7 +1,7 @@
 let map = \f.\l.{
     let result = [];
     for i in l {
-        let result = result + f(i);
+        let result = result + [f(i)];
     }
 };
 
@@ -9,8 +9,30 @@ let filter = \f.\l.{
     let result = [];
     for i in l {
         if f(i) {
-            let result = result + i;
+            let result = result + [i];
         }
+    };
+    result
+};
+
+let len = \l.{
+    let i = 0;
+    for _ in l {
+        let i = i + 1;
+    }
+};
+
+let slice = \l.\s.{
+    let result = { if (type(l) == "text") "" else [] };
+    for index in s {
+        let result = result + [(l :: index)];
+    }
+};
+
+let reduce = \f.\l.{
+    let result = l :: 0;
+    for i in (slice l (range [1, (len l)])) {
+        let result = (f result i);
     };
     result
 };
@@ -18,6 +40,6 @@ let filter = \f.\l.{
 let join = \a.\b.{
     let result = "";
     for i in a {
-        let result = result + i + b;
+        let result = result + i as text + b;
     }
 }
