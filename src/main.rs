@@ -11,10 +11,9 @@ const SPACE: [char; 5] = [' ', '　', '\n', '\t', '\r'];
 
 fn main() {
     println!("{title} {VERSION}", title = "Lamuta".blue().bold());
-    let mut engine = Engine::new();
-    let mut code = String::new();
-    let mut session = 1;
-    let mut line = 1;
+    let (mut engine, mut code) = (Engine::new(), String::new());
+    let default: Vec<String> = engine.scope.keys().cloned().collect();
+    let (mut session, mut line) = (1, 1);
 
     loop {
         print!("[{session}:{line}]> ");
@@ -23,7 +22,6 @@ fn main() {
         let mut buffer = String::new();
         io::stdin().read_line(&mut buffer).unwrap();
         let buffer = buffer.trim().to_string();
-        code += &format!("{buffer}\n");
 
         if buffer == ":q" {
             code.clear();
@@ -31,7 +29,23 @@ fn main() {
             line = 1;
             continue;
         }
+        if buffer == ":env" {
+            println!("Defined variables:");
+            let env: Vec<_> = engine
+                .scope
+                .keys()
+                .filter(|i| !default.contains(i))
+                .cloned()
+                .collect();
+            let width = env.iter().map(|i| i.chars().count()).max().unwrap_or(0);
+            for k in env {
+                let v = engine.scope.get(&k).unwrap_or(&Type::Null);
+                println!(" {k:<width$} = {}", v.get_symbol());
+            }
+            continue;
+        }
 
+        code += &format!("{buffer}\n");
         if let Some(ast) = Engine::parse(code.clone()) {
             if let Some(result) = engine.eval(ast) {
                 println!("{navi} {}", result.get_symbol(), navi = "=>".green());
