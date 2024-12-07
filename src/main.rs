@@ -12,7 +12,7 @@ const SPACE: [char; 5] = [' ', '　', '\n', '\t', '\r'];
 fn main() {
     println!("{title} {VERSION}", title = "Lamuta".blue().bold());
     let (mut engine, mut code) = (Engine::new(), String::new());
-    let default: Vec<String> = engine.scope.keys().cloned().collect();
+    let default: Vec<String> = engine.env.keys().cloned().collect();
     let (mut session, mut line) = (1, 1);
 
     loop {
@@ -32,14 +32,14 @@ fn main() {
         if buffer == ":env" {
             println!("Defined variables:");
             let env: Vec<_> = engine
-                .scope
+                .env
                 .keys()
                 .filter(|i| !default.contains(i))
                 .cloned()
                 .collect();
             let width = env.iter().map(|i| i.chars().count()).max().unwrap_or(0);
             for k in env {
-                let v = engine.scope.get(&k).unwrap_or(&Type::Null);
+                let v = engine.env.get(&k).unwrap_or(&Type::Null);
                 println!(" {k:<width$} = {}", v.get_symbol());
             }
             continue;
@@ -65,13 +65,13 @@ type Scope = BTreeMap<String, Type>;
 type Program = Vec<Statement>;
 #[derive(Debug, Clone)]
 struct Engine {
-    scope: Scope,
+    env: Scope,
 }
 
 impl Engine {
     fn new() -> Engine {
         Engine {
-            scope: BTreeMap::from([
+            env: BTreeMap::from([
                 (
                     "type".to_string(),
                     Type::Function(Function::BuiltIn(|expr, _| {
@@ -192,13 +192,13 @@ impl Engine {
                 Statement::Let(name, expr) => {
                     let val = expr.eval(self)?;
                     if name != "_" {
-                        self.scope.insert(name, val.clone());
+                        self.env.insert(name, val.clone());
                     }
                     val
                 }
                 Statement::If(expr, then, r#else) => {
                     if let Some(it) = expr.eval(self) {
-                        self.scope.insert("it".to_string(), it);
+                        self.env.insert("it".to_string(), it);
                         then.eval(self)?
                     } else {
                         if let Some(r#else) = r#else {
@@ -225,7 +225,7 @@ impl Engine {
                 Statement::While(expr, code) => {
                     let mut result = Type::Null;
                     while let Some(it) = expr.eval(self) {
-                        self.scope.insert("it".to_string(), it);
+                        self.env.insert("it".to_string(), it);
                         result = code.eval(self)?;
                     }
                     result
@@ -234,7 +234,7 @@ impl Engine {
                     let mut result = Type::Null;
                     for i in expr.eval(self)?.get_list() {
                         if counter != "_" {
-                            self.scope.insert(counter.clone(), i);
+                            self.env.insert(counter.clone(), i);
                         }
                         result = code.eval(self)?;
                     }
@@ -418,7 +418,7 @@ impl Expr {
             }
             Expr::Value(value) => {
                 if let Type::Symbol(name) = value {
-                    if let Some(refer) = engine.scope.get(name.as_str()) {
+                    if let Some(refer) = engine.env.get(name.as_str()) {
                         refer.clone()
                     } else {
                         value.clone()
