@@ -1,10 +1,12 @@
 load library.lm;
 
-map \i.{
+let fizzbuzz = \n.{
     match [i % 3, i % 5] {
         [0, 0] = "FizzBuzz",
         [0, _] = "Fizz",
         [_, 0] = "Buzz",
-        [_, _] = i
+        [_, _] = i as text
     }
-} (map \i.(i + 1) (range 100))
+};
+
+join (map fizzbuzz (range [1, 101])) " "
