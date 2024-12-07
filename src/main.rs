@@ -214,9 +214,6 @@ impl Engine {
                 }
                 Statement::Let(name, expr) => {
                     let val = expr.eval(self)?;
-                    if self.env.contains_key(&name) {
-                        return None;
-                    }
                     if name != "_" {
                         self.env.insert(name, val.clone());
                     }
