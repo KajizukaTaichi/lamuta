@@ -1,7 +1,7 @@
 use colored::*;
 use std::{
     collections::BTreeMap,
-    fs::read_to_string,
+    fs::{read_to_string, File},
     io::{self, Write},
     process::exit,
 };
@@ -28,8 +28,7 @@ fn main() {
             session += 1;
             line = 1;
             continue;
-        }
-        if buffer == ":env" {
+        } else if buffer == ":env" {
             println!("Defined variables:");
             let env: Vec<_> = engine
                 .env
@@ -86,6 +85,27 @@ impl Engine {
                             }
                             .to_string(),
                         ))
+                    })),
+                ),
+                (
+                    "save".to_string(),
+                    Type::Function(Function::BuiltIn(|arg, engine| {
+                        let mut render = String::new();
+                        for (k, v) in &engine.env {
+                            if let Type::Function(Function::BuiltIn(_)) = v {
+                            } else {
+                                render += &format!("let {k} = {};\n", v.get_symbol());
+                            }
+                        }
+                        if let Ok(mut file) = File::create(arg.get_text()) {
+                            if file.write_all(render.as_bytes()).is_ok() {
+                                Some(Type::Null)
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
                     })),
                 ),
                 (
@@ -150,11 +170,6 @@ impl Engine {
                     "exit".to_string(),
                     Type::Function(Function::BuiltIn(|arg, _| exit(arg.get_number()? as i32))),
                 ),
-                ("new-line".to_string(), Type::Text("\n".to_string())),
-                ("carriage-return".to_string(), Type::Text("\r".to_string())),
-                ("double-quote".to_string(), Type::Text("\"".to_string())),
-                ("space".to_string(), Type::Text(" ".to_string())),
-                ("tab".to_string(), Type::Text("\t".to_string())),
             ]),
         }
     }
@@ -186,6 +201,7 @@ impl Engine {
                             }
                         );
                     }
+                    println!();
                     io::stdout().flush().unwrap();
                     Type::Null
                 }
