@@ -1,7 +1,7 @@
 use colored::*;
 use std::{
     collections::BTreeMap,
-    env::set_current_dir,
+    env::{current_dir, set_current_dir},
     fs::{read_to_string, File},
     io::{self, Write},
     path::Path,
@@ -116,11 +116,14 @@ impl Engine {
                         let path = expr.get_text();
                         let path = Path::new(&path);
                         if let Ok(module) = read_to_string(path) {
+                            let home = current_dir().unwrap_or_default();
                             if let Some(parent_dir) = path.parent() {
                                 set_current_dir(parent_dir).unwrap_or_default();
                             }
                             let module = Engine::parse(module)?;
-                            Some(engine.eval(module)?)
+                            let result = engine.eval(module)?;
+                            set_current_dir(home).unwrap_or_default();
+                            Some(result)
                         } else {
                             None
                         }
