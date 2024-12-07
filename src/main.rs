@@ -113,8 +113,10 @@ impl Engine {
                 (
                     "load".to_string(),
                     Type::Function(Function::BuiltIn(|expr, engine| {
-                        if let Ok(module) = read_to_string(expr.get_text()) {
-                            if let Some(parent_dir) = Path::new(&module).parent() {
+                        let path = expr.get_text();
+                        let path = Path::new(&path);
+                        if let Ok(module) = read_to_string(path) {
+                            if let Some(parent_dir) = path.parent() {
                                 set_current_dir(parent_dir).unwrap_or_default();
                             }
                             let module = Engine::parse(module)?;
