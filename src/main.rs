@@ -760,10 +760,15 @@ impl Infix {
                 } else if let (Some(Type::Text(left)), Some(Type::Text(right))) = (&left, &right) {
                     Type::Text(left.replace(right, ""))
                 } else if let (Some(Type::List(mut left)), Some(Type::Number(right))) =
+                    (left.clone(), &right)
+                {
+                    left.remove(*right as usize);
+                    Type::List(left)
+                } else if let (Some(Type::Text(mut left)), Some(Type::Number(right))) =
                     (left, right)
                 {
                     left.remove(right as usize);
-                    Type::List(left)
+                    Type::Text(left)
                 } else {
                     return None;
                 }
