@@ -869,42 +869,66 @@ impl Infix {
     }
 
     fn format(&self) -> String {
-        let operator = match self.operator {
-            Operator::Add => "+",
-            Operator::Sub => "-",
-            Operator::Mul => "*",
-            Operator::Div => "/",
-            Operator::Mod => "%",
-            Operator::Pow => "^",
-            Operator::Equal => "==",
-            Operator::NotEq => "!=",
-            Operator::LessThan => "<",
-            Operator::LessThanEq => "<=",
-            Operator::GreaterThan => ">",
-            Operator::GreaterThanEq => ">=",
-            Operator::And => "&",
-            Operator::Or => "|",
-            Operator::Access => "::",
-            Operator::As => "as",
-            Operator::Apply => "\x08",
-        }
-        .to_string();
-        if let Expr::Infix(infix) = self.values.1.clone() {
-            format!("{} {operator} ({})", self.values.0.format(), infix.format())
-        } else {
-            format!(
-                "{} {operator} {}",
-                if let Expr::Infix(infix) = self.values.0.clone() {
-                    infix.format()
-                } else {
-                    self.values.0.format()
-                },
-                if let Expr::Infix(infix) = self.values.1.clone() {
-                    infix.format()
-                } else {
-                    self.values.1.format()
-                },
+        let is_operator = |op| {
+            Some(
+                match op {
+                    Operator::Add => "+",
+                    Operator::Sub => "-",
+                    Operator::Mul => "*",
+                    Operator::Div => "/",
+                    Operator::Mod => "%",
+                    Operator::Pow => "^",
+                    Operator::Equal => "==",
+                    Operator::NotEq => "!=",
+                    Operator::LessThan => "<",
+                    Operator::LessThanEq => "<=",
+                    Operator::GreaterThan => ">",
+                    Operator::GreaterThanEq => ">=",
+                    Operator::And => "&",
+                    Operator::Or => "|",
+                    Operator::Access => "::",
+                    Operator::As => "as",
+                    Operator::Apply => return None,
+                }
+                .to_string(),
             )
+        };
+        if let Some(op) = is_operator(self.operator.clone()) {
+            if let Expr::Infix(infix) = self.values.1.clone() {
+                format!("{} {op} ({})", self.values.0.format(), infix.format())
+            } else {
+                format!(
+                    "{} {op} {}",
+                    if let Expr::Infix(infix) = self.values.0.clone() {
+                        infix.format()
+                    } else {
+                        self.values.0.format()
+                    },
+                    if let Expr::Infix(infix) = self.values.1.clone() {
+                        infix.format()
+                    } else {
+                        self.values.1.format()
+                    },
+                )
+            }
+        } else {
+            if let Expr::Infix(infix) = self.values.1.clone() {
+                format!("{} ({})", self.values.0.format(), infix.format())
+            } else {
+                format!(
+                    "{} {}",
+                    if let Expr::Infix(infix) = self.values.0.clone() {
+                        infix.format()
+                    } else {
+                        self.values.0.format()
+                    },
+                    if let Expr::Infix(infix) = self.values.1.clone() {
+                        infix.format()
+                    } else {
+                        self.values.1.format()
+                    },
+                )
+            }
         }
     }
 }
