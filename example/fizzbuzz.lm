@@ -1,11 +1,11 @@
 load library.lm;
 
 let fizzbuzz = \n.{
-    match [i % 3, i % 5] {
+    match [n % 3, n % 5] {
         [0, 0] = "FizzBuzz",
         [0, _] = "Fizz",
         [_, 0] = "Buzz",
-        [_, _] = i as text
+        [_, _] = n as text
     }
 };
 
