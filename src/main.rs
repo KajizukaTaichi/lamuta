@@ -395,7 +395,7 @@ impl Statement {
                     cond.iter()
                         .map(|case| {
                             format!(
-                                "{} => {}",
+                                "{} = {}",
                                 case.0
                                     .iter()
                                     .map(|i| i.format())
