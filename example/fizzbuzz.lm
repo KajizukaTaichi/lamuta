@@ -1,6 +1,6 @@
 load library.lm;
 
-let fizzbuzz = \n.{
+let fizzbuzz = λn.{
     match [n % 3, n % 5] {
         [0, 0] = "FizzBuzz",
         [0, _] = "Fizz",
@@ -9,4 +9,6 @@ let fizzbuzz = \n.{
     }
 };
 
-join (map fizzbuzz (range [1, 101])) " "
+let compose = λf.λg.λx.f(g(x));
+let incFzbz = compose fizzbuzz λx.(x + 1);
+print join (map incFzbz (range 100)) " "
