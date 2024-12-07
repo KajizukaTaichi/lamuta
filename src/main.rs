@@ -747,6 +747,8 @@ impl Infix {
                     Type::Number(left + right)
                 } else if let (Some(Type::Text(left)), Some(Type::Text(right))) = (&left, &right) {
                     Type::Text(left.clone() + right)
+                } else if let (Some(Type::List(left)), Some(Type::List(right))) = (&left, &right) {
+                    Type::List([left.clone(), right.clone()].concat())
                 } else if let (Some(Type::List(mut left)), Some(right)) = (left, right) {
                     left.push(right);
                     Type::List(left)
