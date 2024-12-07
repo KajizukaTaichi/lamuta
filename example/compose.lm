@@ -1,5 +1,5 @@
 let inc = λx.(x + 1);
 let dup = λx.(x * 2);
 let compose = λf.λg.λx.f(g(x));
-let dupinc = compose inc dup;
-dupinc 2
+let dupInc = compose inc dup;
+dupInc 2
