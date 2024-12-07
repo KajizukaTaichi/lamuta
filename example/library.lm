@@ -14,3 +14,10 @@ let filter = \f.\l.{
     };
     result
 };
+
+let join = \a.\b.{
+    let result = "";
+    for i in a {
+        let result = result + i + b;
+    }
+}
