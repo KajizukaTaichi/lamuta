@@ -1,0 +1,16 @@
+let map = \f.\l.{
+    let result = [];
+    for i in l {
+        let result = result + f(i);
+    }
+};
+
+let filter = \f.\l.{
+    let result = [];
+    for i in l {
+        if f(i) {
+            let result = result + i;
+        }
+    };
+    result
+};
