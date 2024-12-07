@@ -1,8 +1,10 @@
 use colored::*;
 use std::{
     collections::BTreeMap,
+    env::set_current_dir,
     fs::{read_to_string, File},
     io::{self, Write},
+    path::Path,
     process::exit,
 };
 
@@ -112,6 +114,9 @@ impl Engine {
                     "load".to_string(),
                     Type::Function(Function::BuiltIn(|expr, engine| {
                         if let Ok(module) = read_to_string(expr.get_text()) {
+                            if let Some(parent_dir) = Path::new(&module).parent() {
+                                set_current_dir(parent_dir).unwrap_or_default();
+                            }
                             let module = Engine::parse(module)?;
                             Some(engine.eval(module)?)
                         } else {
@@ -857,7 +862,7 @@ impl Infix {
                 Function::UserDefined(paramater, code) => {
                     let code =
                         code.replace(&Expr::Value(Type::Symbol(paramater)), &Expr::Value(right?));
-                    code.eval(engine)?
+                    code.eval(&mut engine.clone())?
                 }
             },
         })
