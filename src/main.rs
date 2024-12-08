@@ -777,7 +777,7 @@ impl Infix {
                 if let (Some(Type::Number(left)), Some(Type::Number(right))) = (&left, &right) {
                     Type::Number(left - right)
                 } else if let (Some(Type::Text(left)), Some(Type::Text(right))) = (&left, &right) {
-                    Type::Text(left.replace(right, ""))
+                    Type::Text(left.replacen(right, "", 1))
                 } else if let (Some(Type::List(mut left)), Some(Type::List(right))) =
                     (left.clone(), &right)
                 {
