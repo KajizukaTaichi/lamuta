@@ -14,7 +14,6 @@ const SPACE: [char; 5] = [' ', '　', '\n', '\t', '\r'];
 fn main() {
     println!("{title} {VERSION}", title = "Lamuta".blue().bold());
     let (mut engine, mut code) = (Engine::new(), String::new());
-    let default: Vec<String> = engine.env.keys().cloned().collect();
     let (mut session, mut line) = (1, 1);
 
     loop {
@@ -32,16 +31,17 @@ fn main() {
             continue;
         } else if buffer == ":env" {
             println!("Defined variables:");
-            let env: Vec<_> = engine
+            let width = &engine
                 .env
                 .keys()
-                .filter(|i| !default.contains(i))
-                .cloned()
-                .collect();
-            let width = env.iter().map(|i| i.chars().count()).max().unwrap_or(0);
-            for k in env {
-                let v = engine.env.get(&k).unwrap_or(&Type::Null);
-                println!(" {k:<width$} = {}", v.get_symbol());
+                .map(|i| i.chars().count())
+                .max()
+                .unwrap_or(0);
+            for (k, v) in &engine.env {
+                if let Type::Function(Function::BuiltIn(_)) = v {
+                } else {
+                    println!(" {k:<width$} = {}", v.get_symbol());
+                }
             }
             continue;
         }
@@ -76,17 +76,7 @@ impl Engine {
                 (
                     "type".to_string(),
                     Type::Function(Function::BuiltIn(|expr, _| {
-                        Some(Type::Text(
-                            match expr {
-                                Type::Number(_) => "number",
-                                Type::Text(_) => "text",
-                                Type::Symbol(_) => "symbol",
-                                Type::List(_) => "list",
-                                Type::Function(_) => "function",
-                                Type::Null => "null",
-                            }
-                            .to_string(),
-                        ))
+                        Some(Type::Text(expr.get_type()))
                     })),
                 ),
                 (
@@ -215,10 +205,17 @@ impl Engine {
                     io::stdout().flush().unwrap();
                     Type::Null
                 }
-                Statement::Let(name, expr) => {
+                Statement::Let((name, r#type), expr) => {
                     let val = expr.eval(self)?;
-                    if name != "_" {
-                        self.env.insert(name, val.clone());
+                    if r#type
+                        .and_then(|i| Some(i == val.get_type()))
+                        .unwrap_or(true)
+                    {
+                        if name != "_" {
+                            self.env.insert(name, val.clone());
+                        }
+                    } else {
+                        return None;
                     }
                     val
                 }
@@ -277,7 +274,7 @@ impl Engine {
 enum Statement {
     Value(Expr),
     Print(Vec<Expr>),
-    Let(String, Expr),
+    Let((String, Option<String>), Expr),
     If(Expr, Expr, Option<Expr>),
     Match(Expr, Vec<(Vec<Expr>, Expr)>),
     For(String, Expr, Expr),
@@ -358,10 +355,17 @@ impl Statement {
         } else if code.starts_with("let") {
             let code = code["let".len()..].to_string();
             let (name, code) = code.split_once("=")?;
-            Some(Statement::Let(
-                name.trim().to_string(),
-                Expr::parse(code.to_string())?,
-            ))
+            if let Some((name, r#type)) = name.split_once(":") {
+                Some(Statement::Let(
+                    (name.trim().to_string(), Some(r#type.trim().to_string())),
+                    Expr::parse(code.to_string())?,
+                ))
+            } else {
+                Some(Statement::Let(
+                    (name.trim().to_string(), None),
+                    Expr::parse(code.to_string())?,
+                ))
+            }
         } else if code == "fault" {
             Some(Statement::Fault)
         } else {
@@ -409,7 +413,12 @@ impl Statement {
                 })
             }
             Statement::Fault => "fault".to_string(),
-            Statement::Let(name, val) => format!("let {name} = {}", val.format()),
+            Statement::Let((name, Some(r#type)), val) => {
+                format!("let {name}: {} = {}", r#type, val.format())
+            }
+            Statement::Let((name, None), val) => {
+                format!("let {name} = {}", val.format())
+            }
             Statement::Print(exprs) => format!(
                 "print {}",
                 exprs
@@ -1058,6 +1067,18 @@ impl Type {
         } else {
             None
         }
+    }
+
+    fn get_type(&self) -> String {
+        match self {
+            Type::Number(_) => "number",
+            Type::Text(_) => "text",
+            Type::Symbol(_) => "symbol",
+            Type::List(_) => "list",
+            Type::Function(_) => "function",
+            Type::Null => "null",
+        }
+        .to_string()
     }
 
     fn is_match(&self, condition: &Type) -> bool {
