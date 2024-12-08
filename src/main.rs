@@ -1123,7 +1123,7 @@ fn tokenize(input: String, delimiter: Vec<char>) -> Option<Vec<String>> {
                     return None;
                 }
             }
-            '"' => {
+            '"' | '`' => {
                 in_quote = !in_quote;
                 current_token.push(c);
             }
