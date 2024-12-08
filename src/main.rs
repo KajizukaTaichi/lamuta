@@ -904,6 +904,7 @@ impl Infix {
                 "symbol" => Type::Symbol(left?.get_symbol()),
                 "text" => Type::Text(left?.get_text()),
                 "list" => Type::List(left?.get_list()),
+                "function" => Type::Function(left?.get_function()?),
                 _ => return None,
             },
             Operator::Apply => match left?.get_function()? {
