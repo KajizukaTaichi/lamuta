@@ -28,14 +28,17 @@
         <div class="main">
             <h1><span class="highlight">Lamuta</span>ってなんだい？</h1>
             <p>
-                Lamutaは、ラムダ計算を基盤とした強い動的型付けでインタプリタ式の関数型プログラミング言語です。下の画像の通り、ラムダ計算の数式がほぼそのままの形で書けます。
-                もちろん関数の引数は必ず一つで評価されたら必ず値を返し、複数引数はカリー化という技術やリストを用いて実現できます。match文など現代的な言語機能も実装されています。
-                評価戦略はゴール指向評価を採用しており、柔軟かつ堅牢なプログラムを構築できます。
+                Lamutaは、ラムダ計算を基盤とした強い動的型付けでインタプリタ式の関数型プログラミング言語です。
+                下の画像の通り、ラムダ計算の数式がほぼそのままの形で書けます。
+                もちろん関数の引数は必ず一つで評価されたら必ず値を返し、複数引数はカリー化という技術やリストを用いて実現できます。
+                match文など現代的な言語機能も実装されているほか、評価戦略はゴール指向評価を採用しており、柔軟かつ堅牢なプログラムを構築できます。
             </p>
-            <img src="lambda.png" />
-            <img src="fizzbuzz.png" />
+            <div style="text-align: left">
+                <img id="image" /><br />
+                <button id="prev" class="btn btn-secondary">Prev</button>
+                <button id="next" class="btn btn-secondary">Next</button>
+            </div>
         </div>
-
         <div class="main">
             <h1>打倒オブジェクト指向！</h1>
             <h1>万国のコンピュータ科学者よ団結せよ！</h1>
@@ -78,6 +81,47 @@
         });
     </script>
 
+    <script>
+        function manageImage() {
+            this.imageLinks = ["lambda.png", "fizzbuzz.png", "repl.png"];
+            this.index = 0;
+            this.viewImage = function () {
+                let imageFrame = document.getElementById("image");
+                imageFrame.src = this.imageLinks[this.index];
+            };
+            this.prevImage = function () {
+                this.index -= 1;
+                this.index =
+                    this.index == -1 ? this.imageLinks.length - 1 : this.index;
+                this.viewImage();
+            };
+
+            this.nextImage = function () {
+                this.index += 1;
+                this.index =
+                    this.index == this.imageLinks.length ? 0 : this.index;
+                this.viewImage();
+            };
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            let imageManager = new manageImage();
+            document
+                .getElementById("prev")
+                .addEventListener(
+                    "click",
+                    imageManager.prevImage.bind(imageManager),
+                );
+            document
+                .getElementById("next")
+                .addEventListener(
+                    "click",
+                    imageManager.nextImage.bind(imageManager),
+                );
+            imageManager.viewImage();
+        });
+    </script>
+
     <style>
         body {
             margin: 0;
@@ -87,6 +131,7 @@
 
         img {
             max-width: 100%;
+            max-height: 50vh;
         }
 
         .main {
