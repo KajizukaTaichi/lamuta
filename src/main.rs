@@ -778,6 +778,17 @@ impl Infix {
                     Type::Number(left - right)
                 } else if let (Some(Type::Text(left)), Some(Type::Text(right))) = (&left, &right) {
                     Type::Text(left.replace(right, ""))
+                } else if let (Some(Type::List(mut left)), Some(Type::List(right))) =
+                    (left.clone(), &right)
+                {
+                    let first_index = left.windows(right.len()).position(|i| {
+                        i.iter().map(|j| j.get_symbol()).collect::<Vec<_>>()
+                            == right.iter().map(|j| j.get_symbol()).collect::<Vec<_>>()
+                    })?;
+                    for _ in 0..right.len() {
+                        left.remove(first_index);
+                    }
+                    Type::List(left)
                 } else if let (Some(Type::List(mut left)), Some(Type::Number(right))) =
                     (left.clone(), &right)
                 {
