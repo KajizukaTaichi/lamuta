@@ -53,7 +53,7 @@
                     "|";
                 await sleep(100);
             }
-            aboutShow.textContent = aboutShow.textContent.replace("|", "");
+            aboutShow.innerHTML = aboutShow.innerHTML.replace("|", "");
 
             let githubLink = document.createElement("a");
             githubLink.href = "https://github.com/KajizukaTaichi/lamuta";
