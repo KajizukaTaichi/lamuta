@@ -542,6 +542,23 @@ impl Expr {
                 })))?;
                 result.optimize();
                 Some(result)
+            } else if operator.starts_with("`") && operator.ends_with("`") {
+                let operator = operator[1..operator.len() - 1].to_string();
+                let mut result = Some(Expr::Infix(Box::new(Infix {
+                    operator: Operator::Apply,
+                    values: (
+                        Expr::Infix(Box::new(Infix {
+                            operator: Operator::Apply,
+                            values: (
+                                Expr::parse(operator)?,
+                                Expr::parse(token_list.get(..token_list.len() - 2)?.join(" "))?,
+                            ),
+                        })),
+                        token,
+                    ),
+                })))?;
+                result.optimize();
+                Some(result)
             } else {
                 let mut result = Some(Expr::Infix(Box::new(Infix {
                     operator: Operator::Apply,
