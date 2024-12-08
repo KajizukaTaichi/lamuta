@@ -815,8 +815,11 @@ impl Infix {
             Operator::Mul => {
                 if let (Some(Type::Number(left)), Some(Type::Number(right))) = (&left, &right) {
                     Type::Number(left * right)
-                } else if let (Some(Type::Text(left)), Some(Type::Number(right))) = (left, right) {
-                    Type::Text(left.repeat(right as usize))
+                } else if let (Some(Type::Text(left)), Some(Type::Number(right))) = (&left, &right)
+                {
+                    Type::Text(left.repeat(*right as usize))
+                } else if let (Some(Type::List(left)), Some(Type::Number(right))) = (left, right) {
+                    Type::List((0..right as usize).flat_map(|_| left.clone()).collect())
                 } else {
                     return None;
                 }
