@@ -39,17 +39,22 @@
         document.addEventListener("DOMContentLoaded", async function () {
             let nameShow = document.getElementById("nameShow");
             for (let i of name) {
-                nameShow.textContent += i;
-                await sleep(600);
+                nameShow.textContent =
+                    nameShow.textContent.replace("|", "") + `${i}|`;
+                await sleep(400);
             }
-        });
-        document.addEventListener("DOMContentLoaded", async function () {
+            nameShow.textContent = nameShow.textContent.replace("|", "");
+
             let aboutShow = document.getElementById("about");
             for (let i of about) {
-                aboutShow.innerHTML +=
-                    i == "数" ? `<span class="highlight">${i}</span>` : i;
+                aboutShow.innerHTML =
+                    aboutShow.innerHTML.replace("|", "") +
+                    (i == "数" ? `<span class="highlight">${i}</span>` : i) +
+                    "|";
                 await sleep(100);
             }
+            aboutShow.textContent = aboutShow.textContent.replace("|", "");
+
             let githubLink = document.createElement("a");
             githubLink.href = "https://github.com/KajizukaTaichi/lamuta";
             githubLink.innerHTML = `<i class="fab fa-github"></i>　Repository`;
@@ -66,11 +71,11 @@
         }
 
         #title {
+            padding-top: 30vh;
             background: aliceblue;
             font-size: 30px;
             font-family: "Times New Roman", Times, serif;
             text-align: center;
-            align-content: center;
             height: 100vh;
         }
         #nameShow {
