@@ -490,17 +490,22 @@ impl Expr {
                 }
                 Type::Struct(None, result)
             }
-            Expr::Value(value) => {
-                if let Type::Symbol(name) = value {
-                    if let Some(refer) = engine.env.get(name.as_str()) {
-                        refer.clone()
-                    } else {
-                        value.clone()
-                    }
+
+            Expr::Value(Type::Signature(Signature::Function(sig))) => {
+                Type::Signature(Signature::Function(Box::new(sig.solve_future(engine)?)))
+            }
+            Expr::Value(Type::Signature(sig)) => {
+                dbg!(&sig, &sig.solve_future(engine)?);
+                Type::Signature(sig.solve_future(engine)?)
+            }
+            Expr::Value(Type::Symbol(name)) => {
+                if let Some(refer) = engine.env.get(name.as_str()) {
+                    refer.clone()
                 } else {
-                    value.clone()
+                    Type::Symbol(name.to_owned())
                 }
             }
+            Expr::Value(value) => value.clone(),
         })
     }
 
@@ -1054,11 +1059,7 @@ impl Infix {
             },
             Operator::Bind => {
                 let value = left?;
-                let r#type = match right?.get_signature()? {
-                    Signature::Future(expr) => expr.eval(engine)?.get_signature()?,
-                    other => other,
-                };
-                dbg!(&r#type);
+                let r#type = right?.get_signature()?;
                 match r#type.clone() {
                     Signature::Enum(elms) => {
                         if elms
@@ -1346,7 +1347,8 @@ impl Signature {
         } else if token == "symbol" {
             Signature::Symbol
         } else if token.starts_with('λ') {
-            if let Some(Expr::Value(Type::Signature(sig))) = Expr::parse(token.replacen("λ", "", 1))
+            if let Some(Expr::Value(Type::Signature(sig))) =
+                Expr::parse("Γ".to_string() + &token.replacen("λ", "", 1))
             {
                 Signature::Function(Box::new(sig))
             } else {
@@ -1354,6 +1356,13 @@ impl Signature {
             }
         } else {
             return None;
+        })
+    }
+
+    fn solve_future(&self, engine: &mut Engine) -> Option<Signature> {
+        Some(match self {
+            Signature::Future(expr) => expr.eval(engine)?.get_signature()?.solve_future(engine)?,
+            other => other.clone(),
         })
     }
 
@@ -1367,6 +1376,7 @@ impl Signature {
                     .join("+"),
                 Signature::Struct(vals) => vals.join("×"),
                 Signature::Function(vals) => format!("λ{}", vals.format()),
+                Signature::Future(expr) => expr.format(),
                 other => format!("{other:?}").to_lowercase(),
             }
     }
