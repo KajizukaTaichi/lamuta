@@ -6,10 +6,10 @@ let len = \l.{
 };
 
 let slice = \l.\s.{
-    let result = { if (type(l) == "text") "" else [] };
+    let result = { if (type(l) == Γtext) "" else [] };
     for index in s {
         let result = result + {
-            if (type(l) == "text") (l :: index)
+            if (type(l) == Γtext) (l :: index)
             else [(l :: index)]
         };
     }
@@ -45,6 +45,6 @@ let join = \a.\b.{
     let index = 0;
     for i in a {
         let index = index + 1;
-        let result = result + (i as text) + { if (index == (len a)) "" else b };
+        let result = result + (i as Γtext) + { if (index == (len a)) "" else b };
     }
 }
