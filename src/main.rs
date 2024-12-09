@@ -565,7 +565,7 @@ impl Expr {
                     vec!['×'],
                 )?)))
             } else {
-                todo!()
+                return None;
             }
         } else {
             Expr::Value(Type::Symbol(token))
@@ -978,12 +978,12 @@ impl Infix {
                     return None;
                 }
             }
-            Operator::As => match right?.get_text().as_str() {
-                "number" => Type::Number(left?.get_number()?),
-                "symbol" => Type::Symbol(left?.get_symbol()),
-                "text" => Type::Text(left?.get_text()),
-                "list" => Type::List(left?.get_list()),
-                "function" => Type::Function(left?.get_function()?),
+            Operator::As => match right?.get_signature()? {
+                Signature::Number => Type::Number(left?.get_number()?),
+                Signature::Symbol => Type::Symbol(left?.get_symbol()),
+                Signature::Text => Type::Text(left?.get_text()),
+                Signature::List => Type::List(left?.get_list()),
+                Signature::Function => Type::Function(left?.get_function()?),
                 _ => return None,
             },
             Operator::Apply => match left?.get_function()? {
@@ -1017,7 +1017,41 @@ impl Infix {
                             return None;
                         }
                     }
-                    _ => todo!(),
+                    Signature::Number => {
+                        if value.get_type() == "number" {
+                            value
+                        } else {
+                            return None;
+                        }
+                    }
+                    Signature::Text => {
+                        if value.get_type() == "text" {
+                            value
+                        } else {
+                            return None;
+                        }
+                    }
+                    Signature::List => {
+                        if value.get_type() == "list" {
+                            value
+                        } else {
+                            return None;
+                        }
+                    }
+                    Signature::Symbol => {
+                        if value.get_type() == "symbol" {
+                            value
+                        } else {
+                            return None;
+                        }
+                    }
+                    Signature::Function => {
+                        if value.get_type() == "function" {
+                            value
+                        } else {
+                            return None;
+                        }
+                    }
                 }
             }
         })
