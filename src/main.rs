@@ -874,6 +874,13 @@ impl Infix {
                     Type::Text(left.clone() + right)
                 } else if let (Some(Type::List(left)), Some(Type::List(right))) = (&left, &right) {
                     Type::List([left.clone(), right.clone()].concat())
+                } else if let (
+                    Some(Type::Struct(None, mut left)),
+                    Some(Type::Struct(None, right)),
+                ) = (left.clone(), &right)
+                {
+                    left.extend(right.clone());
+                    Type::Struct(None, left)
                 } else {
                     return None;
                 }
@@ -1180,9 +1187,9 @@ impl Type {
                     .join(", ")
             ),
             Type::Signature(sig) => sig.format(),
-            Type::Enum(sig, val) => format!("{} -> {}", sig.format(), val.get_symbol()),
+            Type::Enum(sig, val) => format!("({} new {})", sig.format(), val.get_symbol()),
             Type::Struct(Some(sig), val) => format!(
-                "{} -> {{ {} }}",
+                "({} new {{ {} }})",
                 sig.format(),
                 val.iter()
                     .map(|(k, v)| format!("{k}: {}", v.get_symbol()))
