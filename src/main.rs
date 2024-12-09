@@ -378,17 +378,10 @@ impl Statement {
         } else if code.starts_with("let") {
             let code = code["let".len()..].to_string();
             let (name, code) = code.split_once("=")?;
-            if let Some((name, r#type)) = name.split_once(":") {
-                Some(Statement::Let(
-                    (name.trim().to_string(), Some(r#type.trim().to_string())),
-                    Expr::parse(code.to_string())?,
-                ))
-            } else {
-                Some(Statement::Let(
-                    (name.trim().to_string(), None),
-                    Expr::parse(code.to_string())?,
-                ))
-            }
+            Some(Statement::Let(
+                (name.trim().to_string(), None),
+                Expr::parse(code.to_string())?,
+            ))
         } else if code == "fault" {
             Some(Statement::Fault)
         } else {
@@ -490,9 +483,11 @@ impl Expr {
                 }
                 Type::Struct(None, result)
             }
-
-            Expr::Value(Type::Signature(Signature::Function(sig))) => {
-                Type::Signature(Signature::Function(Box::new(sig.solve_future(engine)?)))
+            Expr::Value(Type::Signature(Signature::Function(arg, sig))) => {
+                Type::Signature(Signature::Function(
+                    Box::new(arg.solve_future(engine)?),
+                    Box::new(sig.solve_future(engine)?),
+                ))
             }
             Expr::Value(Type::Signature(sig)) => Type::Signature(sig.solve_future(engine)?),
             Expr::Value(Type::Symbol(name)) => {
@@ -1025,24 +1020,47 @@ impl Infix {
                 Signature::Symbol => Type::Symbol(left?.get_symbol()),
                 Signature::Text => Type::Text(left?.get_text()),
                 Signature::List => Type::List(left?.get_list()),
-                Signature::Function(sig) => Type::Function(Some(*sig), left?.get_function()?.1),
+                Signature::Function(arg, sig) => {
+                    Type::Function(Some(Signature::Function(arg, sig)), left?.get_function()?.1)
+                }
                 _ => return None,
             },
             Operator::Apply => match left?.get_function()? {
                 (Some(sig), Function::BuiltIn(func)) => {
-                    let result = func(right?, engine)?;
-                    if result.get_type()?.format() == sig.format() {
-                        result
+                    if let Signature::Function(arg, ret) = sig {
+                        let result = func(
+                            if right.clone()?.get_type()?.format() == arg.format() {
+                                right?
+                            } else {
+                                return None;
+                            },
+                            engine,
+                        )?;
+                        if result.get_type()?.format() == ret.format() {
+                            result
+                        } else {
+                            return None;
+                        }
                     } else {
                         return None;
                     }
                 }
                 (Some(sig), Function::UserDefined(paramater, code)) => {
-                    let code =
-                        code.replace(&Expr::Value(Type::Symbol(paramater)), &Expr::Value(right?));
-                    let result = code.eval(&mut engine.clone())?;
-                    if result.get_type()?.format() == sig.format() {
-                        result
+                    if let Signature::Function(arg, ret) = sig {
+                        let code = code.replace(
+                            &Expr::Value(Type::Symbol(paramater)),
+                            &Expr::Value(if right.clone()?.get_type()?.format() == arg.format() {
+                                right?
+                            } else {
+                                return None;
+                            }),
+                        );
+                        let result = code.eval(&mut engine.clone())?;
+                        if result.get_type()?.format() == ret.format() {
+                            result
+                        } else {
+                            return None;
+                        }
                     } else {
                         return None;
                     }
@@ -1069,7 +1087,9 @@ impl Infix {
                             return None;
                         }
                     }
-                    Signature::Function(ret) => Type::Function(Some(*ret), value.get_function()?.1),
+                    Signature::Function(arg, ret) => {
+                        Type::Function(Some(Signature::Function(arg, ret)), value.get_function()?.1)
+                    }
                     Signature::Struct(elms) => {
                         let st = value.get_struct()?.1;
                         if st.keys().cloned().collect::<Vec<String>>() == elms {
@@ -1216,7 +1236,7 @@ impl Type {
                 format!("(λx.{obj:?} bind {})", sig.format())
             }
             Type::Function(Some(sig), Function::UserDefined(arg, code)) => {
-                format!("(λ{arg}.{} bind Γλ{})", code.format(), sig.format())
+                format!("(λ{arg}.{} bind {})", code.format(), sig.format())
             }
             Type::Function(None, Function::BuiltIn(obj)) => format!("λx.{obj:?}"),
             Type::Function(None, Function::UserDefined(arg, code)) => {
@@ -1280,9 +1300,11 @@ impl Type {
             Type::Text(_) => Signature::Text,
             Type::Symbol(_) => Signature::Symbol,
             Type::List(_) => Signature::List,
-            Type::Function(Some(sig), _) => Signature::Function(Box::new(sig.clone())),
             Type::Enum(sig, _) => sig.clone(),
             Type::Struct(Some(sig), _) => sig.clone(),
+            Type::Function(Some(Signature::Function(arg_sig, ret_sig)), _) => {
+                Signature::Function(arg_sig.to_owned(), ret_sig.to_owned())
+            }
             _ => return None,
         })
     }
@@ -1327,7 +1349,7 @@ enum Signature {
     Symbol,
     Text,
     List,
-    Function(Box<Signature>),
+    Function(Box<Signature>, Box<Signature>),
     Struct(Vec<String>),
     Enum(Vec<Type>),
     Future(Box<Expr>),
@@ -1344,10 +1366,16 @@ impl Signature {
         } else if token == "symbol" {
             Signature::Symbol
         } else if token.starts_with('λ') {
-            if let Some(Expr::Value(Type::Signature(sig))) =
-                Expr::parse("Γ".to_string() + &token.replacen("λ", "", 1))
-            {
-                Signature::Function(Box::new(sig))
+            let token = &token.replacen("λ", "", 1);
+            let (args, body) = token.split_once(".")?;
+            if let (
+                Some(Expr::Value(Type::Signature(arg_sig))),
+                Some(Expr::Value(Type::Signature(ret_sig))),
+            ) = (
+                Expr::parse("Γ".to_string() + args),
+                Expr::parse("Γ".to_string() + body),
+            ) {
+                Signature::Function(Box::new(arg_sig), Box::new(ret_sig))
             } else {
                 return None;
             }
@@ -1372,7 +1400,7 @@ impl Signature {
                     .collect::<Vec<_>>()
                     .join("+"),
                 Signature::Struct(vals) => vals.join("×"),
-                Signature::Function(vals) => format!("λ{}", vals.format()),
+                Signature::Function(arg, vals) => format!("λ{}.{}", arg.format(), vals.format()),
                 Signature::Future(expr) => expr.format(),
                 other => format!("{other:?}").to_lowercase(),
             }
