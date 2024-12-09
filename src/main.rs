@@ -76,7 +76,7 @@ impl Engine {
                 (
                     "type".to_string(),
                     Type::Function(Function::BuiltIn(|expr, _| {
-                        Some(Type::Text(expr.get_type()))
+                        Some(Type::Signature(expr.get_type()?))
                     })),
                 ),
                 (
@@ -208,7 +208,14 @@ impl Engine {
                 Statement::Let((name, r#type), expr) => {
                     let val = expr.eval(self)?;
                     if r#type
-                        .and_then(|i| Some(i == val.get_type()))
+                        .and_then(|i| {
+                            Some(
+                                i == val
+                                    .get_type()
+                                    .and_then(|i| Some(i.format()))
+                                    .unwrap_or("\0".to_string()),
+                            )
+                        })
                         .unwrap_or(true)
                     {
                         if name != "_" {
@@ -325,7 +332,7 @@ impl Statement {
             )?;
             let mut conds = vec![];
             for i in tokens {
-                let tokens = tokenize(i, vec!['='])?;
+                let tokens = tokenize(i, vec!['→'])?;
                 let mut cond = vec![];
                 for i in tokenize(tokens.get(0)?.to_string(), vec!['|'])? {
                     cond.push(Expr::parse(i.to_string())?)
@@ -399,7 +406,7 @@ impl Statement {
                     cond.iter()
                         .map(|case| {
                             format!(
-                                "{} = {}",
+                                "{} → {}",
                                 case.0
                                     .iter()
                                     .map(|i| i.format())
@@ -1017,36 +1024,8 @@ impl Infix {
                             return None;
                         }
                     }
-                    Signature::Number => {
-                        if value.get_type() == "number" {
-                            value
-                        } else {
-                            return None;
-                        }
-                    }
-                    Signature::Text => {
-                        if value.get_type() == "text" {
-                            value
-                        } else {
-                            return None;
-                        }
-                    }
-                    Signature::List => {
-                        if value.get_type() == "list" {
-                            value
-                        } else {
-                            return None;
-                        }
-                    }
-                    Signature::Symbol => {
-                        if value.get_type() == "symbol" {
-                            value
-                        } else {
-                            return None;
-                        }
-                    }
-                    Signature::Function => {
-                        if value.get_type() == "function" {
+                    _ => {
+                        if value.get_type()?.format() == r#type.format() {
                             value
                         } else {
                             return None;
@@ -1226,19 +1205,17 @@ impl Type {
         }
     }
 
-    fn get_type(&self) -> String {
-        match self {
-            Type::Number(_) => "number",
-            Type::Text(_) => "text",
-            Type::Symbol(_) => "symbol",
-            Type::List(_) => "list",
-            Type::Function(_) => "function",
-            Type::Null => "null",
-            Type::Signature(_) => "signature",
-            Type::Enum(_, _) => "enum",
-            Type::Struct(_, _) => "struct",
-        }
-        .to_string()
+    fn get_type(&self) -> Option<Signature> {
+        Some(match self {
+            Type::Number(_) => Signature::Number,
+            Type::Text(_) => Signature::Text,
+            Type::Symbol(_) => Signature::Symbol,
+            Type::List(_) => Signature::List,
+            Type::Function(_) => Signature::Function,
+            Type::Enum(sig, _) => sig.clone(),
+            Type::Struct(Some(sig), _) => sig.clone(),
+            _ => return None,
+        })
     }
 
     fn get_signature(&self) -> Option<Signature> {
