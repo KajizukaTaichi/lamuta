@@ -491,18 +491,21 @@ impl Expr {
             Expr::parse(token)?
         } else if token.starts_with('{') && token.ends_with('}') {
             let token = token.get(1..token.len() - 1)?.to_string();
-            if let Some(block) = Engine::parse(token.clone()) {
-                Expr::Block(block)
-            } else {
+            let parse_st = || {
                 let mut result = BTreeMap::new();
-                for i in tokenize(token, vec![','])? {
-                    let splited = tokenize(i, vec![','])?;
+                for i in tokenize(token.clone(), vec![','])? {
+                    let splited = tokenize(i, vec![':'])?;
                     result.insert(
                         splited.get(0)?.trim().to_string(),
                         Expr::parse(splited.get(1)?.to_string())?,
                     );
                 }
-                Expr::Struct(result)
+                Some(Expr::Struct(result))
+            };
+            if let Some(st) = parse_st() {
+                st
+            } else {
+                Expr::Block(Engine::parse(token)?)
             }
         } else if token.starts_with('[') && token.ends_with(']') {
             let token = token.get(1..token.len() - 1)?.to_string();
