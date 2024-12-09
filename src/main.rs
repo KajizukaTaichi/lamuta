@@ -1058,6 +1058,7 @@ impl Infix {
                     Signature::Future(expr) => expr.eval(engine)?.get_signature()?,
                     other => other,
                 };
+                dbg!(&r#type);
                 match r#type.clone() {
                     Signature::Enum(elms) => {
                         if elms
@@ -1217,7 +1218,7 @@ impl Type {
                 format!("(λx.{obj:?} bind {})", sig.format())
             }
             Type::Function(Some(sig), Function::UserDefined(arg, code)) => {
-                format!("(λ{arg}.{} bind {})", code.format(), sig.format())
+                format!("(λ{arg}.{} bind Γλ{})", code.format(), sig.format())
             }
             Type::Function(None, Function::BuiltIn(obj)) => format!("λx.{obj:?}"),
             Type::Function(None, Function::UserDefined(arg, code)) => {
@@ -1231,9 +1232,9 @@ impl Type {
                     .join(", ")
             ),
             Type::Signature(sig) => sig.format(),
-            Type::Enum(sig, val) => format!("({1} bind {0})", sig.format(), val.get_symbol()),
+            Type::Enum(sig, val) => format!("({1} bind Γ{0})", sig.format(), val.get_symbol()),
             Type::Struct(Some(sig), val) => format!(
-                "({} new {{ {} }})",
+                "({{ {1} }} bind Γ{0})",
                 sig.format(),
                 val.iter()
                     .map(|(k, v)| format!("{k}: {}", v.get_symbol()))
@@ -1345,8 +1346,7 @@ impl Signature {
         } else if token == "symbol" {
             Signature::Symbol
         } else if token.starts_with('λ') {
-            if let Some(Expr::Value(Type::Signature(sig))) =
-                Expr::parse("Γ".to_string() + &token.replacen("λ", "", 1))
+            if let Some(Expr::Value(Type::Signature(sig))) = Expr::parse(token.replacen("λ", "", 1))
             {
                 Signature::Function(Box::new(sig))
             } else {
@@ -1366,6 +1366,7 @@ impl Signature {
                     .collect::<Vec<_>>()
                     .join("+"),
                 Signature::Struct(vals) => vals.join("×"),
+                Signature::Function(vals) => format!("λ{}", vals.format()),
                 other => format!("{other:?}").to_lowercase(),
             }
     }
