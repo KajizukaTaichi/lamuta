@@ -601,7 +601,7 @@ impl Expr {
                     "|" => Operator::Or,
                     "::" => Operator::Access,
                     "as" => Operator::As,
-                    "->" => Operator::New,
+                    "new" => Operator::New,
                     _ => return None,
                 })
             };
@@ -1056,7 +1056,7 @@ impl Infix {
                     Operator::Or => "|",
                     Operator::Access => "::",
                     Operator::As => "as",
-                    Operator::New => "->",
+                    Operator::New => "new",
                     Operator::Apply => return None,
                 }
                 .to_string(),
@@ -1192,6 +1192,7 @@ impl Type {
     fn get_text(&self) -> String {
         match self {
             Type::Number(n) => n.to_string(),
+            Type::Enum(_, s) => s.get_text(),
             Type::Symbol(s) | Type::Text(s) => s.to_string(),
             _ => String::new(),
         }
