@@ -1254,15 +1254,16 @@ enum Signature {
 
 impl Signature {
     fn format(&self) -> String {
-        match self {
-            Signature::Enum(vals) => vals
-                .iter()
-                .map(|i| i.get_symbol())
-                .collect::<Vec<_>>()
-                .join("+"),
-            Signature::Struct(vals) => vals.join("×"),
-            other => format!("{other:?}").to_lowercase(),
-        }
+        "Γ".to_string()
+            + &match self {
+                Signature::Enum(vals) => vals
+                    .iter()
+                    .map(|i| i.get_symbol())
+                    .collect::<Vec<_>>()
+                    .join("+"),
+                Signature::Struct(vals) => vals.join("×"),
+                other => format!("{other:?}").to_lowercase(),
+            }
     }
 }
 
