@@ -1,14 +1,15 @@
 load library.lm;
 
-let fizzbuzz = λn.{
+let fzbzResult = Γ"Fizz"+"Buzz"+"FizzBuzz";
+let fzbzJudge = λn.{
     match [n % 3, n % 5] {
-        [0, 0] → "FizzBuzz",
-        [0, _] → "Fizz",
-        [_, 0] → "Buzz",
+        [0, 0] → fzbzResult new "FizzBuzz",
+        [0, _] → fzbzResult new "Fizz",
+        [_, 0] → fzbzResult new "Buzz",
         [_, _] → n as Γtext
     }
 };
 
 let compose = λf.λg.λx.f(g(x));
-let incFzbz = compose fizzbuzz λx.(x + 1);
+let incFzbz = compose fzbzJudge λx.(x + 1);
 print join (map incFzbz (range 100)) " "
