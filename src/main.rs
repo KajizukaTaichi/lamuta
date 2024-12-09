@@ -436,6 +436,7 @@ enum Expr {
     Infix(Box<Infix>),
     List(Vec<Expr>),
     Struct(BTreeMap<String, Expr>),
+    Enum(Vec<Expr>),
     Block(Program),
     Value(Type),
 }
@@ -451,6 +452,13 @@ impl Expr {
                     result.push(i.eval(engine)?)
                 }
                 Type::List(result)
+            }
+            Expr::Enum(list) => {
+                let mut result = vec![];
+                for i in list {
+                    result.push(i.eval(engine)?)
+                }
+                Type::Signature(Signature::Enum(result))
             }
             Expr::Struct(st) => {
                 let mut result = BTreeMap::new();
@@ -530,6 +538,32 @@ impl Expr {
                     Expr::parse(arg.to_string())?,
                 ),
             }))
+        } else if token.starts_with("Γ") {
+            let token = token.replacen("Γ", "", 1);
+            if token == "number" {
+                Expr::Value(Type::Signature(Signature::Number))
+            } else if token == "text" {
+                Expr::Value(Type::Signature(Signature::Text))
+            } else if token == "list" {
+                Expr::Value(Type::Signature(Signature::List))
+            } else if token == "symbol" {
+                Expr::Value(Type::Signature(Signature::Symbol))
+            } else if token == "function" {
+                Expr::Value(Type::Signature(Signature::Function))
+            } else if tokenize(token.clone(), vec!['+'])?.len() >= 2 {
+                let mut result = vec![];
+                for i in tokenize(token, vec!['+'])? {
+                    result.push(Expr::parse(i)?)
+                }
+                Expr::Enum(result)
+            } else if tokenize(token.clone(), vec!['×'])?.len() >= 2 {
+                Expr::Value(Type::Signature(Signature::Struct(tokenize(
+                    token,
+                    vec!['×'],
+                )?)))
+            } else {
+                todo!()
+            }
         } else {
             Expr::Value(Type::Symbol(token))
         };
@@ -682,6 +716,11 @@ impl Expr {
                     .collect::<Vec<String>>()
                     .join(", "),
             ),
+            Expr::Enum(list) => list
+                .iter()
+                .map(|i| i.format())
+                .collect::<Vec<String>>()
+                .join("+"),
             Expr::Infix(infix) => format!("({})", infix.format()),
             Expr::Value(val) => val.get_symbol(),
             Expr::Block(block) => format!(
@@ -705,6 +744,11 @@ impl Expr {
     fn replace(&self, from: &Expr, to: &Expr) -> Expr {
         match self {
             Expr::List(list) => Expr::List(
+                list.iter()
+                    .map(|i| i.replace(from, to))
+                    .collect::<Vec<Expr>>(),
+            ),
+            Expr::Enum(list) => Expr::Enum(
                 list.iter()
                     .map(|i| i.replace(from, to))
                     .collect::<Vec<Expr>>(),
