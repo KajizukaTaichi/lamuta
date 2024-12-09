@@ -494,10 +494,7 @@ impl Expr {
             Expr::Value(Type::Signature(Signature::Function(sig))) => {
                 Type::Signature(Signature::Function(Box::new(sig.solve_future(engine)?)))
             }
-            Expr::Value(Type::Signature(sig)) => {
-                dbg!(&sig, &sig.solve_future(engine)?);
-                Type::Signature(sig.solve_future(engine)?)
-            }
+            Expr::Value(Type::Signature(sig)) => Type::Signature(sig.solve_future(engine)?),
             Expr::Value(Type::Symbol(name)) => {
                 if let Some(refer) = engine.env.get(name.as_str()) {
                     refer.clone()
