@@ -84,6 +84,10 @@
             githubLink.innerHTML = `<i class="fab fa-github"></i>　Repository`;
             githubLink.className = "btn btn-secondary";
             document.getElementById("title").appendChild(githubLink);
+
+            for (let i of document.querySelectorAll(".main")) {
+                i.style.display = "block";
+            }
         });
     </script>
 
@@ -142,6 +146,7 @@
 
         .main {
             padding: 10vw;
+            display: none;
         }
 
         #title {
