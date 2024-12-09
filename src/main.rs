@@ -1213,8 +1213,14 @@ impl Type {
             Type::Text(s) => format!("\"{s}\""),
             Type::Number(n) => n.to_string(),
             Type::Null => "null".to_string(),
-            Type::Function(_, Function::BuiltIn(obj)) => format!("λx.{obj:?}"),
-            Type::Function(_, Function::UserDefined(arg, code)) => {
+            Type::Function(Some(sig), Function::BuiltIn(obj)) => {
+                format!("(λx.{obj:?} bind {})", sig.format())
+            }
+            Type::Function(Some(sig), Function::UserDefined(arg, code)) => {
+                format!("(λ{arg}.{} bind {})", code.format(), sig.format())
+            }
+            Type::Function(None, Function::BuiltIn(obj)) => format!("λx.{obj:?}"),
+            Type::Function(None, Function::UserDefined(arg, code)) => {
                 format!("λ{arg}.{}", code.format())
             }
             Type::List(l) => format!(
@@ -1350,6 +1356,7 @@ impl Signature {
             return None;
         })
     }
+
     fn format(&self) -> String {
         "Γ".to_string()
             + &match self {
