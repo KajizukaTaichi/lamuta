@@ -855,6 +855,16 @@ impl Infix {
     fn eval(&self, engine: &mut Engine) -> Option<Type> {
         let left = self.values.0.eval(engine);
         let right = self.values.1.eval(engine);
+        let left = if let Some(Type::Enum(_, left)) = left {
+            Some(*left)
+        } else {
+            left
+        };
+        let right = if let Some(Type::Enum(_, right)) = right {
+            Some(*right)
+        } else {
+            right
+        };
 
         Some(match self.operator {
             Operator::Add => {
