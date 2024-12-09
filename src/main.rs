@@ -435,6 +435,7 @@ impl Statement {
 enum Expr {
     Infix(Box<Infix>),
     List(Vec<Expr>),
+    Struct(BTreeMap<String, Expr>),
     Block(Program),
     Value(Type),
 }
@@ -450,6 +451,13 @@ impl Expr {
                     result.push(i.eval(engine)?)
                 }
                 Type::List(result)
+            }
+            Expr::Struct(st) => {
+                let mut result = BTreeMap::new();
+                for (k, x) in st {
+                    result.insert(k.clone(), x.eval(engine)?);
+                }
+                Type::Struct(None, result)
             }
             Expr::Value(value) => {
                 if let Type::Symbol(name) = value {
@@ -475,7 +483,19 @@ impl Expr {
             Expr::parse(token)?
         } else if token.starts_with('{') && token.ends_with('}') {
             let token = token.get(1..token.len() - 1)?.to_string();
-            Expr::Block(Engine::parse(token)?)
+            if let Some(block) = Engine::parse(token.clone()) {
+                Expr::Block(block)
+            } else {
+                let mut result = BTreeMap::new();
+                for i in tokenize(token, vec![','])? {
+                    let splited = tokenize(i, vec![','])?;
+                    result.insert(
+                        splited.get(0)?.trim().to_string(),
+                        Expr::parse(splited.get(1)?.to_string())?,
+                    );
+                }
+                Expr::Struct(result)
+            }
         } else if token.starts_with('[') && token.ends_with(']') {
             let token = token.get(1..token.len() - 1)?.to_string();
             let mut list = vec![];
@@ -537,7 +557,7 @@ impl Expr {
                     "|" => Operator::Or,
                     "::" => Operator::Access,
                     "as" => Operator::As,
-                    "@" => Operator::Apply,
+                    "->" => Operator::New,
                     _ => return None,
                 })
             };
@@ -672,6 +692,13 @@ impl Expr {
                     .collect::<Vec<String>>()
                     .join("; ")
             ),
+            Expr::Struct(st) => format!(
+                "{{ {} }}",
+                st.iter()
+                    .map(|(k, x)| format!("{k}: {}", x.format()))
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ),
         }
     }
 
@@ -681,6 +708,11 @@ impl Expr {
                 list.iter()
                     .map(|i| i.replace(from, to))
                     .collect::<Vec<Expr>>(),
+            ),
+            Expr::Struct(st) => Expr::Struct(
+                st.iter()
+                    .map(|(k, x)| (k.clone(), x.replace(from, to)))
+                    .collect::<BTreeMap<String, Expr>>(),
             ),
             Expr::Infix(infix) => Expr::Infix(Box::new(Infix {
                 operator: infix.operator.clone(),
@@ -915,6 +947,32 @@ impl Infix {
                     code.eval(&mut engine.clone())?
                 }
             },
+            Operator::New => {
+                let value = right?;
+                let r#type = left?.get_signature()?;
+                match r#type.clone() {
+                    Signature::Enum(elms) => {
+                        if elms
+                            .iter()
+                            .position(|i| i.get_symbol() == value.get_symbol())
+                            .is_some()
+                        {
+                            Type::Enum(r#type, Box::new(value))
+                        } else {
+                            return None;
+                        }
+                    }
+                    Signature::Struct(elms) => {
+                        let st = value.get_struct()?.1;
+                        if st.keys().cloned().collect::<Vec<String>>() == elms {
+                            Type::Struct(Some(r#type), st.clone())
+                        } else {
+                            return None;
+                        }
+                    }
+                    _ => todo!(),
+                }
+            }
         })
     }
 
@@ -938,6 +996,7 @@ impl Infix {
                     Operator::Or => "|",
                     Operator::Access => "::",
                     Operator::As => "as",
+                    Operator::New => "->",
                     Operator::Apply => return None,
                 }
                 .to_string(),
@@ -1002,6 +1061,7 @@ enum Operator {
     Access,
     As,
     Apply,
+    New,
 }
 
 #[derive(Debug, Clone)]
@@ -1011,6 +1071,9 @@ enum Type {
     Text(String),
     List(Vec<Type>),
     Function(Function),
+    Signature(Signature),
+    Struct(Option<Signature>, BTreeMap<String, Type>),
+    Enum(Signature, Box<Type>),
     Null,
 }
 
@@ -1043,6 +1106,15 @@ impl Type {
                 "[{}]",
                 l.iter()
                     .map(|i| i.get_symbol())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            Type::Signature(sig) => sig.format(),
+            Type::Enum(sig, val) => format!("{} -> {}", sig.format(), val.get_symbol()),
+            Type::Struct(_, val) => format!(
+                "{{ {} }}",
+                val.iter()
+                    .map(|(k, v)| format!("{k}: {}", v.get_symbol()))
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
@@ -1081,8 +1153,27 @@ impl Type {
             Type::List(_) => "list",
             Type::Function(_) => "function",
             Type::Null => "null",
+            Type::Signature(_) => "signature",
+            Type::Enum(_, _) => "enum",
+            Type::Struct(_, _) => "struct",
         }
         .to_string()
+    }
+
+    fn get_signature(&self) -> Option<Signature> {
+        if let Type::Signature(sig) = self {
+            Some(sig.clone())
+        } else {
+            None
+        }
+    }
+
+    fn get_struct(&self) -> Option<(Option<Signature>, BTreeMap<String, Type>)> {
+        if let Type::Struct(sig, val) = self {
+            Some((sig.clone(), val.clone()))
+        } else {
+            None
+        }
     }
 
     fn is_match(&self, condition: &Type) -> bool {
@@ -1099,6 +1190,31 @@ impl Type {
             } else {
                 self.get_symbol() == condition.get_symbol()
             }
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+enum Signature {
+    Number,
+    Symbol,
+    Text,
+    List,
+    Function,
+    Struct(Vec<String>),
+    Enum(Vec<Type>),
+}
+
+impl Signature {
+    fn format(&self) -> String {
+        match self {
+            Signature::Enum(vals) => vals
+                .iter()
+                .map(|i| i.get_symbol())
+                .collect::<Vec<_>>()
+                .join("+"),
+            Signature::Struct(vals) => vals.join("×"),
+            other => format!("{other:?}").to_lowercase(),
         }
     }
 }
