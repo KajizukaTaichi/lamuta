@@ -7,7 +7,7 @@ let fzbzMsg = λn.{
         [0, 0] → "FizzBuzz" bind ΓfzbzResult,
         [0, _] → "Fizz" bind ΓfzbzResult,
         [_, 0] → "Buzz" bind ΓfzbzResult,
-        [_, _] → n
+        [_, _] → { fault }
     }
 } bind ΓλfzbzResult;
 
