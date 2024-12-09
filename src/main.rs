@@ -1000,17 +1000,23 @@ impl Infix {
                 }
             }
             Operator::Access => {
-                if let Some(Type::List(list)) = left.clone() {
-                    let index = right?.get_number()?;
+                if let (Some(Type::List(list)), Some(Type::Number(index))) =
+                    (left.clone(), right.clone())
+                {
                     list.get(index as usize)?.clone()
-                } else if let Some(Type::Text(text)) = left {
-                    let index = right?.get_number()?;
+                } else if let (Some(Type::Text(text)), Some(Type::Number(index))) =
+                    (left.clone(), right.clone())
+                {
                     Type::Text(
                         text.chars()
                             .collect::<Vec<char>>()
                             .get(index as usize)?
                             .to_string(),
                     )
+                } else if let (Some(Type::Struct(_, st)), Some(Type::Text(index))) =
+                    (left.clone(), right.clone())
+                {
+                    st.get(&index)?.clone()
                 } else {
                     return None;
                 }
