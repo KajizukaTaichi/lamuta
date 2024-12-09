@@ -38,7 +38,7 @@ fn main() {
                 .max()
                 .unwrap_or(0);
             for (k, v) in &engine.env {
-                if let Type::Function(Function::BuiltIn(_)) = v {
+                if let Type::Function(_, Function::BuiltIn(_)) = v {
                 } else {
                     println!(" {k:<width$} = {}", v.get_symbol());
                 }
@@ -75,100 +75,116 @@ impl Engine {
             env: BTreeMap::from([
                 (
                     "type".to_string(),
-                    Type::Function(Function::BuiltIn(|expr, _| {
-                        Some(Type::Signature(expr.get_type()?))
-                    })),
+                    Type::Function(
+                        None,
+                        Function::BuiltIn(|expr, _| Some(Type::Signature(expr.get_type()?))),
+                    ),
                 ),
                 (
                     "save".to_string(),
-                    Type::Function(Function::BuiltIn(|arg, engine| {
-                        let mut render = String::new();
-                        for (k, v) in &engine.env {
-                            if let Type::Function(Function::BuiltIn(_)) = v {
-                            } else {
-                                render += &format!("let {k} = {};\n", v.get_symbol());
+                    Type::Function(
+                        None,
+                        Function::BuiltIn(|arg, engine| {
+                            let mut render = String::new();
+                            for (k, v) in &engine.env {
+                                if let Type::Function(None, Function::BuiltIn(_)) = v {
+                                } else {
+                                    render += &format!("let {k} = {};\n", v.get_symbol());
+                                }
                             }
-                        }
-                        if let Ok(mut file) = File::create(arg.get_text()) {
-                            if file.write_all(render.as_bytes()).is_ok() {
-                                Some(Type::Null)
+                            if let Ok(mut file) = File::create(arg.get_text()) {
+                                if file.write_all(render.as_bytes()).is_ok() {
+                                    Some(Type::Null)
+                                } else {
+                                    None
+                                }
                             } else {
                                 None
                             }
-                        } else {
-                            None
-                        }
-                    })),
+                        }),
+                    ),
                 ),
                 (
                     "load".to_string(),
-                    Type::Function(Function::BuiltIn(|expr, engine| {
-                        let path = expr.get_text();
-                        let path = Path::new(&path);
-                        if let Ok(module) = read_to_string(path) {
-                            let home = current_dir().unwrap_or_default();
-                            if let Some(parent_dir) = path.parent() {
-                                set_current_dir(parent_dir).unwrap_or_default();
+                    Type::Function(
+                        None,
+                        Function::BuiltIn(|expr, engine| {
+                            let path = expr.get_text();
+                            let path = Path::new(&path);
+                            if let Ok(module) = read_to_string(path) {
+                                let home = current_dir().unwrap_or_default();
+                                if let Some(parent_dir) = path.parent() {
+                                    set_current_dir(parent_dir).unwrap_or_default();
+                                }
+                                let module = Engine::parse(module)?;
+                                let result = engine.eval(module)?;
+                                set_current_dir(home).unwrap_or_default();
+                                Some(result)
+                            } else {
+                                None
                             }
-                            let module = Engine::parse(module)?;
-                            let result = engine.eval(module)?;
-                            set_current_dir(home).unwrap_or_default();
-                            Some(result)
-                        } else {
-                            None
-                        }
-                    })),
+                        }),
+                    ),
                 ),
                 (
                     "input".to_string(),
-                    Type::Function(Function::BuiltIn(|expr, _| {
-                        let prompt = expr.get_text();
-                        print!("{prompt}");
-                        io::stdout().flush().unwrap();
-                        let mut buffer = String::new();
-                        if io::stdin().read_line(&mut buffer).is_ok() {
-                            Some(Type::Text(buffer.trim().to_string()))
-                        } else {
-                            None
-                        }
-                    })),
+                    Type::Function(
+                        None,
+                        Function::BuiltIn(|expr, _| {
+                            let prompt = expr.get_text();
+                            print!("{prompt}");
+                            io::stdout().flush().unwrap();
+                            let mut buffer = String::new();
+                            if io::stdin().read_line(&mut buffer).is_ok() {
+                                Some(Type::Text(buffer.trim().to_string()))
+                            } else {
+                                None
+                            }
+                        }),
+                    ),
                 ),
                 (
                     "range".to_string(),
-                    Type::Function(Function::BuiltIn(|params, _| {
-                        let params = params.get_list();
-                        if params.len() == 1 {
-                            let mut range: Vec<Type> = vec![];
-                            let mut current: f64 = 0.0;
-                            while current < params[0].get_number()? {
-                                range.push(Type::Number(current));
-                                current += 1.0;
+                    Type::Function(
+                        None,
+                        Function::BuiltIn(|params, _| {
+                            let params = params.get_list();
+                            if params.len() == 1 {
+                                let mut range: Vec<Type> = vec![];
+                                let mut current: f64 = 0.0;
+                                while current < params[0].get_number()? {
+                                    range.push(Type::Number(current));
+                                    current += 1.0;
+                                }
+                                Some(Type::List(range))
+                            } else if params.len() == 2 {
+                                let mut range: Vec<Type> = vec![];
+                                let mut current: f64 = params[0].get_number()?;
+                                while current < params[1].get_number()? {
+                                    range.push(Type::Number(current));
+                                    current += 1.0;
+                                }
+                                Some(Type::List(range))
+                            } else if params.len() == 3 {
+                                let mut range: Vec<Type> = vec![];
+                                let mut current: f64 = params[0].get_number()?;
+                                while current < params[1].get_number()? {
+                                    range.push(Type::Number(current));
+                                    current += params[2].get_number()?;
+                                }
+                                Some(Type::List(range))
+                            } else {
+                                None
                             }
-                            Some(Type::List(range))
-                        } else if params.len() == 2 {
-                            let mut range: Vec<Type> = vec![];
-                            let mut current: f64 = params[0].get_number()?;
-                            while current < params[1].get_number()? {
-                                range.push(Type::Number(current));
-                                current += 1.0;
-                            }
-                            Some(Type::List(range))
-                        } else if params.len() == 3 {
-                            let mut range: Vec<Type> = vec![];
-                            let mut current: f64 = params[0].get_number()?;
-                            while current < params[1].get_number()? {
-                                range.push(Type::Number(current));
-                                current += params[2].get_number()?;
-                            }
-                            Some(Type::List(range))
-                        } else {
-                            None
-                        }
-                    })),
+                        }),
+                    ),
                 ),
                 (
                     "exit".to_string(),
-                    Type::Function(Function::BuiltIn(|arg, _| exit(arg.get_number()? as i32))),
+                    Type::Function(
+                        None,
+                        Function::BuiltIn(|arg, _| exit(arg.get_number()? as i32)),
+                    ),
                 ),
             ]),
         }
@@ -527,17 +543,17 @@ impl Expr {
         } else if token.starts_with('λ') && token.contains('.') {
             let token = token.replacen("λ", "", 1);
             let (arg, body) = token.split_once(".")?;
-            Expr::Value(Type::Function(Function::UserDefined(
-                arg.to_string(),
-                Box::new(Expr::parse(body.to_string())?),
-            )))
+            Expr::Value(Type::Function(
+                None,
+                Function::UserDefined(arg.to_string(), Box::new(Expr::parse(body.to_string())?)),
+            ))
         } else if token.starts_with('\\') && token.contains('.') {
             let token = token.replacen('\\', "", 1);
             let (arg, body) = token.split_once(".")?;
-            Expr::Value(Type::Function(Function::UserDefined(
-                arg.to_string(),
-                Box::new(Expr::parse(body.to_string())?),
-            )))
+            Expr::Value(Type::Function(
+                None,
+                Function::UserDefined(arg.to_string(), Box::new(Expr::parse(body.to_string())?)),
+            ))
         } else if token.contains('(') && token.ends_with(')') {
             let token = token.get(..token.len() - 1)?.to_string();
             let (name, arg) = token.split_once("(")?;
@@ -550,16 +566,8 @@ impl Expr {
             }))
         } else if token.starts_with("Γ") {
             let token = token.replacen("Γ", "", 1);
-            if token == "number" {
-                Expr::Value(Type::Signature(Signature::Number))
-            } else if token == "text" {
-                Expr::Value(Type::Signature(Signature::Text))
-            } else if token == "list" {
-                Expr::Value(Type::Signature(Signature::List))
-            } else if token == "symbol" {
-                Expr::Value(Type::Signature(Signature::Symbol))
-            } else if token == "function" {
-                Expr::Value(Type::Signature(Signature::Function))
+            if let Some(i) = Signature::parse(token.clone()) {
+                Expr::Value(Type::Signature(i))
             } else if tokenize(token.clone(), vec!['+'])?.len() >= 2 {
                 let mut result = vec![];
                 for i in tokenize(token, vec!['+'])? {
@@ -572,7 +580,9 @@ impl Expr {
                     vec!['×'],
                 )?)))
             } else {
-                return None;
+                Expr::Value(Type::Signature(Signature::Future(Box::new(Expr::parse(
+                    token,
+                )?))))
             }
         } else {
             Expr::Value(Type::Symbol(token))
@@ -601,7 +611,7 @@ impl Expr {
                     "|" => Operator::Or,
                     "::" => Operator::Access,
                     "as" => Operator::As,
-                    "new" => Operator::New,
+                    "bind" => Operator::Bind,
                     _ => return None,
                 })
             };
@@ -726,11 +736,14 @@ impl Expr {
                     .collect::<Vec<String>>()
                     .join(", "),
             ),
-            Expr::Enum(list) => list
-                .iter()
-                .map(|i| i.format())
-                .collect::<Vec<String>>()
-                .join("+"),
+            Expr::Enum(list) => {
+                "Γ".to_string()
+                    + &list
+                        .iter()
+                        .map(|i| i.format())
+                        .collect::<Vec<String>>()
+                        .join("+")
+            }
             Expr::Infix(infix) => format!("({})", infix.format()),
             Expr::Value(val) => val.get_symbol(),
             Expr::Block(block) => format!(
@@ -814,15 +827,18 @@ impl Expr {
                     })
                     .collect(),
             ),
-            Expr::Value(Type::Function(Function::UserDefined(arg, func))) => {
-                Expr::Value(Type::Function(Function::UserDefined(
-                    arg.to_string(),
-                    if from.format() != *arg {
-                        Box::new(func.replace(from, to))
-                    } else {
-                        func.clone()
-                    },
-                )))
+            Expr::Value(Type::Function(None, Function::UserDefined(arg, func))) => {
+                Expr::Value(Type::Function(
+                    None,
+                    Function::UserDefined(
+                        arg.to_string(),
+                        if from.format() != *arg {
+                            Box::new(func.replace(from, to))
+                        } else {
+                            func.clone()
+                        },
+                    ),
+                ))
             }
             Expr::Value(val) => {
                 if let (Type::Symbol(val), Expr::Value(Type::Symbol(from))) = (val, from) {
@@ -1007,20 +1023,41 @@ impl Infix {
                 Signature::Symbol => Type::Symbol(left?.get_symbol()),
                 Signature::Text => Type::Text(left?.get_text()),
                 Signature::List => Type::List(left?.get_list()),
-                Signature::Function => Type::Function(left?.get_function()?),
+                Signature::Function(sig) => Type::Function(Some(*sig), left?.get_function()?.1),
                 _ => return None,
             },
             Operator::Apply => match left?.get_function()? {
-                Function::BuiltIn(func) => func(right?, engine)?,
-                Function::UserDefined(paramater, code) => {
+                (Some(sig), Function::BuiltIn(func)) => {
+                    let result = func(right?, engine)?;
+                    if result.get_type()?.format() == sig.format() {
+                        result
+                    } else {
+                        return None;
+                    }
+                }
+                (Some(sig), Function::UserDefined(paramater, code)) => {
+                    let code =
+                        code.replace(&Expr::Value(Type::Symbol(paramater)), &Expr::Value(right?));
+                    let result = code.eval(&mut engine.clone())?;
+                    if result.get_type()?.format() == sig.format() {
+                        result
+                    } else {
+                        return None;
+                    }
+                }
+                (None, Function::BuiltIn(func)) => func(right?, engine)?,
+                (None, Function::UserDefined(paramater, code)) => {
                     let code =
                         code.replace(&Expr::Value(Type::Symbol(paramater)), &Expr::Value(right?));
                     code.eval(&mut engine.clone())?
                 }
             },
-            Operator::New => {
-                let value = right?;
-                let r#type = left?.get_signature()?;
+            Operator::Bind => {
+                let value = left?;
+                let r#type = match right?.get_signature()? {
+                    Signature::Future(expr) => expr.eval(engine)?.get_signature()?,
+                    other => other,
+                };
                 match r#type.clone() {
                     Signature::Enum(elms) => {
                         if elms
@@ -1033,6 +1070,7 @@ impl Infix {
                             return None;
                         }
                     }
+                    Signature::Function(ret) => Type::Function(Some(*ret), value.get_function()?.1),
                     Signature::Struct(elms) => {
                         let st = value.get_struct()?.1;
                         if st.keys().cloned().collect::<Vec<String>>() == elms {
@@ -1073,7 +1111,7 @@ impl Infix {
                     Operator::Or => "|",
                     Operator::Access => "::",
                     Operator::As => "as",
-                    Operator::New => "new",
+                    Operator::Bind => "bind",
                     Operator::Apply => return None,
                 }
                 .to_string(),
@@ -1138,7 +1176,7 @@ enum Operator {
     Access,
     As,
     Apply,
-    New,
+    Bind,
 }
 
 #[derive(Debug, Clone)]
@@ -1147,7 +1185,7 @@ enum Type {
     Symbol(String),
     Text(String),
     List(Vec<Type>),
-    Function(Function),
+    Function(Option<Signature>, Function),
     Signature(Signature),
     Struct(Option<Signature>, BTreeMap<String, Type>),
     Enum(Signature, Box<Type>),
@@ -1175,8 +1213,8 @@ impl Type {
             Type::Text(s) => format!("\"{s}\""),
             Type::Number(n) => n.to_string(),
             Type::Null => "null".to_string(),
-            Type::Function(Function::BuiltIn(obj)) => format!("λx.{obj:?}"),
-            Type::Function(Function::UserDefined(arg, code)) => {
+            Type::Function(_, Function::BuiltIn(obj)) => format!("λx.{obj:?}"),
+            Type::Function(_, Function::UserDefined(arg, code)) => {
                 format!("λ{arg}.{}", code.format())
             }
             Type::List(l) => format!(
@@ -1187,7 +1225,7 @@ impl Type {
                     .join(", ")
             ),
             Type::Signature(sig) => sig.format(),
-            Type::Enum(sig, val) => format!("({} new {})", sig.format(), val.get_symbol()),
+            Type::Enum(sig, val) => format!("({1} bind {0})", sig.format(), val.get_symbol()),
             Type::Struct(Some(sig), val) => format!(
                 "({} new {{ {} }})",
                 sig.format(),
@@ -1223,9 +1261,9 @@ impl Type {
         }
     }
 
-    fn get_function(&self) -> Option<Function> {
-        if let Type::Function(func) = self {
-            Some(func.to_owned())
+    fn get_function(&self) -> Option<(Option<Signature>, Function)> {
+        if let Type::Function(sig, func) = self {
+            Some((sig.clone(), func.to_owned()))
         } else {
             None
         }
@@ -1237,7 +1275,7 @@ impl Type {
             Type::Text(_) => Signature::Text,
             Type::Symbol(_) => Signature::Symbol,
             Type::List(_) => Signature::List,
-            Type::Function(_) => Signature::Function,
+            Type::Function(Some(sig), _) => Signature::Function(Box::new(sig.clone())),
             Type::Enum(sig, _) => sig.clone(),
             Type::Struct(Some(sig), _) => sig.clone(),
             _ => return None,
@@ -1284,12 +1322,34 @@ enum Signature {
     Symbol,
     Text,
     List,
-    Function,
+    Function(Box<Signature>),
     Struct(Vec<String>),
     Enum(Vec<Type>),
+    Future(Box<Expr>),
 }
 
 impl Signature {
+    fn parse(token: String) -> Option<Signature> {
+        Some(if token == "number" {
+            Signature::Number
+        } else if token == "text" {
+            Signature::Text
+        } else if token == "list" {
+            Signature::List
+        } else if token == "symbol" {
+            Signature::Symbol
+        } else if token.starts_with('λ') {
+            if let Some(Expr::Value(Type::Signature(sig))) =
+                Expr::parse("Γ".to_string() + &token.replacen("λ", "", 1))
+            {
+                Signature::Function(Box::new(sig))
+            } else {
+                return None;
+            }
+        } else {
+            return None;
+        })
+    }
     fn format(&self) -> String {
         "Γ".to_string()
             + &match self {
