@@ -1171,7 +1171,15 @@ impl Type {
             ),
             Type::Signature(sig) => sig.format(),
             Type::Enum(sig, val) => format!("{} -> {}", sig.format(), val.get_symbol()),
-            Type::Struct(_, val) => format!(
+            Type::Struct(Some(sig), val) => format!(
+                "{} -> {{ {} }}",
+                sig.format(),
+                val.iter()
+                    .map(|(k, v)| format!("{k}: {}", v.get_symbol()))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            Type::Struct(None, val) => format!(
                 "{{ {} }}",
                 val.iter()
                     .map(|(k, v)| format!("{k}: {}", v.get_symbol()))
