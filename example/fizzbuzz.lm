@@ -1,7 +1,7 @@
 load library.lm;
 
 let fzbzResult = Γ"Fizz"+"Buzz"+"FizzBuzz";
-let fzbzJudge = λn.({if (fzbzMsg n) it else n} as Γtext) bind ΓλΓnumber.Γtext;
+let fzbzJudge = λn.({ if (fzbzMsg n) it else n } as Γtext) bind ΓλΓnumber.Γtext;
 let fzbzMsg = λn.{
     match [n % 3, n % 5] {
         [0, 0] → "FizzBuzz" bind ΓfzbzResult,
