@@ -221,24 +221,10 @@ impl Engine {
                     io::stdout().flush().unwrap();
                     Type::Null
                 }
-                Statement::Let((name, r#type), expr) => {
+                Statement::Let(name, expr) => {
                     let val = expr.eval(self)?;
-                    if r#type
-                        .and_then(|i| {
-                            Some(
-                                i == val
-                                    .get_type()
-                                    .and_then(|i| Some(i.format()))
-                                    .unwrap_or("\0".to_string()),
-                            )
-                        })
-                        .unwrap_or(true)
-                    {
-                        if name != "_" {
-                            self.env.insert(name, val.clone());
-                        }
-                    } else {
-                        return None;
+                    if name != "_" {
+                        self.env.insert(name, val.clone());
                     }
                     val
                 }
@@ -297,7 +283,7 @@ impl Engine {
 enum Statement {
     Value(Expr),
     Print(Vec<Expr>),
-    Let((String, Option<String>), Expr),
+    Let(String, Expr),
     If(Expr, Expr, Option<Expr>),
     Match(Expr, Vec<(Vec<Expr>, Expr)>),
     For(String, Expr, Expr),
@@ -379,7 +365,7 @@ impl Statement {
             let code = code["let".len()..].to_string();
             let (name, code) = code.split_once("=")?;
             Some(Statement::Let(
-                (name.trim().to_string(), None),
+                name.trim().to_string(),
                 Expr::parse(code.to_string())?,
             ))
         } else if code == "fault" {
@@ -429,10 +415,7 @@ impl Statement {
                 })
             }
             Statement::Fault => "fault".to_string(),
-            Statement::Let((name, Some(r#type)), val) => {
-                format!("let {name}: {} = {}", r#type, val.format())
-            }
-            Statement::Let((name, None), val) => {
+            Statement::Let(name, val) => {
                 format!("let {name} = {}", val.format())
             }
             Statement::Print(exprs) => format!(
