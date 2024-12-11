@@ -5,7 +5,7 @@ let fz = "Fizz";
 let bz = "Buzz";
 let fb = "FizzBuzz";
 
-// Type signature
+// Type signature;
 let fzbzResult = Γfz+bz+fb;
 
 let fzbzJudge = λn.({
