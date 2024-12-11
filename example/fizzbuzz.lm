@@ -5,8 +5,14 @@ let fz = "Fizz";
 let bz = "Buzz";
 let fb = "FizzBuzz";
 
+// Type signature
 let fzbzResult = Γfz+bz+fb;
-let fzbzJudge = λn.({ if (fzbzMsg n) it else n } as Γtext) bind ΓλΓnumber.Γtext;
+
+let fzbzJudge = λn.({
+    // Error handling;
+    if (fzbzMsg n) it else n
+} as Γtext) bind ΓλΓnumber.Γtext;
+
 let fzbzMsg = λn.{
     match [n % 3, n % 5] {
         [0, 0] → fb bind ΓfzbzResult,
