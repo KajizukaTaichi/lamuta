@@ -2,7 +2,7 @@ use colored::*;
 use std::{
     collections::BTreeMap,
     env::{current_dir, set_current_dir},
-    fs::{read_to_string, File},
+    fs::{create_dir_all, read_dir, read_to_string, File},
     io::{self, Write},
     path::Path,
     process::exit,
@@ -67,11 +67,13 @@ type Program = Vec<Statement>;
 #[derive(Debug, Clone)]
 struct Engine {
     env: Scope,
+    project: Option<String>,
 }
 
 impl Engine {
     fn new() -> Engine {
         Engine {
+            project: None,
             env: BTreeMap::from([
                 (
                     "type".to_string(),
@@ -95,6 +97,104 @@ impl Engine {
                             if let Ok(mut file) = File::create(arg.get_text()) {
                                 if file.write_all(render.as_bytes()).is_ok() {
                                     Some(Type::Null)
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            }
+                        }),
+                    ),
+                ),
+                (
+                    "newProject".to_string(),
+                    Type::Function(
+                        None,
+                        Function::BuiltIn(|arg, engine| {
+                            let name = arg.get_text();
+                            let path = Path::new(&name);
+                            let home = current_dir().unwrap_or_default();
+                            if create_dir_all(path).is_ok() {
+                                if set_current_dir(path).is_ok() {
+                                    if create_dir_all("lib").is_err() {
+                                        return None;
+                                    }
+                                    if create_dir_all("src").is_ok() {
+                                        if let Ok(mut file) =
+                                            File::create_new(Path::new("src/main.lm"))
+                                        {
+                                            if file
+                                                .write_all(r#"print "Hello, world!""#.as_bytes())
+                                                .is_ok()
+                                            {
+                                                engine.project = Some(name);
+                                                set_current_dir(home).unwrap_or_default();
+                                                Some(arg)
+                                            } else {
+                                                None
+                                            }
+                                        } else {
+                                            None
+                                        }
+                                    } else {
+                                        None
+                                    }
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            }
+                        }),
+                    ),
+                ),
+                (
+                    "loginProject".to_string(),
+                    Type::Function(
+                        None,
+                        Function::BuiltIn(|arg, engine| {
+                            engine.project = Some(arg.get_text());
+                            Some(Type::Null)
+                        }),
+                    ),
+                ),
+                (
+                    "logoutProject".to_string(),
+                    Type::Function(
+                        None,
+                        Function::BuiltIn(|_, engine| {
+                            engine.project = None;
+                            Some(Type::Null)
+                        }),
+                    ),
+                ),
+                (
+                    "runProject".to_string(),
+                    Type::Function(
+                        None,
+                        Function::BuiltIn(|_, engine| {
+                            if let Some(project_path) = engine.project.clone() {
+                                let home = current_dir().unwrap_or_default();
+                                if set_current_dir(project_path).is_ok() {
+                                    if let Ok(dir) = read_dir(Path::new("lib")) {
+                                        for entry in dir {
+                                            if let Ok(entry) = entry {
+                                                let lib_file = entry.file_name();
+                                                if let Ok(code) = read_to_string(Path::new(
+                                                    &format!("lib/{}", lib_file.to_str()?),
+                                                )) {
+                                                    engine.eval(Engine::parse(code)?);
+                                                }
+                                            }
+                                        }
+                                    }
+                                    if let Ok(code) = read_to_string(Path::new("src/main.lm")) {
+                                        set_current_dir(home).unwrap_or_default();
+                                        engine.eval(Engine::parse(code)?)
+                                    } else {
+                                        set_current_dir(home).unwrap_or_default();
+                                        None
+                                    }
                                 } else {
                                     None
                                 }
