@@ -1,0 +1,50 @@
+let len = λl.{
+    let i = 0;
+    for _ in l {
+        let i = i + 1;
+    }
+};
+
+let slice = λl.λs.{
+    let result = { if (type(l) == Γtext) "" else [] };
+    for index in s {
+        let result = result + {
+            if (type(l) == Γtext) (l :: index)
+            else [(l :: index)]
+        };
+    }
+};
+
+let map = λf.λl.{
+    let result = [];
+    for i in l {
+        let result = result + [f(i)];
+    }
+};
+
+let filter = λf.λl.{
+    let result = [];
+    for i in l {
+        if f(i) {
+            let result = result + [i];
+        }
+    };
+    result
+};
+
+let reduce = λf.λl.{
+    let result = (l :: 0);
+    for i in (slice l (range [1, (len l)])) {
+        let result = f result i;
+    };
+    result
+};
+
+let join = λa.λb.{
+    let result = "";
+    let index = 0;
+    for i in a {
+        let index = index + 1;
+        let result = result + (i as Γtext) + { if (index == (len a)) "" else b };
+    }
+}
