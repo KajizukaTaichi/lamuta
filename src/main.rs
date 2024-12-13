@@ -1344,14 +1344,14 @@ impl Type {
                 "({{ {1} }} bind {0})",
                 sig.format(),
                 val.iter()
-                    .map(|(k, v)| format!("{k}: {}", v.get_symbol()))
+                    .map(|(k, v)| format!("\"{k}\": {}", v.get_symbol()))
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
             Type::Struct(None, val) => format!(
                 "{{ {} }}",
                 val.iter()
-                    .map(|(k, v)| format!("{k}: {}", v.get_symbol()))
+                    .map(|(k, v)| format!("\"{k}\": {}", v.get_symbol()))
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
