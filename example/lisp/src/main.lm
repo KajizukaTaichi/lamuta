@@ -1,0 +1,31 @@
+let eval = λe.λp.{
+    let env = e;
+    match (p :: "type") {
+        "expr" → {
+            let code = [];
+            for i in (p :: "value") {
+                let code = code + [eval env i];
+            };
+            if (code :: 0 :: "type" == "function") {
+                let func = (code :: 0 :: "value");
+                func (slice code (range [1, len code]))
+            } else {
+                fault
+            }
+        },
+        "symbol" → env :: (p :: "value"),
+        _ → p
+    }
+};
+
+let getNumber = λx.{
+    if (x :: "type" == "number") (
+        x :: "value" as Γnumber
+    ) else {
+        fault
+    }
+};
+
+let sExpr = { type: "expr", value: [{ type: "symbol", value: "+" }, { type: "number", value: 1 }, { type: "number", value: 5 }] };
+let env = { +: { type: "function", value:  λl.(reduce λa.λb.(a + b) (map getNumber l)) } };
+print eval env sExpr;
