@@ -47,4 +47,16 @@ let join = λa.λb.{
         let index = index + 1;
         let result = result + (i as Γtext) + { if (index == (len a)) "" else b };
     }
+};
+
+let find = λtarget.λquery.{
+    let result = null;
+    let index = 0;
+    for item in target {
+        if (item == query) {
+            let result = index;
+        };
+        let index = index + 1;
+    };
+    if (result == null) { fault } else result
 }
