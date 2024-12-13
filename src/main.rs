@@ -534,7 +534,7 @@ impl Statement {
 enum Expr {
     Infix(Box<Infix>),
     List(Vec<Expr>),
-    Struct(BTreeMap<String, Expr>),
+    Struct(Vec<(Expr, Expr)>),
     Enum(Vec<Expr>),
     Block(Program),
     Value(Type),
@@ -562,7 +562,7 @@ impl Expr {
             Expr::Struct(st) => {
                 let mut result = BTreeMap::new();
                 for (k, x) in st {
-                    result.insert(k.clone(), x.eval(engine)?);
+                    result.insert(k.eval(engine)?.get_text(), x.eval(engine)?);
                 }
                 Type::Struct(None, result)
             }
@@ -594,18 +594,18 @@ impl Expr {
             Expr::parse(token)?
         } else if token.starts_with('{') && token.ends_with('}') {
             let token = token.get(1..token.len() - 1)?.to_string();
-            let parse_st = || {
-                let mut result = BTreeMap::new();
+            let parse_struct = || {
+                let mut result = Vec::new();
                 for i in tokenize(token.clone(), vec![','])? {
                     let splited = tokenize(i, vec![':'])?;
-                    result.insert(
-                        splited.get(0)?.trim().to_string(),
+                    result.push((
+                        Expr::parse(splited.get(0)?.to_string())?,
                         Expr::parse(splited.get(1)?.to_string())?,
-                    );
+                    ));
                 }
                 Some(Expr::Struct(result))
             };
-            if let Some(st) = parse_st() {
+            if let Some(st) = parse_struct() {
                 st
             } else {
                 Expr::Block(Engine::parse(token)?)
@@ -837,7 +837,7 @@ impl Expr {
             Expr::Struct(st) => format!(
                 "{{ {} }}",
                 st.iter()
-                    .map(|(k, x)| format!("{k}: {}", x.format()))
+                    .map(|(k, x)| format!("{}: {}", k.format(), x.format()))
                     .collect::<Vec<String>>()
                     .join(", ")
             ),
@@ -859,7 +859,7 @@ impl Expr {
             Expr::Struct(st) => Expr::Struct(
                 st.iter()
                     .map(|(k, x)| (k.clone(), x.replace(from, to)))
-                    .collect::<BTreeMap<String, Expr>>(),
+                    .collect::<Vec<(Expr, Expr)>>(),
             ),
             Expr::Infix(infix) => Expr::Infix(Box::new(Infix {
                 operator: infix.operator.clone(),
