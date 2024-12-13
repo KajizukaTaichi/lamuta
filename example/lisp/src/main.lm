@@ -33,10 +33,10 @@ let parse = λsource.{
         for i in (tokenize inner) {
             let result = result + [parse i];
         };
-        { type: "expr", value: result }
+        { "type": "expr", "value": result }
     } else {
-        if (source as Γnumber) { type: "number", value: it }
-        else { type: "symbol", value: source }
+        if (source as Γnumber) { "type": "number", value: it }
+        else { "type": "symbol", "value": source }
     }
 };
 
@@ -79,9 +79,25 @@ let tokenize = λsource.{
 };
 
 let env = {
-    +: { type: "function", value: λl.{type: "number", value: (reduce λa.λb.(a + b) (map getNumber l)) } },
-    -: { type: "function", value: λl.{type: "number", value: (reduce λa.λb.(a - b) (map getNumber l)) } },
-    *: { type: "function", value: λl.{type: "number", value: (reduce λa.λb.(a * b) (map getNumber l)) } },
-    /: { type: "function", value: λl.{type: "number", value: (reduce λa.λb.(a / b) (map getNumber l)) } }
+    "+": { "type": "function", "value": λl.{ "type": "number", "value": (reduce λa.λb.(a + b) (map getNumber l)) } },
+    "-": { "type": "function", "value": λl.{ "type": "number", "value": (reduce λa.λb.(a - b) (map getNumber l)) } },
+    "*": { "type": "function", "value": λl.{ "type": "number", "value": (reduce λa.λb.(a * b) (map getNumber l)) } },
+    "/": { "type": "function", "value": λl.{ "type": "number", "value": (reduce λa.λb.(a / b) (map getNumber l)) } }
 };
-print eval env (parse (input ">>> "));
+
+print "Lamuta Lisp";
+let flag = 1;
+while (flag == 1) {
+    let entered = (input ">>> ");
+    if (entered == "") {
+        let flag = 0;
+    } else {
+        if (find entered "=") {
+            let name = slice entered (range [0, it]);
+            let expr = slice entered (range [it + 1, len entered]);
+            let env = env + { name: eval env (parse expr) };
+        } else {
+            print eval env (parse entered);
+        }
+    }
+}
