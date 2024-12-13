@@ -1,11 +1,11 @@
-let len = \l.{
+let len = λl.{
     let i = 0;
     for _ in l {
         let i = i + 1;
     }
 };
 
-let slice = \l.\s.{
+let slice = λl.λs.{
     let result = { if (type(l) == Γtext) "" else [] };
     for index in s {
         let result = result + {
@@ -15,14 +15,14 @@ let slice = \l.\s.{
     }
 };
 
-let map = \f.\l.{
+let map = λf.λl.{
     let result = [];
     for i in l {
         let result = result + [f(i)];
     }
 };
 
-let filter = \f.\l.{
+let filter = λf.λl.{
     let result = [];
     for i in l {
         if f(i) {
@@ -32,19 +32,31 @@ let filter = \f.\l.{
     result
 };
 
-let reduce = \f.\l.{
-    let result = l :: 0;
+let reduce = λf.λl.{
+    let result = (l :: 0);
     for i in (slice l (range [1, (len l)])) {
-        let result = (f result i);
+        let result = f result i;
     };
     result
 };
 
-let join = \a.\b.{
+let join = λa.λb.{
     let result = "";
     let index = 0;
     for i in a {
         let index = index + 1;
         let result = result + (i as Γtext) + { if (index == (len a)) "" else b };
     }
+};
+
+let find = λtarget.λquery.{
+    let result = null;
+    let index = 0;
+    for item in target {
+        if (item == query) {
+            let result = index;
+        };
+        let index = index + 1;
+    };
+    if (result == null) { fault } else result
 }
