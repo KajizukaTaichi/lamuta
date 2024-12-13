@@ -26,6 +26,10 @@ let getNumber = λx.{
     }
 };
 
+let tokenize = λsource.{
+
+}
+
 let sExpr = { type: "expr", value: [{ type: "symbol", value: "+" }, { type: "number", value: 1 }, { type: "number", value: 5 }] };
 let env = { +: { type: "function", value:  λl.(reduce λa.λb.(a + b) (map getNumber l)) } };
 print eval env sExpr;
