@@ -13,7 +13,7 @@ let eval = λe.λp.{
                 fault
             }
         },
-        "symbol" → env :: (p :: "value"),
+        "symbol" → { if (env :: (p :: "value")) it else p },
         _ → p
     }
 };
