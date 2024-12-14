@@ -26,6 +26,14 @@ let getNumber = λx.{
     }
 };
 
+let getText = λx.{
+    if (x :: "type" == "text") (
+        x :: "value" as Γtext
+    ) else {
+        fault
+    }
+};
+
 let parse = λsource.{
     if (source :: 0 == "(" & (source :: (len source - 1) == ")")) {
         let inner = slice source (range [1, len source - 1]);
@@ -35,8 +43,13 @@ let parse = λsource.{
         };
         { "type": "expr", "value": result }
     } else {
-        if (source as Γnumber) { "type": "number", value: it }
-        else { "type": "symbol", "value": source }
+        if (source :: 0 == "'" & (source :: (len source - 1) == "'")) {
+            let inner = slice source (range [1, len source - 1]);
+            { "type": "text", "value": inner }
+        } else {
+            if (source as Γnumber) { "type": "number", value: it }
+            else { "type": "symbol", "value": source }
+        }
     }
 };
 
@@ -82,7 +95,8 @@ let env = {
     "+": { "type": "function", "value": λl.{ "type": "number", "value": (reduce λa.λb.(a + b) (map getNumber l)) } },
     "-": { "type": "function", "value": λl.{ "type": "number", "value": (reduce λa.λb.(a - b) (map getNumber l)) } },
     "*": { "type": "function", "value": λl.{ "type": "number", "value": (reduce λa.λb.(a * b) (map getNumber l)) } },
-    "/": { "type": "function", "value": λl.{ "type": "number", "value": (reduce λa.λb.(a / b) (map getNumber l)) } }
+    "/": { "type": "function", "value": λl.{ "type": "number", "value": (reduce λa.λb.(a / b) (map getNumber l)) } },
+    "concat": { "type": "function", "value": λl.{ "type": "text", "value": (reduce λa.λb.(a + b) (map getText l)) } }
 };
 
 let main = λ_.{
