@@ -107,9 +107,9 @@ let main = λ_.{
         if (entered == "") {
             let flag = 0;
         } else {
-            if (find entered "=") {
+            if (find entered ":=") {
                 let name = (tokenize (slice entered (range [0, it])) :: 0);
-                let expr = (tokenize (slice entered (range [it + 1, len entered])) :: 0);
+                let expr = (tokenize (slice entered (range [it + 2, len entered])) :: 0);
                 let env = env + { name: eval env (parse expr) };
             } else {
                 print eval env (parse entered);
