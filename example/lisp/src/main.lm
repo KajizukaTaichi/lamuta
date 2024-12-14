@@ -96,6 +96,8 @@ let env = {
     "-": { "type": "function", "value": λl.{ "type": "number", "value": (reduce λa.λb.(a - b) (map getNumber l)) } },
     "*": { "type": "function", "value": λl.{ "type": "number", "value": (reduce λa.λb.(a * b) (map getNumber l)) } },
     "/": { "type": "function", "value": λl.{ "type": "number", "value": (reduce λa.λb.(a / b) (map getNumber l)) } },
+    "%": { "type": "function", "value": λl.{ "type": "number", "value": (reduce λa.λb.(a % b) (map getNumber l)) } },
+    "^": { "type": "function", "value": λl.{ "type": "number", "value": (reduce λa.λb.(a ^ b) (map getNumber l)) } },
     "concat": { "type": "function", "value": λl.{ "type": "text", "value": (reduce λa.λb.(a + b) (map getText l)) } }
 };
 
