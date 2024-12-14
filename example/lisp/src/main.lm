@@ -57,19 +57,24 @@ let tokenize = λsource.{
     let tokens = [];
     let current = "";
     let nest = 0;
+    let quote = 0;
 
     for c in source {
         match c {
             "(" | "[" | "{" → {
-                let current = current + c;
-                let nest = nest + 1;
+                if (quote == 0) {
+                    let current = current + c;
+                    let nest = nest + 1;
+                }
             },
             ")" | "]" | "}" → {
-                let current = current + c;
-                let nest = nest - 1;
+                if (quote == 0) {
+                    let current = current + c;
+                    let nest = nest - 1;
+                }
             },
             " " | "　" → {
-                if (nest == 0) {
+                if ((nest == 0) & (quote == 0)) {
                     if (current != "") {
                         let tokens = tokens + [current];
                         let current = "";
@@ -77,6 +82,10 @@ let tokenize = λsource.{
                 } else {
                     let current = current + c;
                 }
+            },
+            "'" → {
+                let quote = { if (quote == 1) 0 else 1 };
+                let current = current + c;
             },
             _ → {
                 let current = current + c;
