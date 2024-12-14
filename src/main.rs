@@ -149,7 +149,7 @@ impl Engine {
                     ),
                 ),
                 (
-                    "loginProject".to_string(),
+                    "login".to_string(),
                     Type::Function(
                         None,
                         Function::BuiltIn(|arg, engine| {
@@ -159,7 +159,7 @@ impl Engine {
                     ),
                 ),
                 (
-                    "logoutProject".to_string(),
+                    "logout".to_string(),
                     Type::Function(
                         None,
                         Function::BuiltIn(|_, engine| {
@@ -169,7 +169,7 @@ impl Engine {
                     ),
                 ),
                 (
-                    "runProject".to_string(),
+                    "run".to_string(),
                     Type::Function(
                         None,
                         Function::BuiltIn(|_, engine| {
