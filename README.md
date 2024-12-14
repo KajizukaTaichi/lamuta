@@ -1,4 +1,4 @@
 # Lamuta
-Functional programming language that can write lambda calculus intuitively.
+ラムダ計算の数式がそのまま書ける関数型プログラミング言語 
 
 ![image](./docs/repl.png)
