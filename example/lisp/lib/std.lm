@@ -52,7 +52,8 @@ let join = λa.λb.{
 let find = λtarget.λquery.{
     let result = null;
     let index = 0;
-    for item in target {
+    while (index < (len target - (len query) + 1)) {
+        let item = slice target (range [index, len query + index]);
         if (item == query) {
             let result = index;
         };
