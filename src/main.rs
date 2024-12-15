@@ -1460,10 +1460,8 @@ impl Signature {
             if let (
                 Some(Expr::Value(Type::Signature(arg_sig))),
                 Some(Expr::Value(Type::Signature(ret_sig))),
-            ) = (
-                Expr::parse("Γ".to_string() + args),
-                Expr::parse("Γ".to_string() + body),
-            ) {
+            ) = (Expr::parse(args.to_string()), Expr::parse(body.to_string()))
+            {
                 Signature::Function(Box::new(arg_sig), Box::new(ret_sig))
             } else {
                 return None;
