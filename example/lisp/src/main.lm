@@ -43,7 +43,7 @@ let parse = λsource.{
         };
         { "type": "expr", "value": result }
     } else {
-        if (source :: 0 == "'" & (source :: (len source - 1) == "'")) {
+        if (source :: 0 == doubleQuote & (source :: (len source - 1) == doubleQuote)) {
             let inner = slice source (range [1, len source - 1]);
             { "type": "text", "value": inner }
         } else {
@@ -83,7 +83,7 @@ let tokenize = λsource.{
                     let current = current + c;
                 }
             },
-            "'" → {
+            doubleQuote → {
                 let quote = { if (quote == 1) 0 else 1 };
                 let current = current + c;
             },
