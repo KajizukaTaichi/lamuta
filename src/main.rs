@@ -697,7 +697,7 @@ impl Expr {
                     "|" => Operator::Or,
                     "::" => Operator::Access,
                     "as" => Operator::As,
-                    "bind" => Operator::Bind,
+                    "bind" | ":" => Operator::Bind,
                     _ => return None,
                 })
             };
