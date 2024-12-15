@@ -96,7 +96,7 @@ impl Engine {
                             }
                             if let Ok(mut file) = File::create(arg.get_text()) {
                                 if file.write_all(render.as_bytes()).is_ok() {
-                                    Some(Type::Null)
+                                    Some(Type::Text("Saved environment".to_string()))
                                 } else {
                                     None
                                 }
@@ -127,9 +127,9 @@ impl Engine {
                                                 .write_all(r#"print "Hello, world!""#.as_bytes())
                                                 .is_ok()
                                             {
-                                                engine.project = Some(name);
+                                                engine.project = Some(name.clone());
                                                 set_current_dir(home).unwrap_or_default();
-                                                Some(arg)
+                                                Some(Type::Text(format!("Created project: {name}")))
                                             } else {
                                                 None
                                             }
@@ -153,8 +153,13 @@ impl Engine {
                     Type::Function(
                         None,
                         Function::BuiltIn(|arg, engine| {
-                            engine.project = Some(arg.get_text());
-                            Some(Type::Null)
+                            let path = arg.get_text();
+                            if Path::new(&path).exists() {
+                                engine.project = Some(path.clone());
+                                Some(Type::Text(format!("Logined project: {path}")))
+                            } else {
+                                None
+                            }
                         }),
                     ),
                 ),
@@ -164,7 +169,7 @@ impl Engine {
                         None,
                         Function::BuiltIn(|_, engine| {
                             engine.project = None;
-                            Some(Type::Null)
+                            Some(Type::Text(format!("Logouted current project")))
                         }),
                     ),
                 ),
