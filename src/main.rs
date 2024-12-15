@@ -864,7 +864,7 @@ impl Expr {
             ),
             Expr::Struct(st) => Expr::Struct(
                 st.iter()
-                    .map(|(k, x)| (k.clone(), x.replace(from, to)))
+                    .map(|(k, x)| (k.replace(from, to), x.replace(from, to)))
                     .collect::<Vec<(Expr, Expr)>>(),
             ),
             Expr::Infix(infix) => Expr::Infix(Box::new(Infix {
