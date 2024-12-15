@@ -291,6 +291,7 @@ impl Engine {
                         Function::BuiltIn(|arg, _| exit(arg.get_number()? as i32)),
                     ),
                 ),
+                ("duobleQuote".to_string(), Type::Text("\"".to_string())),
             ]),
         }
     }
