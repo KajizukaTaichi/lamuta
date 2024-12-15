@@ -9,13 +9,13 @@ let fzbzResult = Γfz+bz+fb;
 let fzbzJudge = λn.({
     // Error handling;
     if (fzbzMsg n) it else n
-} as Γtext) bind ΓλΓnumber.Γtext;
+} as Γtext) : ΓλΓnumber.Γtext;
 
 let fzbzMsg = λn.{
     match [n % 3, n % 5] {
-        [0, 0] → fb bind ΓfzbzResult,
-        [0, _] → fz bind ΓfzbzResult,
-        [_, 0] → bz bind ΓfzbzResult,
+        [0, 0] → fb : ΓfzbzResult,
+        [0, _] → fz : ΓfzbzResult,
+        [_, 0] → bz : ΓfzbzResult,
         _ → { fault }
     }
 } bind ΓλΓnumber.ΓfzbzResult;
