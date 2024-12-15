@@ -16,9 +16,9 @@ let fzbzMsg = λn.{
         [0, 0] → fb bind ΓfzbzResult,
         [0, _] → fz bind ΓfzbzResult,
         [_, 0] → bz bind ΓfzbzResult,
-        [_, _] → { fault }
+        _ → { fault }
     }
-} bind ΓλΓnumber.fzbzResult;
+} bind ΓλΓnumber.ΓfzbzResult;
 
 let compose = λf.λg.λx.f(g(x));
 let incFzbz = compose fzbzJudge λx.(x + 1);
