@@ -538,6 +538,7 @@ impl Statement {
 
 #[derive(Debug, Clone)]
 enum Expr {
+    Derefer(Box<Expr>),
     Infix(Box<Infix>),
     List(Vec<Expr>),
     Struct(Vec<(Expr, Expr)>),
@@ -587,6 +588,10 @@ impl Expr {
                 }
             }
             Expr::Value(value) => value.clone(),
+            Expr::Derefer(pointer) => match pointer.clone().eval(engine)? {
+                Type::Refer(to) => Expr::Value(Type::Symbol(to.to_string())).eval(engine)?,
+                _ => return None,
+            },
         })
     }
 
@@ -670,6 +675,12 @@ impl Expr {
                     token,
                 )?))))
             }
+        } else if token.starts_with("&") {
+            let token = token.replacen("&", "", 1);
+            Expr::Value(Type::Refer(token))
+        } else if token.starts_with("*") {
+            let token = token.replacen("*", "", 1);
+            Expr::Derefer(Box::new(Expr::parse(token)?))
         } else {
             Expr::Value(Type::Symbol(token))
         };
@@ -847,6 +858,7 @@ impl Expr {
                     .collect::<Vec<String>>()
                     .join(", ")
             ),
+            Expr::Derefer(to) => format!("*{}", to.format()),
         }
     }
 
@@ -937,6 +949,7 @@ impl Expr {
                     self.clone()
                 }
             }
+            Expr::Derefer(to) => Expr::Derefer(Box::new(to.replace(from, to))),
         }
     }
 }
@@ -1297,6 +1310,7 @@ enum Operator {
 enum Type {
     Number(f64),
     Symbol(String),
+    Refer(String),
     Text(String),
     List(Vec<Type>),
     Function(Option<Signature>, Function),
@@ -1354,6 +1368,9 @@ impl Type {
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
+            Type::Refer(to) => {
+                format!("&{to}")
+            }
             Type::Struct(None, val) => format!(
                 "{{ {} }}",
                 val.iter()
