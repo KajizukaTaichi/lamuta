@@ -156,7 +156,7 @@ impl Engine {
                             let path = arg.get_text();
                             if Path::new(&path).exists() {
                                 engine.project = Some(path.clone());
-                                Some(Type::Text(format!("Logined project: {path}")))
+                                Some(Type::Text(format!("Logged in project: {path}")))
                             } else {
                                 None
                             }
@@ -169,7 +169,7 @@ impl Engine {
                         None,
                         Function::BuiltIn(|_, engine| {
                             engine.project = None;
-                            Some(Type::Text(format!("Logouted current project")))
+                            Some(Type::Text("Logged out current project".to_string()))
                         }),
                     ),
                 ),
@@ -595,8 +595,8 @@ impl Expr {
         })
     }
 
-    fn parse(soruce: String) -> Option<Expr> {
-        let token_list: Vec<String> = tokenize(soruce, SPACE.to_vec())?;
+    fn parse(source: String) -> Option<Expr> {
+        let token_list: Vec<String> = tokenize(source, SPACE.to_vec())?;
         let token = token_list.last()?.trim().to_string();
         let token = if let Ok(n) = token.parse::<f64>() {
             Expr::Value(Type::Number(n))
@@ -751,7 +751,7 @@ impl Expr {
                 Some(result)
             }
         } else {
-            return Some(token);
+            Some(token)
         }
     }
 
@@ -1153,10 +1153,10 @@ impl Infix {
                         return None;
                     }
                 }
-                (Some(sig), Function::UserDefined(paramater, code)) => {
+                (Some(sig), Function::UserDefined(parameter, code)) => {
                     if let Signature::Function(arg, ret) = sig {
                         let code = code.replace(
-                            &Expr::Value(Type::Symbol(paramater)),
+                            &Expr::Value(Type::Symbol(parameter)),
                             &Expr::Value(if right.clone()?.get_type()?.format() == arg.format() {
                                 right?
                             } else {
@@ -1174,9 +1174,9 @@ impl Infix {
                     }
                 }
                 (None, Function::BuiltIn(func)) => func(right?, engine)?,
-                (None, Function::UserDefined(paramater, code)) => {
+                (None, Function::UserDefined(parameter, code)) => {
                     let code =
-                        code.replace(&Expr::Value(Type::Symbol(paramater)), &Expr::Value(right?));
+                        code.replace(&Expr::Value(Type::Symbol(parameter)), &Expr::Value(right?));
                     code.eval(&mut engine.clone())?
                 }
             },
@@ -1447,7 +1447,7 @@ impl Type {
             true
         } else {
             if condition.get_symbol() == "_" {
-                return true;
+                true
             } else {
                 self.get_symbol() == condition.get_symbol()
             }
