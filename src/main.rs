@@ -1439,6 +1439,9 @@ impl Type {
 
     fn is_match(&self, condition: &Type) -> bool {
         if let (Type::List(list), Type::List(conds)) = (self, condition) {
+            if list.len() != conds.len() {
+                return false;
+            }
             for (elm, cond) in list.iter().zip(conds) {
                 if !elm.is_match(cond) {
                     return false;
@@ -1446,6 +1449,9 @@ impl Type {
             }
             true
         } else if let (Type::Struct(_, strct), Type::Struct(_, conds)) = (self, condition) {
+            if strct.len() != conds.len() {
+                return false;
+            }
             for (elm, cond) in strct.iter().zip(conds) {
                 if elm.0 != cond.0 || !elm.1.is_match(cond.1) {
                     return false;
