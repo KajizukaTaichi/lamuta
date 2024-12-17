@@ -1445,6 +1445,13 @@ impl Type {
                 }
             }
             true
+        } else if let (Type::Struct(_, strct), Type::Struct(_, conds)) = (self, condition) {
+            for (elm, cond) in strct.iter().zip(conds) {
+                if elm.0 != cond.0 || !elm.1.is_match(cond.1) {
+                    return false;
+                }
+            }
+            true
         } else {
             if condition.get_symbol() == "_" {
                 true
