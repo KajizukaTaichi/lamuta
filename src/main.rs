@@ -708,6 +708,7 @@ impl Expr {
                     "|" => Operator::Or,
                     "::" => Operator::Access,
                     "as" => Operator::As,
+                    "=" => Operator::Assign,
                     "bind" | ":" => Operator::Bind,
                     _ => return None,
                 })
@@ -1215,6 +1216,14 @@ impl Infix {
                     }
                 }
             }
+            Operator::Assign=>{
+                let name = left?.get_text();
+                let val = right?;
+                if name != "_" {
+                    engine.env.insert(name, val.clone());
+                }
+                val
+            }
         })
     }
 
@@ -1239,6 +1248,7 @@ impl Infix {
                     Operator::Access => "::",
                     Operator::As => "as",
                     Operator::Bind => "bind",
+                    Operator::Assign=>"=",
                     Operator::Apply => return None,
                 }
                 .to_string(),
@@ -1304,6 +1314,7 @@ enum Operator {
     As,
     Apply,
     Bind,
+    Assign,
 }
 
 #[derive(Debug, Clone)]
