@@ -1,25 +1,10 @@
-// Constant;
-let fz = "Fizz";
-let bz = "Buzz";
-let fb = "FizzBuzz";
-
-// Type signature;
-let fzbzResult = Γfz+bz+fb;
-
-let fzbzJudge = λn.({
-    // Error handling;
-    if (fzbzMsg n) it else n
-} as Γtext) : ΓλΓnumber.Γtext;
-
-let fzbzMsg = λn.{
+let fizzbuzz = fn(n -> {
     match [n % 3, n % 5] {
-        [0, 0] → fb : ΓfzbzResult,
-        [0, _] → fz : ΓfzbzResult,
-        [_, 0] → bz : ΓfzbzResult,
-        _ → { fault }
+        [0, 0] => "FizzBuzz",
+        [0, _] => "Fizz",
+        [_, 0] => "Buzz",
+        _ => n as text
     }
-} bind ΓλΓnumber.ΓfzbzResult;
+});
 
-let compose = λf.λg.λx.f(g(x));
-let incFzbz = compose fzbzJudge λx.(x + 1);
-print join (map incFzbz (range 100)) " "
+join (map fizzbuzz (range [1, 101])) " "
