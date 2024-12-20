@@ -440,12 +440,16 @@ impl Statement {
             )?;
             let mut conds = vec![];
             for i in tokens {
-                let tokens = tokenize(i, vec!['→'])?;
-                let mut cond = vec![];
-                for i in tokenize(tokens.get(0)?.to_string(), vec!['|'])? {
-                    cond.push(Expr::parse(i.to_string())?)
+                let tokens = tokenize(i, SPACE.to_vec())?;
+                if tokens.get(1)? == "=>" {
+                    let mut cond = vec![];
+                    for i in tokenize(tokens.get(0)?.to_string(), vec!['|'])? {
+                        cond.push(Expr::parse(i.to_string())?)
+                    }
+                    conds.push((cond, Expr::parse(tokens.get(2..)?.join(" "))?))
+                } else {
+                    return None;
                 }
-                conds.push((cond, Expr::parse(tokens.get(1)?.to_string())?))
             }
             Some(Statement::Match(expr, conds))
         } else if code.starts_with("for") {
@@ -507,7 +511,7 @@ impl Statement {
                     cond.iter()
                         .map(|case| {
                             format!(
-                                "{} → {}",
+                                "{} => {}",
                                 case.0
                                     .iter()
                                     .map(|i| i.format())
@@ -542,7 +546,6 @@ enum Expr {
     Infix(Box<Infix>),
     List(Vec<Expr>),
     Struct(Vec<(Expr, Expr)>),
-    Enum(Vec<Expr>),
     Block(Program),
     Value(Type),
 }
@@ -559,13 +562,6 @@ impl Expr {
                 }
                 Type::List(result)
             }
-            Expr::Enum(list) => {
-                let mut result = vec![];
-                for i in list {
-                    result.push(i.eval(engine)?)
-                }
-                Type::Signature(Signature::Enum(result))
-            }
             Expr::Struct(st) => {
                 let mut result = HashMap::new();
                 for (k, x) in st {
@@ -573,13 +569,10 @@ impl Expr {
                 }
                 Type::Struct(None, result)
             }
-            Expr::Value(Type::Signature(Signature::Function(arg, sig))) => {
-                Type::Signature(Signature::Function(
-                    Box::new(arg.solve_future(engine)?),
-                    Box::new(sig.solve_future(engine)?),
-                ))
-            }
-            Expr::Value(Type::Signature(sig)) => Type::Signature(sig.solve_future(engine)?),
+            Expr::Value(Type::Signature(Signature::Function(arg, sig))) => Type::Signature(
+                Signature::Function(Box::new(*arg.clone()), Box::new(*sig.clone())),
+            ),
+            Expr::Value(Type::Signature(sig)) => Type::Signature(sig.clone()),
             Expr::Value(Type::Symbol(name)) => {
                 if let Some(refer) = engine.env.get(name.as_str()) {
                     refer.clone()
@@ -600,6 +593,8 @@ impl Expr {
         let token = token_list.last()?.trim().to_string();
         let token = if let Ok(n) = token.parse::<f64>() {
             Expr::Value(Type::Number(n))
+        } else if let Some(sig) = Signature::parse(token.clone()) {
+            Expr::Value(Type::Signature(sig))
         } else if token.starts_with('(') && token.ends_with(')') {
             let token = token.get(1..token.len() - 1)?.to_string();
             Expr::parse(token)?
@@ -645,6 +640,17 @@ impl Expr {
                 None,
                 Function::UserDefined(arg.to_string(), Box::new(Expr::parse(body.to_string())?)),
             ))
+        } else if token.starts_with("fn(") && token.contains("->") && token.ends_with(")") {
+            let token = token.replacen("fn(", "", 1);
+            let token = token.get(..token.len() - 1)?.to_string();
+            let (arg, body) = token.split_once("->")?;
+            Expr::Value(Type::Function(
+                None,
+                Function::UserDefined(
+                    arg.trim().to_string(),
+                    Box::new(Expr::parse(body.to_string())?),
+                ),
+            ))
         } else if token.contains('(') && token.ends_with(')') {
             let token = token.get(..token.len() - 1)?.to_string();
             let (name, arg) = token.split_once("(")?;
@@ -655,26 +661,6 @@ impl Expr {
                     Expr::parse(arg.to_string())?,
                 ),
             }))
-        } else if token.starts_with("Γ") {
-            let token = token.replacen("Γ", "", 1);
-            if let Some(i) = Signature::parse(token.clone()) {
-                Expr::Value(Type::Signature(i))
-            } else if tokenize(token.clone(), vec!['+'])?.len() >= 2 {
-                let mut result = vec![];
-                for i in tokenize(token, vec!['+'])? {
-                    result.push(Expr::parse(i)?)
-                }
-                Expr::Enum(result)
-            } else if tokenize(token.clone(), vec!['×'])?.len() >= 2 {
-                Expr::Value(Type::Signature(Signature::Struct(tokenize(
-                    token,
-                    vec!['×'],
-                )?)))
-            } else {
-                Expr::Value(Type::Signature(Signature::Future(Box::new(Expr::parse(
-                    token,
-                )?))))
-            }
         } else if token.starts_with("&") {
             let token = token.replacen("&", "", 1);
             Expr::Value(Type::Refer(token))
@@ -834,14 +820,6 @@ impl Expr {
                     .collect::<Vec<String>>()
                     .join(", "),
             ),
-            Expr::Enum(list) => {
-                "Γ".to_string()
-                    + &list
-                        .iter()
-                        .map(|i| i.format())
-                        .collect::<Vec<String>>()
-                        .join("+")
-            }
             Expr::Infix(infix) => format!("({})", infix.format()),
             Expr::Value(val) => val.get_symbol(),
             Expr::Block(block) => format!(
@@ -866,11 +844,6 @@ impl Expr {
     fn replace(&self, from: &Expr, to: &Expr) -> Expr {
         match self {
             Expr::List(list) => Expr::List(
-                list.iter()
-                    .map(|i| i.replace(from, to))
-                    .collect::<Vec<Expr>>(),
-            ),
-            Expr::Enum(list) => Expr::Enum(
                 list.iter()
                     .map(|i| i.replace(from, to))
                     .collect::<Vec<Expr>>(),
@@ -971,23 +944,13 @@ impl Infix {
     fn eval(&self, engine: &mut Engine) -> Option<Type> {
         let left = self.values.0.eval(engine);
         let right = self.values.1.eval(engine);
-        let left = if let Some(Type::Enum(_, left)) = left {
-            Some(*left)
-        } else {
-            left
-        };
-        let right = if let Some(Type::Enum(_, right)) = right {
-            Some(*right)
-        } else {
-            right
-        };
 
         Some(match self.operator {
             Operator::Add => {
                 if let (Some(Type::Number(left)), Some(Type::Number(right))) = (&left, &right) {
                     Type::Number(left + right)
                 } else if let (Some(Type::Text(left)), Some(Type::Text(right))) = (&left, &right) {
-                    Type::Text(left.clone() + right)
+                    Type::Text(left.clone() + &right)
                 } else if let (Some(Type::List(left)), Some(Type::List(right))) = (&left, &right) {
                     Type::List([left.clone(), right.clone()].concat())
                 } else if let (
@@ -1020,7 +983,7 @@ impl Infix {
                 } else if let (Some(Type::List(mut left)), Some(Type::Number(right))) =
                     (left.clone(), &right)
                 {
-                    left.remove(*right as usize);
+                    left.remove(right.clone() as usize);
                     Type::List(left)
                 } else if let (Some(Type::Text(mut left)), Some(Type::Number(right))) =
                     (left, right)
@@ -1185,17 +1148,6 @@ impl Infix {
                 let value = left?;
                 let r#type = right?.get_signature()?;
                 match r#type.clone() {
-                    Signature::Enum(elms) => {
-                        if elms
-                            .iter()
-                            .position(|i| i.get_symbol() == value.get_symbol())
-                            .is_some()
-                        {
-                            Type::Enum(r#type, Box::new(value))
-                        } else {
-                            return None;
-                        }
-                    }
                     Signature::Function(arg, ret) => {
                         Type::Function(Some(Signature::Function(arg, ret)), value.get_function()?.1)
                     }
@@ -1327,7 +1279,6 @@ enum Type {
     Function(Option<Signature>, Function),
     Signature(Signature),
     Struct(Option<Signature>, HashMap<String, Type>),
-    Enum(Signature, Box<Type>),
     Null,
 }
 
@@ -1353,14 +1304,14 @@ impl Type {
             Type::Number(n) => n.to_string(),
             Type::Null => "null".to_string(),
             Type::Function(Some(sig), Function::BuiltIn(obj)) => {
-                format!("(λx.{obj:?} bind {})", sig.format())
+                format!("(fn({obj:?}) bind {})", sig.format())
             }
             Type::Function(Some(sig), Function::UserDefined(arg, code)) => {
-                format!("(λ{arg}.{} bind {})", code.format(), sig.format())
+                format!("(fn({arg} -> {}) bind {})", code.format(), sig.format())
             }
             Type::Function(None, Function::BuiltIn(obj)) => format!("λx.{obj:?}"),
             Type::Function(None, Function::UserDefined(arg, code)) => {
-                format!("λ{arg}.{}", code.format())
+                format!("fn({arg} -> {})", code.format())
             }
             Type::List(l) => format!(
                 "[{}]",
@@ -1370,7 +1321,6 @@ impl Type {
                     .join(", ")
             ),
             Type::Signature(sig) => sig.format(),
-            Type::Enum(sig, val) => format!("({1} bind {0})", sig.format(), val.get_symbol()),
             Type::Struct(Some(sig), val) => format!(
                 "({{ {1} }} bind {0})",
                 sig.format(),
@@ -1395,7 +1345,6 @@ impl Type {
     fn get_text(&self) -> String {
         match self {
             Type::Number(n) => n.to_string(),
-            Type::Enum(_, s) => s.get_text(),
             Type::Symbol(s) | Type::Text(s) => s.to_string(),
             _ => String::new(),
         }
@@ -1423,11 +1372,11 @@ impl Type {
             Type::Text(_) => Signature::Text,
             Type::Symbol(_) => Signature::Symbol,
             Type::List(_) => Signature::List,
-            Type::Enum(sig, _) => sig.clone(),
             Type::Struct(Some(sig), _) => sig.clone(),
             Type::Function(Some(Signature::Function(arg_sig, ret_sig)), _) => {
                 Signature::Function(arg_sig.to_owned(), ret_sig.to_owned())
             }
+            Type::Signature(_) => Signature::Signature,
             _ => return None,
         })
     }
@@ -1485,10 +1434,9 @@ enum Signature {
     Symbol,
     Text,
     List,
+    Signature,
     Function(Box<Signature>, Box<Signature>),
     Struct(Vec<String>),
-    Enum(Vec<Type>),
-    Future(Box<Expr>),
 }
 
 impl Signature {
@@ -1501,9 +1449,19 @@ impl Signature {
             Signature::List
         } else if token == "symbol" {
             Signature::Symbol
-        } else if token.starts_with('λ') {
-            let token = &token.replacen("λ", "", 1);
-            let (args, body) = token.split_once(".")?;
+        } else if token.starts_with("struct(") && token.ends_with(")") {
+            let token = &token.replacen("struct(", "", 1);
+            let token = token.get(..token.len() - 1)?.to_string();
+            Signature::Struct(
+                tokenize(token, vec![','])?
+                    .iter()
+                    .map(|i| i.trim().to_string())
+                    .collect(),
+            )
+        } else if token.starts_with('λ') || token.starts_with("fn") {
+            let token = &token.replacen(if token.starts_with("λ") { "λ" } else { "fn" }, "", 1);
+            let (args, body) =
+                token.split_once(if token.starts_with("λ") { "." } else { "->" })?;
             if let (
                 Some(Expr::Value(Type::Signature(arg_sig))),
                 Some(Expr::Value(Type::Signature(ret_sig))),
@@ -1518,26 +1476,14 @@ impl Signature {
         })
     }
 
-    fn solve_future(&self, engine: &mut Engine) -> Option<Signature> {
-        Some(match self {
-            Signature::Future(expr) => expr.eval(engine)?.get_signature()?.solve_future(engine)?,
-            other => other.clone(),
-        })
-    }
-
     fn format(&self) -> String {
-        "Γ".to_string()
-            + &match self {
-                Signature::Enum(vals) => vals
-                    .iter()
-                    .map(|i| i.get_symbol())
-                    .collect::<Vec<_>>()
-                    .join("+"),
-                Signature::Struct(vals) => vals.join("×"),
-                Signature::Function(arg, vals) => format!("λ{}.{}", arg.format(), vals.format()),
-                Signature::Future(expr) => expr.format(),
-                other => format!("{other:?}").to_lowercase(),
+        match self {
+            Signature::Struct(vals) => format!("struct({})", vals.join(", ")),
+            Signature::Function(arg, vals) => {
+                format!("fn({} -> {})", arg.format(), vals.format())
             }
+            other => format!("{other:?}").to_lowercase(),
+        }
     }
 }
 
