@@ -1304,14 +1304,14 @@ impl Type {
             Type::Number(n) => n.to_string(),
             Type::Null => "null".to_string(),
             Type::Function(Some(sig), Function::BuiltIn(obj)) => {
-                format!("(fn({obj:?}) bind {})", sig.format())
+                format!("(λx.{obj:?} bind {})", sig.format())
             }
             Type::Function(Some(sig), Function::UserDefined(arg, code)) => {
-                format!("(fn({arg} -> {}) bind {})", code.format(), sig.format())
+                format!("(λ{arg}.{} bind {})", code.format(), sig.format())
             }
             Type::Function(None, Function::BuiltIn(obj)) => format!("λx.{obj:?}"),
             Type::Function(None, Function::UserDefined(arg, code)) => {
-                format!("fn({arg} -> {})", code.format())
+                format!("λ{arg}.{}", code.format())
             }
             Type::List(l) => format!(
                 "[{}]",
