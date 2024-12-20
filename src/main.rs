@@ -1,6 +1,6 @@
 use colored::*;
 use std::{
-    collections::BTreeMap,
+    collections::HashMap,
     env::{current_dir, set_current_dir},
     fs::{create_dir_all, read_dir, read_to_string, File},
     io::{self, Write},
@@ -62,7 +62,7 @@ fn main() {
     }
 }
 
-type Scope = BTreeMap<String, Type>;
+type Scope = HashMap<String, Type>;
 type Program = Vec<Statement>;
 #[derive(Debug, Clone)]
 struct Engine {
@@ -74,7 +74,7 @@ impl Engine {
     fn new() -> Engine {
         Engine {
             project: None,
-            env: BTreeMap::from([
+            env: HashMap::from([
                 (
                     "type".to_string(),
                     Type::Function(
@@ -567,7 +567,7 @@ impl Expr {
                 Type::Signature(Signature::Enum(result))
             }
             Expr::Struct(st) => {
-                let mut result = BTreeMap::new();
+                let mut result = HashMap::new();
                 for (k, x) in st {
                     result.insert(k.eval(engine)?.get_text(), x.eval(engine)?);
                 }
@@ -1216,7 +1216,7 @@ impl Infix {
                     }
                 }
             }
-            Operator::Assign=>{
+            Operator::Assign => {
                 let name = left?.get_text();
                 let val = right?;
                 if name != "_" {
@@ -1248,7 +1248,7 @@ impl Infix {
                     Operator::Access => "::",
                     Operator::As => "as",
                     Operator::Bind => "bind",
-                    Operator::Assign=>"=",
+                    Operator::Assign => "=",
                     Operator::Apply => return None,
                 }
                 .to_string(),
@@ -1326,7 +1326,7 @@ enum Type {
     List(Vec<Type>),
     Function(Option<Signature>, Function),
     Signature(Signature),
-    Struct(Option<Signature>, BTreeMap<String, Type>),
+    Struct(Option<Signature>, HashMap<String, Type>),
     Enum(Signature, Box<Type>),
     Null,
 }
@@ -1440,7 +1440,7 @@ impl Type {
         }
     }
 
-    fn get_struct(&self) -> Option<(Option<Signature>, BTreeMap<String, Type>)> {
+    fn get_struct(&self) -> Option<(Option<Signature>, HashMap<String, Type>)> {
         if let Type::Struct(sig, val) = self {
             Some((sig.clone(), val.clone()))
         } else {
