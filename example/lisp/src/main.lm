@@ -1,7 +1,7 @@
 let eval = λe.λp.{
     let env = e;
     match (p :: "type") {
-        "expr" → {
+        "expr" => {
             let code = [];
             for i in (p :: "value") {
                 let code = code + [eval env i];
@@ -13,14 +13,14 @@ let eval = λe.λp.{
                 fault
             }
         },
-        "symbol" → { if (env :: (p :: "value")) it else p },
-        _ → p
+        "symbol" => { if (env :: (p :: "value")) it else p },
+        _ => p
     }
 };
 
 let getNumber = λx.{
     if (x :: "type" == "number") (
-        x :: "value" as Γnumber
+        x :: "value" as number
     ) else {
         fault
     }
@@ -28,7 +28,7 @@ let getNumber = λx.{
 
 let getText = λx.{
     if (x :: "type" == "text") (
-        x :: "value" as Γtext
+        x :: "value" as text
     ) else {
         fault
     }
@@ -47,7 +47,7 @@ let parse = λsource.{
             let inner = slice source (range [1, len source - 1]);
             { "type": "text", "value": inner }
         } else {
-            if (source as Γnumber) { "type": "number", value: it }
+            if (source as number) { "type": "number", value: it }
             else { "type": "symbol", "value": source }
         }
     }
@@ -61,19 +61,19 @@ let tokenize = λsource.{
 
     for c in source {
         match c {
-            "(" | "[" | "{" → {
+            "(" | "[" | "{" => {
                 if (quote == 0) {
                     let current = current + c;
                     let nest = nest + 1;
                 }
             },
-            ")" | "]" | "}" → {
+            ")" | "]" | "}" => {
                 if (quote == 0) {
                     let current = current + c;
                     let nest = nest - 1;
                 }
             },
-            " " | "　" → {
+            " " | "　" => {
                 if ((nest == 0) & (quote == 0)) {
                     if (current != "") {
                         let tokens = tokens + [current];
@@ -83,11 +83,11 @@ let tokenize = λsource.{
                     let current = current + c;
                 }
             },
-            doubleQuote → {
+            doubleQuote => {
                 let quote = { if (quote == 1) 0 else 1 };
                 let current = current + c;
             },
-            _ → {
+            _ => {
                 let current = current + c;
             }
         }
