@@ -441,15 +441,12 @@ impl Statement {
             let mut conds = vec![];
             for i in tokens {
                 let tokens = tokenize(i, SPACE.to_vec())?;
-                if tokens.get(1)? == "=>" {
-                    let mut cond = vec![];
-                    for i in tokenize(tokens.get(0)?.to_string(), vec!['|'])? {
-                        cond.push(Expr::parse(i.to_string())?)
-                    }
-                    conds.push((cond, Expr::parse(tokens.get(2..)?.join(" "))?))
-                } else {
-                    return None;
+                let pos = tokens.iter().position(|i| i == "=>")?;
+                let mut cond = vec![];
+                for i in tokenize(tokens.get(..pos)?.join(" "), vec!['|'])? {
+                    cond.push(Expr::parse(i.to_string())?)
                 }
+                conds.push((cond, Expr::parse(tokens.get(pos + 1..)?.join(" "))?))
             }
             Some(Statement::Match(expr, conds))
         } else if code.starts_with("for") {
