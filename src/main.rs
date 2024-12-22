@@ -691,7 +691,7 @@ impl Expr {
                     "|" => Operator::Or,
                     "::" => Operator::Access,
                     "as" => Operator::As,
-                    "=" => Operator::Assign,
+                    ":=" => Operator::Assign,
                     "bind" | ":" => Operator::Bind,
                     _ => return None,
                 })
@@ -1197,7 +1197,7 @@ impl Infix {
                     Operator::Access => "::",
                     Operator::As => "as",
                     Operator::Bind => "bind",
-                    Operator::Assign => "=",
+                    Operator::Assign => ":=",
                     Operator::Apply => return None,
                 }
                 .to_string(),
