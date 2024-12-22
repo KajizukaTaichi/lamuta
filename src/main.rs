@@ -38,7 +38,7 @@ fn main() {
                 .max()
                 .unwrap_or(0);
             for (k, v) in &engine.env {
-                if let Type::Function(_, Function::BuiltIn(_)) = v {
+                if let Type::Function(Function::BuiltIn(_)) = v {
                 } else {
                     println!(" {k:<width$} = {}", v.get_symbol());
                 }
@@ -77,62 +77,52 @@ impl Engine {
             env: HashMap::from([
                 (
                     "type".to_string(),
-                    Type::Function(
-                        None,
-                        Function::BuiltIn(|expr, _| Some(Type::Signature(expr.get_type()?))),
-                    ),
+                    Type::Function(Function::BuiltIn(|expr, _| {
+                        Some(Type::Signature(expr.get_type()))
+                    })),
                 ),
                 (
                     "save".to_string(),
-                    Type::Function(
-                        None,
-                        Function::BuiltIn(|arg, engine| {
-                            let mut render = String::new();
-                            for (k, v) in &engine.env {
-                                if let Type::Function(None, Function::BuiltIn(_)) = v {
-                                } else {
-                                    render += &format!("let {k} = {};\n", v.get_symbol());
-                                }
+                    Type::Function(Function::BuiltIn(|arg, engine| {
+                        let mut render = String::new();
+                        for (k, v) in &engine.env {
+                            if let Type::Function(Function::BuiltIn(_)) = v {
+                            } else {
+                                render += &format!("let {k} = {};\n", v.get_symbol());
                             }
-                            if let Ok(mut file) = File::create(arg.get_text()) {
-                                if file.write_all(render.as_bytes()).is_ok() {
-                                    Some(Type::Text("Saved environment".to_string()))
-                                } else {
-                                    None
-                                }
+                        }
+                        if let Ok(mut file) = File::create(arg.get_text()) {
+                            if file.write_all(render.as_bytes()).is_ok() {
+                                Some(Type::Text("Saved environment".to_string()))
                             } else {
                                 None
                             }
-                        }),
-                    ),
+                        } else {
+                            None
+                        }
+                    })),
                 ),
                 (
                     "newProject".to_string(),
-                    Type::Function(
-                        None,
-                        Function::BuiltIn(|arg, engine| {
-                            let name = arg.get_text();
-                            let path = Path::new(&name);
-                            let home = current_dir().unwrap_or_default();
-                            if create_dir_all(path).is_ok() {
-                                if set_current_dir(path).is_ok() {
-                                    if create_dir_all("lib").is_err() {
-                                        return None;
-                                    }
-                                    if create_dir_all("src").is_ok() {
-                                        if let Ok(mut file) =
-                                            File::create_new(Path::new("src/main.lm"))
+                    Type::Function(Function::BuiltIn(|arg, engine| {
+                        let name = arg.get_text();
+                        let path = Path::new(&name);
+                        let home = current_dir().unwrap_or_default();
+                        if create_dir_all(path).is_ok() {
+                            if set_current_dir(path).is_ok() {
+                                if create_dir_all("lib").is_err() {
+                                    return None;
+                                }
+                                if create_dir_all("src").is_ok() {
+                                    if let Ok(mut file) = File::create_new(Path::new("src/main.lm"))
+                                    {
+                                        if file
+                                            .write_all(r#"print "Hello, world!""#.as_bytes())
+                                            .is_ok()
                                         {
-                                            if file
-                                                .write_all(r#"print "Hello, world!""#.as_bytes())
-                                                .is_ok()
-                                            {
-                                                engine.project = Some(name.clone());
-                                                set_current_dir(home).unwrap_or_default();
-                                                Some(Type::Text(format!("Created project: {name}")))
-                                            } else {
-                                                None
-                                            }
+                                            engine.project = Some(name.clone());
+                                            set_current_dir(home).unwrap_or_default();
+                                            Some(Type::Text(format!("Created project: {name}")))
                                         } else {
                                             None
                                         }
@@ -145,151 +135,133 @@ impl Engine {
                             } else {
                                 None
                             }
-                        }),
-                    ),
+                        } else {
+                            None
+                        }
+                    })),
                 ),
                 (
                     "login".to_string(),
-                    Type::Function(
-                        None,
-                        Function::BuiltIn(|arg, engine| {
-                            let path = arg.get_text();
-                            if Path::new(&path).exists() {
-                                engine.project = Some(path.clone());
-                                Some(Type::Text(format!("Logged in project: {path}")))
-                            } else {
-                                None
-                            }
-                        }),
-                    ),
+                    Type::Function(Function::BuiltIn(|arg, engine| {
+                        let path = arg.get_text();
+                        if Path::new(&path).exists() {
+                            engine.project = Some(path.clone());
+                            Some(Type::Text(format!("Logged in project: {path}")))
+                        } else {
+                            None
+                        }
+                    })),
                 ),
                 (
                     "logout".to_string(),
-                    Type::Function(
-                        None,
-                        Function::BuiltIn(|_, engine| {
-                            engine.project = None;
-                            Some(Type::Text("Logged out current project".to_string()))
-                        }),
-                    ),
+                    Type::Function(Function::BuiltIn(|_, engine| {
+                        engine.project = None;
+                        Some(Type::Text("Logged out current project".to_string()))
+                    })),
                 ),
                 (
                     "run".to_string(),
-                    Type::Function(
-                        None,
-                        Function::BuiltIn(|_, engine| {
-                            if let Some(project_path) = engine.project.clone() {
-                                let home = current_dir().unwrap_or_default();
-                                if set_current_dir(project_path).is_ok() {
-                                    if let Ok(dir) = read_dir(Path::new("lib")) {
-                                        for entry in dir {
-                                            if let Ok(entry) = entry {
-                                                let lib_file = entry.file_name();
-                                                if let Ok(code) = read_to_string(Path::new(
-                                                    &format!("lib/{}", lib_file.to_str()?),
-                                                )) {
-                                                    engine.eval(Engine::parse(code)?);
-                                                }
+                    Type::Function(Function::BuiltIn(|_, engine| {
+                        if let Some(project_path) = engine.project.clone() {
+                            let home = current_dir().unwrap_or_default();
+                            if set_current_dir(project_path).is_ok() {
+                                if let Ok(dir) = read_dir(Path::new("lib")) {
+                                    for entry in dir {
+                                        if let Ok(entry) = entry {
+                                            let lib_file = entry.file_name();
+                                            if let Ok(code) = read_to_string(Path::new(&format!(
+                                                "lib/{}",
+                                                lib_file.to_str()?
+                                            ))) {
+                                                engine.eval(Engine::parse(code)?);
                                             }
                                         }
                                     }
-                                    if let Ok(code) = read_to_string(Path::new("src/main.lm")) {
-                                        set_current_dir(home).unwrap_or_default();
-                                        engine.eval(Engine::parse(code)?)
-                                    } else {
-                                        set_current_dir(home).unwrap_or_default();
-                                        None
-                                    }
+                                }
+                                if let Ok(code) = read_to_string(Path::new("src/main.lm")) {
+                                    set_current_dir(home).unwrap_or_default();
+                                    engine.eval(Engine::parse(code)?)
                                 } else {
+                                    set_current_dir(home).unwrap_or_default();
                                     None
                                 }
                             } else {
                                 None
                             }
-                        }),
-                    ),
+                        } else {
+                            None
+                        }
+                    })),
                 ),
                 (
                     "load".to_string(),
-                    Type::Function(
-                        None,
-                        Function::BuiltIn(|expr, engine| {
-                            let path = expr.get_text();
-                            let path = Path::new(&path);
-                            if let Ok(module) = read_to_string(path) {
-                                let home = current_dir().unwrap_or_default();
-                                if let Some(parent_dir) = path.parent() {
-                                    set_current_dir(parent_dir).unwrap_or_default();
-                                }
-                                let module = Engine::parse(module)?;
-                                let result = engine.eval(module)?;
-                                set_current_dir(home).unwrap_or_default();
-                                Some(result)
-                            } else {
-                                None
+                    Type::Function(Function::BuiltIn(|expr, engine| {
+                        let path = expr.get_text();
+                        let path = Path::new(&path);
+                        if let Ok(module) = read_to_string(path) {
+                            let home = current_dir().unwrap_or_default();
+                            if let Some(parent_dir) = path.parent() {
+                                set_current_dir(parent_dir).unwrap_or_default();
                             }
-                        }),
-                    ),
+                            let module = Engine::parse(module)?;
+                            let result = engine.eval(module)?;
+                            set_current_dir(home).unwrap_or_default();
+                            Some(result)
+                        } else {
+                            None
+                        }
+                    })),
                 ),
                 (
                     "input".to_string(),
-                    Type::Function(
-                        None,
-                        Function::BuiltIn(|expr, _| {
-                            let prompt = expr.get_text();
-                            print!("{prompt}");
-                            io::stdout().flush().unwrap();
-                            let mut buffer = String::new();
-                            if io::stdin().read_line(&mut buffer).is_ok() {
-                                Some(Type::Text(buffer.trim().to_string()))
-                            } else {
-                                None
-                            }
-                        }),
-                    ),
+                    Type::Function(Function::BuiltIn(|expr, _| {
+                        let prompt = expr.get_text();
+                        print!("{prompt}");
+                        io::stdout().flush().unwrap();
+                        let mut buffer = String::new();
+                        if io::stdin().read_line(&mut buffer).is_ok() {
+                            Some(Type::Text(buffer.trim().to_string()))
+                        } else {
+                            None
+                        }
+                    })),
                 ),
                 (
                     "range".to_string(),
-                    Type::Function(
-                        None,
-                        Function::BuiltIn(|params, _| {
-                            let params = params.get_list();
-                            if params.len() == 1 {
-                                let mut range: Vec<Type> = vec![];
-                                let mut current: f64 = 0.0;
-                                while current < params[0].get_number()? {
-                                    range.push(Type::Number(current));
-                                    current += 1.0;
-                                }
-                                Some(Type::List(range))
-                            } else if params.len() == 2 {
-                                let mut range: Vec<Type> = vec![];
-                                let mut current: f64 = params[0].get_number()?;
-                                while current < params[1].get_number()? {
-                                    range.push(Type::Number(current));
-                                    current += 1.0;
-                                }
-                                Some(Type::List(range))
-                            } else if params.len() == 3 {
-                                let mut range: Vec<Type> = vec![];
-                                let mut current: f64 = params[0].get_number()?;
-                                while current < params[1].get_number()? {
-                                    range.push(Type::Number(current));
-                                    current += params[2].get_number()?;
-                                }
-                                Some(Type::List(range))
-                            } else {
-                                None
+                    Type::Function(Function::BuiltIn(|params, _| {
+                        let params = params.get_list();
+                        if params.len() == 1 {
+                            let mut range: Vec<Type> = vec![];
+                            let mut current: f64 = 0.0;
+                            while current < params[0].get_number()? {
+                                range.push(Type::Number(current));
+                                current += 1.0;
                             }
-                        }),
-                    ),
+                            Some(Type::List(range))
+                        } else if params.len() == 2 {
+                            let mut range: Vec<Type> = vec![];
+                            let mut current: f64 = params[0].get_number()?;
+                            while current < params[1].get_number()? {
+                                range.push(Type::Number(current));
+                                current += 1.0;
+                            }
+                            Some(Type::List(range))
+                        } else if params.len() == 3 {
+                            let mut range: Vec<Type> = vec![];
+                            let mut current: f64 = params[0].get_number()?;
+                            while current < params[1].get_number()? {
+                                range.push(Type::Number(current));
+                                current += params[2].get_number()?;
+                            }
+                            Some(Type::List(range))
+                        } else {
+                            None
+                        }
+                    })),
                 ),
                 (
                     "exit".to_string(),
-                    Type::Function(
-                        None,
-                        Function::BuiltIn(|arg, _| exit(arg.get_number()? as i32)),
-                    ),
+                    Type::Function(Function::BuiltIn(|arg, _| exit(arg.get_number()? as i32))),
                 ),
                 ("doubleQuote".to_string(), Type::Text("\"".to_string())),
             ]),
@@ -564,11 +536,8 @@ impl Expr {
                 for (k, x) in st {
                     result.insert(k.eval(engine)?.get_text(), x.eval(engine)?);
                 }
-                Type::Struct(None, result)
+                Type::Struct(result)
             }
-            Expr::Value(Type::Signature(Signature::Function(arg, sig))) => Type::Signature(
-                Signature::Function(Box::new(*arg.clone()), Box::new(*sig.clone())),
-            ),
             Expr::Value(Type::Signature(sig)) => Type::Signature(sig.clone()),
             Expr::Value(Type::Symbol(name)) => {
                 if let Some(refer) = engine.env.get(name.as_str()) {
@@ -626,28 +595,25 @@ impl Expr {
         } else if token.starts_with('λ') && token.contains('.') {
             let token = token.replacen("λ", "", 1);
             let (arg, body) = token.split_once(".")?;
-            Expr::Value(Type::Function(
-                None,
-                Function::UserDefined(arg.to_string(), Box::new(Expr::parse(body.to_string())?)),
-            ))
+            Expr::Value(Type::Function(Function::UserDefined(
+                arg.to_string(),
+                Box::new(Expr::parse(body.to_string())?),
+            )))
         } else if token.starts_with('\\') && token.contains('.') {
             let token = token.replacen('\\', "", 1);
             let (arg, body) = token.split_once(".")?;
-            Expr::Value(Type::Function(
-                None,
-                Function::UserDefined(arg.to_string(), Box::new(Expr::parse(body.to_string())?)),
-            ))
+            Expr::Value(Type::Function(Function::UserDefined(
+                arg.to_string(),
+                Box::new(Expr::parse(body.to_string())?),
+            )))
         } else if token.starts_with("fn(") && token.contains("->") && token.ends_with(")") {
             let token = token.replacen("fn(", "", 1);
             let token = token.get(..token.len() - 1)?.to_string();
             let (arg, body) = token.split_once("->")?;
-            Expr::Value(Type::Function(
-                None,
-                Function::UserDefined(
-                    arg.trim().to_string(),
-                    Box::new(Expr::parse(body.to_string())?),
-                ),
-            ))
+            Expr::Value(Type::Function(Function::UserDefined(
+                arg.trim().to_string(),
+                Box::new(Expr::parse(body.to_string())?),
+            )))
         } else if token.contains('(') && token.ends_with(')') {
             let token = token.get(..token.len() - 1)?.to_string();
             let (name, arg) = token.split_once("(")?;
@@ -692,7 +658,6 @@ impl Expr {
                     "::" => Operator::Access,
                     "as" => Operator::As,
                     ":=" => Operator::Assign,
-                    "bind" | ":" => Operator::Bind,
                     _ => return None,
                 })
             };
@@ -896,18 +861,15 @@ impl Expr {
                     })
                     .collect(),
             ),
-            Expr::Value(Type::Function(None, Function::UserDefined(arg, func))) => {
-                Expr::Value(Type::Function(
-                    None,
-                    Function::UserDefined(
-                        arg.to_string(),
-                        if from.format() != *arg {
-                            Box::new(func.replace(from, to))
-                        } else {
-                            func.clone()
-                        },
-                    ),
-                ))
+            Expr::Value(Type::Function(Function::UserDefined(arg, func))) => {
+                Expr::Value(Type::Function(Function::UserDefined(
+                    arg.to_string(),
+                    if from.format() != *arg {
+                        Box::new(func.replace(from, to))
+                    } else {
+                        func.clone()
+                    },
+                )))
             }
             Expr::Value(val) => {
                 if let (Type::Symbol(val), Expr::Value(Type::Symbol(from))) = (val, from) {
@@ -950,13 +912,11 @@ impl Infix {
                     Type::Text(left.clone() + &right)
                 } else if let (Some(Type::List(left)), Some(Type::List(right))) = (&left, &right) {
                     Type::List([left.clone(), right.clone()].concat())
-                } else if let (
-                    Some(Type::Struct(None, mut left)),
-                    Some(Type::Struct(None, right)),
-                ) = (left.clone(), &right)
+                } else if let (Some(Type::Struct(mut left)), Some(Type::Struct(right))) =
+                    (left.clone(), &right)
                 {
                     left.extend(right.clone());
-                    Type::Struct(None, left)
+                    Type::Struct(left)
                 } else {
                     return None;
                 }
@@ -1076,7 +1036,7 @@ impl Infix {
                             .get(index as usize)?
                             .to_string(),
                     )
-                } else if let (Some(Type::Struct(_, st)), Some(Type::Text(index))) =
+                } else if let (Some(Type::Struct(st)), Some(Type::Text(index))) =
                     (left.clone(), right.clone())
                 {
                     st.get(&index)?.clone()
@@ -1089,82 +1049,20 @@ impl Infix {
                 Signature::Symbol => Type::Symbol(left?.get_symbol()),
                 Signature::Text => Type::Text(left?.get_text()),
                 Signature::List => Type::List(left?.get_list()),
-                Signature::Function(arg, sig) => {
-                    Type::Function(Some(Signature::Function(arg, sig)), left?.get_function()?.1)
-                }
-                _ => return None,
+                Signature::Function => Type::Function(left?.get_function()?),
+                Signature::Refer => Type::Refer(left?.get_symbol()),
+                Signature::Struct => Type::Struct(left?.get_struct()?),
+                Signature::Signature => Type::Signature(Signature::parse(left?.get_symbol())?),
+                Signature::Null => Type::Null,
             },
             Operator::Apply => match left?.get_function()? {
-                (Some(sig), Function::BuiltIn(func)) => {
-                    if let Signature::Function(arg, ret) = sig {
-                        let result = func(
-                            if right.clone()?.get_type()?.format() == arg.format() {
-                                right?
-                            } else {
-                                return None;
-                            },
-                            engine,
-                        )?;
-                        if result.get_type()?.format() == ret.format() {
-                            result
-                        } else {
-                            return None;
-                        }
-                    } else {
-                        return None;
-                    }
-                }
-                (Some(sig), Function::UserDefined(parameter, code)) => {
-                    if let Signature::Function(arg, ret) = sig {
-                        let code = code.replace(
-                            &Expr::Value(Type::Symbol(parameter)),
-                            &Expr::Value(if right.clone()?.get_type()?.format() == arg.format() {
-                                right?
-                            } else {
-                                return None;
-                            }),
-                        );
-                        let result = code.eval(&mut engine.clone())?;
-                        if result.get_type()?.format() == ret.format() {
-                            result
-                        } else {
-                            return None;
-                        }
-                    } else {
-                        return None;
-                    }
-                }
-                (None, Function::BuiltIn(func)) => func(right?, engine)?,
-                (None, Function::UserDefined(parameter, code)) => {
+                Function::BuiltIn(func) => func(right?, engine)?,
+                Function::UserDefined(parameter, code) => {
                     let code =
                         code.replace(&Expr::Value(Type::Symbol(parameter)), &Expr::Value(right?));
                     code.eval(&mut engine.clone())?
                 }
             },
-            Operator::Bind => {
-                let value = left?;
-                let r#type = right?.get_signature()?;
-                match r#type.clone() {
-                    Signature::Function(arg, ret) => {
-                        Type::Function(Some(Signature::Function(arg, ret)), value.get_function()?.1)
-                    }
-                    Signature::Struct(elms) => {
-                        let st = value.get_struct()?.1;
-                        if st.keys().cloned().collect::<Vec<String>>() == elms {
-                            Type::Struct(Some(r#type), st.clone())
-                        } else {
-                            return None;
-                        }
-                    }
-                    _ => {
-                        if value.get_type()?.format() == r#type.format() {
-                            value
-                        } else {
-                            return None;
-                        }
-                    }
-                }
-            }
             Operator::Assign => {
                 let name = left?.get_text();
                 let val = right?;
@@ -1196,7 +1094,6 @@ impl Infix {
                     Operator::Or => "|",
                     Operator::Access => "::",
                     Operator::As => "as",
-                    Operator::Bind => "bind",
                     Operator::Assign => ":=",
                     Operator::Apply => return None,
                 }
@@ -1262,7 +1159,6 @@ enum Operator {
     Access,
     As,
     Apply,
-    Bind,
     Assign,
 }
 
@@ -1273,9 +1169,9 @@ enum Type {
     Refer(String),
     Text(String),
     List(Vec<Type>),
-    Function(Option<Signature>, Function),
+    Function(Function),
     Signature(Signature),
-    Struct(Option<Signature>, HashMap<String, Type>),
+    Struct(HashMap<String, Type>),
     Null,
 }
 
@@ -1300,14 +1196,8 @@ impl Type {
             Type::Text(s) => format!("\"{s}\""),
             Type::Number(n) => n.to_string(),
             Type::Null => "null".to_string(),
-            Type::Function(Some(sig), Function::BuiltIn(obj)) => {
-                format!("(λx.{obj:?} bind {})", sig.format())
-            }
-            Type::Function(Some(sig), Function::UserDefined(arg, code)) => {
-                format!("(λ{arg}.{} bind {})", code.format(), sig.format())
-            }
-            Type::Function(None, Function::BuiltIn(obj)) => format!("λx.{obj:?}"),
-            Type::Function(None, Function::UserDefined(arg, code)) => {
+            Type::Function(Function::BuiltIn(obj)) => format!("λx.{obj:?}"),
+            Type::Function(Function::UserDefined(arg, code)) => {
                 format!("λ{arg}.{}", code.format())
             }
             Type::List(l) => format!(
@@ -1318,18 +1208,8 @@ impl Type {
                     .join(", ")
             ),
             Type::Signature(sig) => sig.format(),
-            Type::Struct(Some(sig), val) => format!(
-                "({{ {1} }} bind {0})",
-                sig.format(),
-                val.iter()
-                    .map(|(k, v)| format!("\"{k}\": {}", v.get_symbol()))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ),
-            Type::Refer(to) => {
-                format!("&{to}")
-            }
-            Type::Struct(None, val) => format!(
+            Type::Refer(to) => format!("&{to}"),
+            Type::Struct(val) => format!(
                 "{{ {} }}",
                 val.iter()
                     .map(|(k, v)| format!("\"{k}\": {}", v.get_symbol()))
@@ -1355,27 +1235,26 @@ impl Type {
         }
     }
 
-    fn get_function(&self) -> Option<(Option<Signature>, Function)> {
-        if let Type::Function(sig, func) = self {
-            Some((sig.clone(), func.to_owned()))
+    fn get_function(&self) -> Option<Function> {
+        if let Type::Function(func) = self {
+            Some(func.to_owned())
         } else {
             None
         }
     }
 
-    fn get_type(&self) -> Option<Signature> {
-        Some(match self {
+    fn get_type(&self) -> Signature {
+        match self {
             Type::Number(_) => Signature::Number,
             Type::Text(_) => Signature::Text,
+            Type::Refer(_) => Signature::Refer,
             Type::Symbol(_) => Signature::Symbol,
             Type::List(_) => Signature::List,
-            Type::Struct(Some(sig), _) => sig.clone(),
-            Type::Function(Some(Signature::Function(arg_sig, ret_sig)), _) => {
-                Signature::Function(arg_sig.to_owned(), ret_sig.to_owned())
-            }
             Type::Signature(_) => Signature::Signature,
-            _ => return None,
-        })
+            Type::Function(_) => Signature::Function,
+            Type::Struct(_) => Signature::Struct,
+            Type::Null => Signature::Null,
+        }
     }
 
     fn get_signature(&self) -> Option<Signature> {
@@ -1386,9 +1265,9 @@ impl Type {
         }
     }
 
-    fn get_struct(&self) -> Option<(Option<Signature>, HashMap<String, Type>)> {
-        if let Type::Struct(sig, val) = self {
-            Some((sig.clone(), val.clone()))
+    fn get_struct(&self) -> Option<HashMap<String, Type>> {
+        if let Type::Struct(val) = self {
+            Some(val.clone())
         } else {
             None
         }
@@ -1405,7 +1284,7 @@ impl Type {
                 }
             }
             true
-        } else if let (Type::Struct(_, strct), Type::Struct(_, conds)) = (self, condition) {
+        } else if let (Type::Struct(strct), Type::Struct(conds)) = (self, condition) {
             if strct.len() != conds.len() {
                 return false;
             }
@@ -1429,11 +1308,13 @@ impl Type {
 enum Signature {
     Number,
     Symbol,
+    Refer,
     Text,
     List,
+    Function,
     Signature,
-    Function(Box<Signature>, Box<Signature>),
-    Struct(Vec<String>),
+    Struct,
+    Null,
 }
 
 impl Signature {
@@ -1442,45 +1323,25 @@ impl Signature {
             Signature::Number
         } else if token == "text" {
             Signature::Text
+        } else if token == "refer" {
+            Signature::Refer
         } else if token == "list" {
             Signature::List
         } else if token == "symbol" {
             Signature::Symbol
-        } else if token.starts_with("struct(") && token.ends_with(")") {
-            let token = &token.replacen("struct(", "", 1);
-            let token = token.get(..token.len() - 1)?.to_string();
-            Signature::Struct(
-                tokenize(token, vec![','])?
-                    .iter()
-                    .map(|i| i.trim().to_string())
-                    .collect(),
-            )
-        } else if token.starts_with('λ') || token.starts_with("fn") {
-            let token = &token.replacen(if token.starts_with("λ") { "λ" } else { "fn" }, "", 1);
-            let (args, body) =
-                token.split_once(if token.starts_with("λ") { "." } else { "->" })?;
-            if let (
-                Some(Expr::Value(Type::Signature(arg_sig))),
-                Some(Expr::Value(Type::Signature(ret_sig))),
-            ) = (Expr::parse(args.to_string()), Expr::parse(body.to_string()))
-            {
-                Signature::Function(Box::new(arg_sig), Box::new(ret_sig))
-            } else {
-                return None;
-            }
+        } else if token == "function" {
+            Signature::Function
+        } else if token == "struct" {
+            Signature::Struct
+        } else if token == "null" {
+            Signature::Null
         } else {
             return None;
         })
     }
 
     fn format(&self) -> String {
-        match self {
-            Signature::Struct(vals) => format!("struct({})", vals.join(", ")),
-            Signature::Function(arg, vals) => {
-                format!("fn({} -> {})", arg.format(), vals.format())
-            }
-            other => format!("{other:?}").to_lowercase(),
-        }
+        format!("{self:?}").to_lowercase()
     }
 }
 
