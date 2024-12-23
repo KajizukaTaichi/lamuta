@@ -373,13 +373,8 @@ impl Statement {
     fn parse(code: String) -> Option<Statement> {
         let code = code.trim();
         if code.starts_with("(") && code.ends_with(")") {
-            let code = {
-                let mut code = code.to_string();
-                code.remove(0);
-                code.remove(code.len() - 1);
-                code
-            };
-            Some(Statement::Value(Expr::parse(code)?))
+            let token = code.get(1..code.len() - 1)?.to_string();
+            Some(Statement::Value(Expr::parse(token)?))
         } else if code.starts_with("print") {
             let mut exprs = vec![];
             for i in tokenize(code["print".len()..].to_string(), vec![','])? {
