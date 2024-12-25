@@ -324,7 +324,7 @@ impl Engine {
                         for cond in conds {
                             let cond = cond.eval(self)?;
                             if expr.is_match(&cond) {
-                                return Some(value.eval(self)?);
+                                return value.eval(self);
                             }
                         }
                     }
