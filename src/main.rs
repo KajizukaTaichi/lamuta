@@ -653,6 +653,7 @@ impl Expr {
                     "::" => Operator::Access,
                     "as" => Operator::As,
                     ":=" => Operator::Assign,
+                    "|>" => Operator::PipeLine,
                     _ => return None,
                 })
             };
@@ -1066,6 +1067,14 @@ impl Infix {
                 }
                 val
             }
+            Operator::PipeLine => match right?.get_function()? {
+                Function::BuiltIn(func) => func(left?, engine)?,
+                Function::UserDefined(parameter, code) => {
+                    let code =
+                        code.replace(&Expr::Value(Type::Symbol(parameter)), &Expr::Value(left?));
+                    code.eval(&mut engine.clone())?
+                }
+            },
         })
     }
 
@@ -1090,6 +1099,7 @@ impl Infix {
                     Operator::Access => "::",
                     Operator::As => "as",
                     Operator::Assign => ":=",
+                    Operator::PipeLine => "|>",
                     Operator::Apply => return None,
                 }
                 .to_string(),
@@ -1155,6 +1165,7 @@ enum Operator {
     As,
     Apply,
     Assign,
+    PipeLine,
 }
 
 #[derive(Debug, Clone)]
