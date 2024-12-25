@@ -1047,7 +1047,6 @@ impl Infix {
                 Signature::Refer => Type::Refer(left?.get_symbol()),
                 Signature::Struct => Type::Struct(left?.get_struct()?),
                 Signature::Signature => Type::Signature(Signature::parse(left?.get_symbol())?),
-                Signature::Null => Type::Null,
             },
             Operator::Apply => match left?.get_function()? {
                 Function::BuiltIn(func) => func(right?, engine)?,
@@ -1257,7 +1256,7 @@ impl Type {
             Type::Signature(_) => Signature::Signature,
             Type::Function(_) => Signature::Function,
             Type::Struct(_) => Signature::Struct,
-            Type::Null => Signature::Null,
+            Type::Null => Signature::Refer,
         }
     }
 
@@ -1318,7 +1317,6 @@ enum Signature {
     Function,
     Signature,
     Struct,
-    Null,
 }
 
 impl Signature {
@@ -1337,8 +1335,6 @@ impl Signature {
             Signature::Function
         } else if token == "struct" {
             Signature::Struct
-        } else if token == "null" {
-            Signature::Null
         } else {
             return None;
         })
