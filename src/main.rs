@@ -320,17 +320,15 @@ impl Engine {
                 }
                 Statement::Match(expr, conds) => {
                     let expr = expr.eval(self)?;
-                    let mut result = Type::Null;
-                    'top: for (conds, value) in conds {
+                    for (conds, value) in conds {
                         for cond in conds {
                             let cond = cond.eval(self)?;
                             if expr.is_match(&cond) {
-                                result = value.eval(self)?;
-                                break 'top;
+                                return Some(value.eval(self)?);
                             }
                         }
                     }
-                    result
+                    return None;
                 }
                 Statement::While(expr, code) => {
                     let mut result = Type::Null;
