@@ -8,7 +8,7 @@ use std::{
     process::exit,
 };
 
-const VERSION: &str = "0.2.0";
+const VERSION: &str = "0.2.1";
 const SPACE: [char; 5] = [' ', '　', '\n', '\t', '\r'];
 
 fn main() {
