@@ -1276,32 +1276,32 @@ impl Type {
         }
     }
 
-    fn is_match(&self, condition: &Type) -> bool {
-        if let (Type::List(list), Type::List(conds)) = (self, condition) {
-            if list.len() != conds.len() {
+    fn is_match(&self, pattern: &Type) -> bool {
+        if let (Type::List(list), Type::List(pats)) = (self, pattern) {
+            if list.len() != pats.len() {
                 return false;
             }
-            for (elm, cond) in list.iter().zip(conds) {
-                if !elm.is_match(cond) {
+            for (elm, pat) in list.iter().zip(pats) {
+                if !elm.is_match(pat) {
                     return false;
                 }
             }
             true
-        } else if let (Type::Struct(strct), Type::Struct(conds)) = (self, condition) {
-            if strct.len() != conds.len() {
+        } else if let (Type::Struct(strct), Type::Struct(pats)) = (self, pattern) {
+            if strct.len() != pats.len() {
                 return false;
             }
-            for (elm, cond) in strct.iter().zip(conds) {
-                if elm.0 != cond.0 || !elm.1.is_match(cond.1) {
+            for (elm, pat) in strct.iter().zip(pats) {
+                if elm.0 != pat.0 || !elm.1.is_match(pat.1) {
                     return false;
                 }
             }
             true
         } else {
-            if condition.get_symbol() == "_" {
+            if pattern.get_symbol() == "_" {
                 true
             } else {
-                self.get_symbol() == condition.get_symbol()
+                self.get_symbol() == pattern.get_symbol()
             }
         }
     }
