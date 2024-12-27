@@ -261,7 +261,7 @@ impl Engine {
                 (
                     "login".to_string(),
                     Type::Function(Function::BuiltIn(|arg, engine| {
-                        let path = arg.get_text();
+                        let path = arg.get_text().trim().to_string();
                         if Path::new(&path).exists() {
                             engine.project = Some((
                                 path.clone(),
@@ -306,8 +306,9 @@ impl Engine {
                                     }
                                 }
                                 if let Ok(code) = read_to_string(Path::new("src/main.lm")) {
+                                    let result = engine.eval(Engine::parse(code)?);
                                     set_current_dir(home).unwrap_or_default();
-                                    engine.eval(Engine::parse(code)?)
+                                    result
                                 } else {
                                     set_current_dir(home).unwrap_or_default();
                                     None
