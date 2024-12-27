@@ -252,7 +252,7 @@ impl Engine {
                                     return None;
                                 }
                             }
-                            Some(Type::Null)
+                            Some(Type::Text("Dependencies library is installed!".to_string()))
                         } else {
                             None
                         }
@@ -632,22 +632,18 @@ impl Expr {
             Expr::parse(token)?
         } else if token.starts_with('{') && token.ends_with('}') {
             let token = token.get(1..token.len() - 1)?.to_string();
-            let parse_struct = || {
-                let mut result = Vec::new();
-                for i in tokenize(token.clone(), vec![','])? {
-                    let splited = tokenize(i, vec![':'])?;
-                    result.push((
-                        Expr::parse(splited.get(0)?.to_string())?,
-                        Expr::parse(splited.get(1)?.to_string())?,
-                    ));
-                }
-                Some(Expr::Struct(result))
-            };
-            if let Some(st) = parse_struct() {
-                st
-            } else {
-                Expr::Block(Engine::parse(token)?)
+            Expr::Block(Engine::parse(token.clone())?)
+        } else if token.starts_with("@{") && token.ends_with('}') {
+            let token = token.get(2..token.len() - 1)?.to_string();
+            let mut result = Vec::new();
+            for i in tokenize(token.clone(), vec![','])? {
+                let splited = tokenize(i, vec![':'])?;
+                result.push((
+                    Expr::parse(splited.get(0)?.to_string())?,
+                    Expr::parse(splited.get(1)?.to_string())?,
+                ));
             }
+            Expr::Struct(result)
         } else if token.starts_with('[') && token.ends_with(']') {
             let token = token.get(1..token.len() - 1)?.to_string();
             let mut list = vec![];
@@ -860,7 +856,7 @@ impl Expr {
                     .join("; ")
             ),
             Expr::Struct(st) => format!(
-                "{{ {} }}",
+                "@{{ {} }}",
                 st.iter()
                     .map(|(k, x)| format!("{}: {}", k.format(), x.format()))
                     .collect::<Vec<String>>()
@@ -1287,7 +1283,7 @@ impl Type {
             Type::Signature(sig) => sig.format(),
             Type::Refer(to) => format!("&{to}"),
             Type::Struct(val) => format!(
-                "{{ {} }}",
+                "@{{ {} }}",
                 val.iter()
                     .map(|(k, v)| format!("\"{k}\": {}", v.get_symbol()))
                     .collect::<Vec<_>>()
