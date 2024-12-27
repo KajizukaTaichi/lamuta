@@ -1,1 +1,4 @@
-{ "name": "fizzbuzz", "depend": [] }
+@{
+    "name": "fizzbuzz",
+    "depend": []
+}
