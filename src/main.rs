@@ -50,9 +50,13 @@ fn main() {
         code += &format!("{buffer}\n");
         if let Some(ast) = Engine::parse(code.clone()) {
             if let Some(result) = engine.eval(ast) {
-                println!("{navi} {}", result.get_symbol(), navi = "=>".green());
+                println!(
+                    "{navi} {result}",
+                    result = result.get_symbol(),
+                    navi = "=>".green()
+                );
             } else {
-                println!("{navi} {}", "Fault", navi = "=>".red());
+                println!("{navi} Fault", navi = "=>".red());
             }
             code.clear();
             session += 1;
