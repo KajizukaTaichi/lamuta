@@ -355,8 +355,13 @@ impl Engine {
                     io::stdout().flush().unwrap();
                     Type::Null
                 }
-                Statement::Let(name, expr) => {
+                Statement::Let(name, sig, expr) => {
                     let val = expr.eval(self)?;
+                    if let Some(sig) = sig {
+                        if val.get_type().format() != sig.format() {
+                            return None;
+                        }
+                    }
                     if name != "_" {
                         self.env.insert(name, val.clone());
                     }
@@ -415,7 +420,7 @@ impl Engine {
 enum Statement {
     Value(Expr),
     Print(Vec<Expr>),
-    Let(String, Expr),
+    Let(String, Option<Signature>, Expr),
     If(Expr, Expr, Option<Expr>),
     Match(Expr, Vec<(Vec<Expr>, Expr)>),
     For(String, Expr, Expr),
@@ -459,7 +464,7 @@ impl Statement {
                 tokens.get(1)?[1..tokens.get(1)?.len() - 1].to_string(),
                 vec![','],
             )?;
-            let mut conds = vec![];
+            let mut body = vec![];
             for i in tokens {
                 let tokens = tokenize(i, SPACE.to_vec())?;
                 let pos = tokens.iter().position(|i| i == "=>")?;
@@ -467,9 +472,9 @@ impl Statement {
                 for i in tokenize(tokens.get(..pos)?.join(" "), vec!['|'])? {
                     cond.push(Expr::parse(i.to_string())?)
                 }
-                conds.push((cond, Expr::parse(tokens.get(pos + 1..)?.join(" "))?))
+                body.push((cond, Expr::parse(tokens.get(pos + 1..)?.join(" "))?))
             }
-            Some(Statement::Match(expr, conds))
+            Some(Statement::Match(expr, body))
         } else if code.starts_with("for") {
             let code = code["for".len()..].to_string();
             let code = tokenize(code, SPACE.to_vec())?;
@@ -492,10 +497,19 @@ impl Statement {
         } else if code.starts_with("let") {
             let code = code["let".len()..].to_string();
             let (name, code) = code.split_once("=")?;
-            Some(Statement::Let(
-                name.trim().to_string(),
-                Expr::parse(code.to_string())?,
-            ))
+            if let Some((name, sig)) = name.split_once(":") {
+                Some(Statement::Let(
+                    name.trim().to_string(),
+                    Some(Signature::parse(sig.trim().to_string())?),
+                    Expr::parse(code.to_string())?,
+                ))
+            } else {
+                Some(Statement::Let(
+                    name.trim().to_string(),
+                    None,
+                    Expr::parse(code.to_string())?,
+                ))
+            }
         } else if code == "fault" {
             Some(Statement::Fault)
         } else {
@@ -543,7 +557,10 @@ impl Statement {
                 })
             }
             Statement::Fault => "fault".to_string(),
-            Statement::Let(name, val) => {
+            Statement::Let(name, Some(sig), val) => {
+                format!("let {name}: {} = {}", sig.format(), val.format())
+            }
+            Statement::Let(name, None, val) => {
                 format!("let {name} = {}", val.format())
             }
             Statement::Print(exprs) => format!(
@@ -905,8 +922,8 @@ impl Expr {
                             iter.replace(from, to),
                             code.replace(from, to),
                         ),
-                        Statement::Let(name, val) => {
-                            Statement::Let(name.clone(), val.replace(from, to))
+                        Statement::Let(name, sig, val) => {
+                            Statement::Let(name.clone(), sig.clone(), val.replace(from, to))
                         }
                         Statement::Fault => Statement::Fault,
                     })
