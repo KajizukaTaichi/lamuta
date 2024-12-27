@@ -7,7 +7,7 @@ let eval = λe.λp.{
                 let code = code + [eval env i];
             };
             if (code :: 0 :: "type" == "function") {
-                let func = (code :: 0 :: "value");
+                let func = code :: 0 :: "value";
                 func (slice code (range [1, len code]))
             } else {
                 fault
@@ -117,15 +117,15 @@ let tokenize = λsource.{
     tokens
 };
 
-let env = {
+let env = @{
     "+": @{ "type": "function", "value": λl.@{ "type": "number", "value": (reduce λa.λb.(a + b) (map getNumber l)) } },
     "-": @{ "type": "function", "value": λl.@{ "type": "number", "value": (reduce λa.λb.(a - b) (map getNumber l)) } },
     "*": @{ "type": "function", "value": λl.@{ "type": "number", "value": (reduce λa.λb.(a * b) (map getNumber l)) } },
     "/": @{ "type": "function", "value": λl.@{ "type": "number", "value": (reduce λa.λb.(a / b) (map getNumber l)) } },
     "%": @{ "type": "function", "value": λl.@{ "type": "number", "value": (reduce λa.λb.(a % b) (map getNumber l)) } },
     "^": @{ "type": "function", "value": λl.@{ "type": "number", "value": (reduce λa.λb.(a ^ b) (map getNumber l)) } },
-    "concat":@ { "type": "function", "value": λl.@{ "type": "text", "value": (reduce λa.λb.(a + b) (map getText l)) } },
-    "eval": @{ "type": "function", "value": λl.@{ let expr = getList l; eval env { "type": "expr", "value": expr } } }
+    "concat": @{ "type": "function", "value": λl.@{ "type": "text", "value": (reduce λa.λb.(a + b) (map getText l)) } },
+    "eval": @{ "type": "function", "value": λl.{ let expr = getList l; eval env { "type": "expr", "value": expr } } }
 };
 
 let main = λ_.{
@@ -139,7 +139,7 @@ let main = λ_.{
             if (find entered ":=") {
                 let name = tokenize (slice entered (range [0, it])) :: 0;
                 let expr = tokenize (slice entered (range [it + 2, len entered])) :: 0;
-                let env = env + { name: eval env (parse expr) };
+                let env = env + @{ name: eval env (parse expr) };
             } else {
                 print eval env (parse entered);
             }
