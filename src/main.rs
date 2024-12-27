@@ -1,4 +1,5 @@
 use colored::*;
+use reqwest::blocking;
 use std::{
     collections::HashMap,
     env::{current_dir, set_current_dir},
@@ -104,7 +105,7 @@ impl Engine {
                 ),
                 (
                     "newProject".to_string(),
-                    Type::Function(Function::BuiltIn(|arg, engine| {
+                    Type::Function(Function::BuiltIn(|arg, _| {
                         let name = arg.get_text();
                         let path = Path::new(&name);
                         let home = current_dir().unwrap_or_default();
@@ -113,6 +114,18 @@ impl Engine {
                                 if create_dir_all("lib").is_err() {
                                     return None;
                                 }
+                                if let Ok(mut file) = File::create("config.lm") {
+                                    if file.write_all(
+                                        Type::Struct(HashMap::from([
+                                        ("name".to_string(), Type::Text(name.clone())),
+                                        (
+                                            "depend".to_string(),
+                                            Type::List(vec![Type::Text(
+                                                "https://kajizukataichi.github.io/lamuta/lib/std.lm".to_string(),
+                                            )]),
+                                        ),
+                                    ])).get_symbol().as_bytes()).is_err(){return None};
+                                }
                                 if create_dir_all("src").is_ok() {
                                     if let Ok(mut file) = File::create_new(Path::new("src/main.lm"))
                                     {
@@ -120,18 +133,6 @@ impl Engine {
                                             .write_all(r#"print "Hello, world!""#.as_bytes())
                                             .is_ok()
                                         {
-                                            engine.project = Some((
-                                                name.clone(),
-                                                Type::Struct(HashMap::from([
-                                                    ("name".to_string(), Type::Text(name)),
-                                                    (
-                                                        "depend".to_string(),
-                                                        Type::List(vec![Type::Text(
-                                                            "https://kajizukataichi.github.io/lamuta/lib/std.lm".to_string(),
-                                                        )]),
-                                                    ),
-                                                ])),
-                                            ));
                                             set_current_dir(home).unwrap_or_default();
                                             Some(Type::Text(format!("Created project: {name}")))
                                         } else {
@@ -152,11 +153,52 @@ impl Engine {
                     })),
                 ),
                 (
+                    "install".to_string(),
+                    Type::Function(Function::BuiltIn(|_, engine| {
+                        if let Some((_, depend)) = engine.project.clone() {
+                            for i in depend.get_struct()?.get("depend")?.get_list() {
+                                let path = i.get_text().trim().to_string();
+                                if let Ok(res) = blocking::get(path.clone()) {
+                                    if let Ok(code) = res.text() {
+                                        if let Ok(mut file) = File::create(&format!(
+                                            "{}/lib/{}",
+                                            engine.project.clone()?.0,
+                                            Path::new(&path).file_name()?.to_str()?.to_string()
+                                        )) {
+                                            if file.write_all(code.as_bytes()).is_err() {
+                                                return None;
+                                            };
+                                        } else {
+                                            return None;
+                                        };
+                                    } else {
+                                        return None;
+                                    }
+                                } else {
+                                    return None;
+                                }
+                            }
+                            Some(Type::Null)
+                        } else {
+                            None
+                        }
+                    })),
+                ),
+                (
                     "login".to_string(),
                     Type::Function(Function::BuiltIn(|arg, engine| {
                         let path = arg.get_text();
                         if Path::new(&path).exists() {
-                            engine.project = Some(path.clone());
+                            engine.project = Some((
+                                path.clone(),
+                                engine.eval(Engine::parse(
+                                    if let Ok(code) = read_to_string(format!("{path}/config.lm")) {
+                                        code
+                                    } else {
+                                        return None;
+                                    },
+                                )?)?,
+                            ));
                             Some(Type::Text(format!("Logged in project: {path}")))
                         } else {
                             None
@@ -173,7 +215,7 @@ impl Engine {
                 (
                     "run".to_string(),
                     Type::Function(Function::BuiltIn(|_, engine| {
-                        if let Some(project_path) = engine.project.clone() {
+                        if let Some((project_path, _)) = engine.project.clone() {
                             let home = current_dir().unwrap_or_default();
                             if set_current_dir(project_path).is_ok() {
                                 if let Ok(dir) = read_dir(Path::new("lib")) {
