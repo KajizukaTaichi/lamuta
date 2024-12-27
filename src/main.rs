@@ -67,7 +67,7 @@ type Program = Vec<Statement>;
 #[derive(Debug, Clone)]
 struct Engine {
     env: Scope,
-    project: Option<String>,
+    project: Option<(String, Type)>,
 }
 
 impl Engine {
@@ -120,7 +120,18 @@ impl Engine {
                                             .write_all(r#"print "Hello, world!""#.as_bytes())
                                             .is_ok()
                                         {
-                                            engine.project = Some(name.clone());
+                                            engine.project = Some((
+                                                name.clone(),
+                                                Type::Struct(HashMap::from([
+                                                    ("name".to_string(), Type::Text(name)),
+                                                    (
+                                                        "depend".to_string(),
+                                                        Type::List(vec![Type::Text(
+                                                            "https://kajizukataichi.github.io/lamuta/lib/std.lm".to_string(),
+                                                        )]),
+                                                    ),
+                                                ])),
+                                            ));
                                             set_current_dir(home).unwrap_or_default();
                                             Some(Type::Text(format!("Created project: {name}")))
                                         } else {
