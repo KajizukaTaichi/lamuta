@@ -83,6 +83,77 @@ impl Engine {
                     })),
                 ),
                 (
+                    "input".to_string(),
+                    Type::Function(Function::BuiltIn(|expr, _| {
+                        let prompt = expr.get_text();
+                        print!("{prompt}");
+                        io::stdout().flush().unwrap();
+                        let mut buffer = String::new();
+                        if io::stdin().read_line(&mut buffer).is_ok() {
+                            Some(Type::Text(buffer.trim().to_string()))
+                        } else {
+                            None
+                        }
+                    })),
+                ),
+                (
+                    "range".to_string(),
+                    Type::Function(Function::BuiltIn(|params, _| {
+                        let params = params.get_list();
+                        if params.len() == 1 {
+                            let mut range: Vec<Type> = vec![];
+                            let mut current: f64 = 0.0;
+                            while current < params[0].get_number()? {
+                                range.push(Type::Number(current));
+                                current += 1.0;
+                            }
+                            Some(Type::List(range))
+                        } else if params.len() == 2 {
+                            let mut range: Vec<Type> = vec![];
+                            let mut current: f64 = params[0].get_number()?;
+                            while current < params[1].get_number()? {
+                                range.push(Type::Number(current));
+                                current += 1.0;
+                            }
+                            Some(Type::List(range))
+                        } else if params.len() == 3 {
+                            let mut range: Vec<Type> = vec![];
+                            let mut current: f64 = params[0].get_number()?;
+                            while current < params[1].get_number()? {
+                                range.push(Type::Number(current));
+                                current += params[2].get_number()?;
+                            }
+                            Some(Type::List(range))
+                        } else {
+                            None
+                        }
+                    })),
+                ),
+                (
+                    "exit".to_string(),
+                    Type::Function(Function::BuiltIn(|arg, _| exit(arg.get_number()? as i32))),
+                ),
+                ("doubleQuote".to_string(), Type::Text("\"".to_string())),
+                (
+                    "load".to_string(),
+                    Type::Function(Function::BuiltIn(|expr, engine| {
+                        let path = expr.get_text();
+                        let path = Path::new(&path);
+                        if let Ok(module) = read_to_string(path) {
+                            let home = current_dir().unwrap_or_default();
+                            if let Some(parent_dir) = path.parent() {
+                                set_current_dir(parent_dir).unwrap_or_default();
+                            }
+                            let module = Engine::parse(module)?;
+                            let result = engine.eval(module)?;
+                            set_current_dir(home).unwrap_or_default();
+                            Some(result)
+                        } else {
+                            None
+                        }
+                    })),
+                ),
+                (
                     "save".to_string(),
                     Type::Function(Function::BuiltIn(|arg, engine| {
                         let mut render = String::new();
@@ -246,77 +317,6 @@ impl Engine {
                         }
                     })),
                 ),
-                (
-                    "load".to_string(),
-                    Type::Function(Function::BuiltIn(|expr, engine| {
-                        let path = expr.get_text();
-                        let path = Path::new(&path);
-                        if let Ok(module) = read_to_string(path) {
-                            let home = current_dir().unwrap_or_default();
-                            if let Some(parent_dir) = path.parent() {
-                                set_current_dir(parent_dir).unwrap_or_default();
-                            }
-                            let module = Engine::parse(module)?;
-                            let result = engine.eval(module)?;
-                            set_current_dir(home).unwrap_or_default();
-                            Some(result)
-                        } else {
-                            None
-                        }
-                    })),
-                ),
-                (
-                    "input".to_string(),
-                    Type::Function(Function::BuiltIn(|expr, _| {
-                        let prompt = expr.get_text();
-                        print!("{prompt}");
-                        io::stdout().flush().unwrap();
-                        let mut buffer = String::new();
-                        if io::stdin().read_line(&mut buffer).is_ok() {
-                            Some(Type::Text(buffer.trim().to_string()))
-                        } else {
-                            None
-                        }
-                    })),
-                ),
-                (
-                    "range".to_string(),
-                    Type::Function(Function::BuiltIn(|params, _| {
-                        let params = params.get_list();
-                        if params.len() == 1 {
-                            let mut range: Vec<Type> = vec![];
-                            let mut current: f64 = 0.0;
-                            while current < params[0].get_number()? {
-                                range.push(Type::Number(current));
-                                current += 1.0;
-                            }
-                            Some(Type::List(range))
-                        } else if params.len() == 2 {
-                            let mut range: Vec<Type> = vec![];
-                            let mut current: f64 = params[0].get_number()?;
-                            while current < params[1].get_number()? {
-                                range.push(Type::Number(current));
-                                current += 1.0;
-                            }
-                            Some(Type::List(range))
-                        } else if params.len() == 3 {
-                            let mut range: Vec<Type> = vec![];
-                            let mut current: f64 = params[0].get_number()?;
-                            while current < params[1].get_number()? {
-                                range.push(Type::Number(current));
-                                current += params[2].get_number()?;
-                            }
-                            Some(Type::List(range))
-                        } else {
-                            None
-                        }
-                    })),
-                ),
-                (
-                    "exit".to_string(),
-                    Type::Function(Function::BuiltIn(|arg, _| exit(arg.get_number()? as i32))),
-                ),
-                ("doubleQuote".to_string(), Type::Text("\"".to_string())),
             ]),
         }
     }
