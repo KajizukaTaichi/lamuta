@@ -290,29 +290,23 @@ impl Engine {
                     "run".to_string(),
                     Type::Function(Function::BuiltIn(|_, engine| {
                         if let Some((project_path, _)) = engine.project.clone() {
-                            let home = current_dir().unwrap_or_default();
-                            if set_current_dir(project_path).is_ok() {
-                                if let Ok(dir) = read_dir(Path::new("lib")) {
-                                    for entry in dir {
-                                        if let Ok(entry) = entry {
-                                            let lib_file = entry.file_name();
-                                            if let Ok(code) = read_to_string(Path::new(&format!(
-                                                "lib/{}",
-                                                lib_file.to_str()?
-                                            ))) {
-                                                engine.eval(Engine::parse(code)?);
-                                            }
+                            if let Ok(dir) = read_dir(Path::new(&format!("{project_path}/lib"))) {
+                                for entry in dir {
+                                    if let Ok(entry) = entry {
+                                        let lib_file = entry.file_name();
+                                        if let Ok(code) = read_to_string(Path::new(&format!(
+                                            "{project_path}/lib/{}",
+                                            lib_file.to_str()?
+                                        ))) {
+                                            engine.eval(Engine::parse(code)?);
                                         }
                                     }
                                 }
-                                if let Ok(code) = read_to_string(Path::new("src/main.lm")) {
-                                    let result = engine.eval(Engine::parse(code)?);
-                                    set_current_dir(home).unwrap_or_default();
-                                    result
-                                } else {
-                                    set_current_dir(home).unwrap_or_default();
-                                    None
-                                }
+                            }
+                            if let Ok(code) =
+                                read_to_string(Path::new(&format!("{project_path}/src/main.lm")))
+                            {
+                                engine.eval(Engine::parse(code)?)
                             } else {
                                 None
                             }
