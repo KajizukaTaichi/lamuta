@@ -19,25 +19,25 @@ let eval = λe.λp.{
 };
 
 let getNumber = λx.{
-    if (x :: "type" == "number") (
+    if (x :: "type" == "number") {
         x :: "value" as number
-    ) else {
+    } else {
         fault
     }
 };
 
 let getText = λx.{
-    if (x :: "type" == "text") (
+    if (x :: "type" == "text") {
         x :: "value" as text
-    ) else {
+    } else {
         fault
     }
 };
 
 let getList = λx.{
-    if (x :: "type" == "list") (
+    if (x :: "type" == "list") {
         x :: "value" as list
-    ) else {
+    } else {
         fault
     }
 };
@@ -49,7 +49,7 @@ let parse = λsource.{
         for i in (tokenize inner) {
             let result = result + [parse i];
         };
-        { "type": "expr", "value": result }
+        @{ "type": "expr", "value": result }
     } else {
         if (source :: 0 == "'") {
             let inner = slice source (range [2, len source - 1]);
@@ -57,14 +57,14 @@ let parse = λsource.{
             for i in (tokenize inner) {
                 let result = result + [parse i];
             };
-            { "type": "list", "value": result }
+            @{ "type": "list", "value": result }
         } else {
             if (source :: 0 == doubleQuote & (source :: (len source - 1) == doubleQuote)) {
                 let inner = slice source (range [1, len source - 1]);
-                { "type": "text", "value": inner }
+                @{ "type": "text", "value": inner }
             } else {
-                if (source as number) { "type": "number", value: it }
-                else { "type": "symbol", "value": source }
+                if (source as number) @{ "type": "number", value: it }
+                else @{ "type": "symbol", "value": source }
             }
         }
     }
@@ -118,14 +118,14 @@ let tokenize = λsource.{
 };
 
 let env = {
-    "+": { "type": "function", "value": λl.{ "type": "number", "value": (reduce λa.λb.(a + b) (map getNumber l)) } },
-    "-": { "type": "function", "value": λl.{ "type": "number", "value": (reduce λa.λb.(a - b) (map getNumber l)) } },
-    "*": { "type": "function", "value": λl.{ "type": "number", "value": (reduce λa.λb.(a * b) (map getNumber l)) } },
-    "/": { "type": "function", "value": λl.{ "type": "number", "value": (reduce λa.λb.(a / b) (map getNumber l)) } },
-    "%": { "type": "function", "value": λl.{ "type": "number", "value": (reduce λa.λb.(a % b) (map getNumber l)) } },
-    "^": { "type": "function", "value": λl.{ "type": "number", "value": (reduce λa.λb.(a ^ b) (map getNumber l)) } },
-    "concat": { "type": "function", "value": λl.{ "type": "text", "value": (reduce λa.λb.(a + b) (map getText l)) } },
-    "eval": { "type": "function", "value": λl.{ let expr = getList l; eval env { "type": "expr", "value": expr } } }
+    "+": @{ "type": "function", "value": λl.@{ "type": "number", "value": (reduce λa.λb.(a + b) (map getNumber l)) } },
+    "-": @{ "type": "function", "value": λl.@{ "type": "number", "value": (reduce λa.λb.(a - b) (map getNumber l)) } },
+    "*": @{ "type": "function", "value": λl.@{ "type": "number", "value": (reduce λa.λb.(a * b) (map getNumber l)) } },
+    "/": @{ "type": "function", "value": λl.@{ "type": "number", "value": (reduce λa.λb.(a / b) (map getNumber l)) } },
+    "%": @{ "type": "function", "value": λl.@{ "type": "number", "value": (reduce λa.λb.(a % b) (map getNumber l)) } },
+    "^": @{ "type": "function", "value": λl.@{ "type": "number", "value": (reduce λa.λb.(a ^ b) (map getNumber l)) } },
+    "concat":@ { "type": "function", "value": λl.@{ "type": "text", "value": (reduce λa.λb.(a + b) (map getText l)) } },
+    "eval": @{ "type": "function", "value": λl.@{ let expr = getList l; eval env { "type": "expr", "value": expr } } }
 };
 
 let main = λ_.{
@@ -137,8 +137,8 @@ let main = λ_.{
             let flag = 0;
         } else {
             if (find entered ":=") {
-                let name = (tokenize (slice entered (range [0, it])) :: 0);
-                let expr = (tokenize (slice entered (range [it + 2, len entered])) :: 0);
+                let name = tokenize (slice entered (range [0, it])) :: 0;
+                let expr = tokenize (slice entered (range [it + 2, len entered])) :: 0;
                 let env = env + { name: eval env (parse expr) };
             } else {
                 print eval env (parse entered);
