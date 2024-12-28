@@ -335,7 +335,6 @@ impl Engine {
         let mut result = Type::Null;
         for code in program {
             result = match code {
-                Statement::Value(expr) => expr.eval(self)?,
                 Statement::Print(expr) => {
                     for i in expr {
                         print!(
@@ -386,14 +385,6 @@ impl Engine {
                     }
                     return None;
                 }
-                Statement::While(expr, code) => {
-                    let mut result = Type::Null;
-                    while let Some(it) = expr.eval(self) {
-                        self.env.insert("it".to_string(), it);
-                        result = code.eval(self)?;
-                    }
-                    result
-                }
                 Statement::For(counter, expr, code) => {
                     let mut result = Type::Null;
                     for i in expr.eval(self)?.get_list() {
@@ -404,7 +395,16 @@ impl Engine {
                     }
                     result
                 }
+                Statement::While(expr, code) => {
+                    let mut result = Type::Null;
+                    while let Some(it) = expr.eval(self) {
+                        self.env.insert("it".to_string(), it);
+                        result = code.eval(self)?;
+                    }
+                    result
+                }
                 Statement::Fault => return None,
+                Statement::Return(expr) => expr.eval(self)?,
             };
         }
         Some(result)
@@ -413,7 +413,6 @@ impl Engine {
 
 #[derive(Debug, Clone)]
 enum Statement {
-    Value(Expr),
     Print(Vec<Expr>),
     Let(String, Option<Signature>, Expr),
     If(Expr, Expr, Option<Expr>),
@@ -421,20 +420,34 @@ enum Statement {
     For(String, Expr, Expr),
     While(Expr, Expr),
     Fault,
+    Return(Expr),
 }
 
 impl Statement {
     fn parse(code: String) -> Option<Statement> {
-        let code = code.trim();
-        if code.starts_with("(") && code.ends_with(")") {
-            let token = code.get(1..code.len() - 1)?.to_string();
-            Some(Statement::Value(Expr::parse(token)?))
-        } else if code.starts_with("print") {
+        let code = code.trim().to_string();
+        if code.starts_with("print") {
             let mut exprs = vec![];
             for i in tokenize(code["print".len()..].to_string(), vec![','])? {
                 exprs.push(Expr::parse(i)?)
             }
             Some(Statement::Print(exprs))
+        } else if code.starts_with("let") {
+            let code = code["let".len()..].to_string();
+            let (name, code) = code.split_once("=")?;
+            if let Some((name, sig)) = name.split_once(":") {
+                Some(Statement::Let(
+                    name.trim().to_string(),
+                    Some(Signature::parse(sig.trim().to_string())?),
+                    Expr::parse(code.to_string())?,
+                ))
+            } else {
+                Some(Statement::Let(
+                    name.trim().to_string(),
+                    None,
+                    Expr::parse(code.to_string())?,
+                ))
+            }
         } else if code.starts_with("if") {
             let code = code["if".len()..].to_string();
             let code = tokenize(code, SPACE.to_vec())?;
@@ -489,32 +502,29 @@ impl Statement {
                 Expr::parse(code.get(0)?.to_string())?,
                 Expr::parse(code.get(1)?.to_string())?,
             ))
-        } else if code.starts_with("let") {
-            let code = code["let".len()..].to_string();
-            let (name, code) = code.split_once("=")?;
-            if let Some((name, sig)) = name.split_once(":") {
-                Some(Statement::Let(
-                    name.trim().to_string(),
-                    Some(Signature::parse(sig.trim().to_string())?),
-                    Expr::parse(code.to_string())?,
-                ))
-            } else {
-                Some(Statement::Let(
-                    name.trim().to_string(),
-                    None,
-                    Expr::parse(code.to_string())?,
-                ))
-            }
         } else if code == "fault" {
             Some(Statement::Fault)
         } else {
-            Some(Statement::Value(Expr::parse(code.to_string())?))
+            Some(Statement::Return(Expr::parse(code.to_string())?))
         }
     }
 
     fn format(&self) -> String {
         match self {
-            Statement::Value(expr) => format!("{}", expr.format()),
+            Statement::Print(exprs) => format!(
+                "print {}",
+                exprs
+                    .iter()
+                    .map(|i| i.format())
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ),
+            Statement::Let(name, Some(sig), val) => {
+                format!("let {name}: {} = {}", sig.format(), val.format())
+            }
+            Statement::Let(name, None, val) => {
+                format!("let {name} = {}", val.format())
+            }
             Statement::If(cond, then, r#else) => {
                 if let Some(r#else) = r#else {
                     format!(
@@ -526,12 +536,6 @@ impl Statement {
                 } else {
                     format!("if {} {}", cond.format(), then.format())
                 }
-            }
-            Statement::While(cond, code) => {
-                format!("while {} {}", cond.format(), code.format())
-            }
-            Statement::For(counter, iterator, code) => {
-                format!("for {counter} in {} {}", iterator.format(), code.format())
             }
             Statement::Match(expr, cond) => {
                 format!("match {} {{ {} }}", expr.format(), {
@@ -551,21 +555,14 @@ impl Statement {
                         .join(", ")
                 })
             }
+            Statement::For(counter, iterator, code) => {
+                format!("for {counter} in {} {}", iterator.format(), code.format())
+            }
+            Statement::While(cond, code) => {
+                format!("while {} {}", cond.format(), code.format())
+            }
             Statement::Fault => "fault".to_string(),
-            Statement::Let(name, Some(sig), val) => {
-                format!("let {name}: {} = {}", sig.format(), val.format())
-            }
-            Statement::Let(name, None, val) => {
-                format!("let {name} = {}", val.format())
-            }
-            Statement::Print(exprs) => format!(
-                "print {}",
-                exprs
-                    .iter()
-                    .map(|i| i.format())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
+            Statement::Return(expr) => format!("{}", expr.format()),
         }
     }
 }
@@ -812,15 +809,17 @@ impl Expr {
                 block
                     .iter()
                     .map(|i| match i {
+                        Statement::Print(vals) => {
+                            Statement::Print(vals.iter().map(|j| j.replace(from, to)).collect())
+                        }
+                        Statement::Let(name, sig, val) => {
+                            Statement::Let(name.clone(), sig.clone(), val.replace(from, to))
+                        }
                         Statement::If(cond, then, r#else) => Statement::If(
                             cond.replace(from, to),
                             then.replace(from, to),
                             r#else.clone().and_then(|j| Some(j.replace(from, to))),
                         ),
-                        Statement::While(cond, code) => {
-                            Statement::While(cond.replace(from, to), code.replace(from, to))
-                        }
-                        Statement::Value(val) => Statement::Value(val.replace(from, to)),
                         Statement::Match(expr, cond) => Statement::Match(
                             expr.replace(from, to),
                             cond.iter()
@@ -832,18 +831,16 @@ impl Expr {
                                 })
                                 .collect(),
                         ),
-                        Statement::Print(vals) => {
-                            Statement::Print(vals.iter().map(|j| j.replace(from, to)).collect())
-                        }
                         Statement::For(counter, iter, code) => Statement::For(
                             counter.clone(),
                             iter.replace(from, to),
                             code.replace(from, to),
                         ),
-                        Statement::Let(name, sig, val) => {
-                            Statement::Let(name.clone(), sig.clone(), val.replace(from, to))
+                        Statement::While(cond, code) => {
+                            Statement::While(cond.replace(from, to), code.replace(from, to))
                         }
                         Statement::Fault => Statement::Fault,
+                        Statement::Return(val) => Statement::Return(val.replace(from, to)),
                     })
                     .collect(),
             ),
