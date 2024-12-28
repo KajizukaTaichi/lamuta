@@ -89,7 +89,7 @@ impl Engine {
                 (
                     "input".to_string(),
                     Type::Function(Function::BuiltIn(|expr, _| {
-                        let prompt = expr.get_text();
+                        let prompt = expr.get_text()?;
                         print!("{prompt}");
                         io::stdout().flush().unwrap();
                         let mut buffer = String::new();
@@ -141,7 +141,7 @@ impl Engine {
                 (
                     "load".to_string(),
                     Type::Function(Function::BuiltIn(|expr, engine| {
-                        let path = expr.get_text();
+                        let path = expr.get_text()?;
                         let path = Path::new(&path);
                         if let Ok(module) = read_to_string(path) {
                             let home = current_dir().unwrap_or_default();
@@ -166,7 +166,7 @@ impl Engine {
                                 render += &format!("let {k} = {};\n", v.get_symbol());
                             }
                         }
-                        if let Ok(mut file) = File::create(arg.get_text()) {
+                        if let Ok(mut file) = File::create(arg.get_text()?) {
                             if file.write_all(render.as_bytes()).is_ok() {
                                 Some(Type::Text("Saved environment".to_string()))
                             } else {
@@ -180,7 +180,7 @@ impl Engine {
                 (
                     "newProject".to_string(),
                     Type::Function(Function::BuiltIn(|arg, _| {
-                        let name = arg.get_text();
+                        let name = arg.get_text()?;
                         let path = Path::new(&name);
                         let home = current_dir().unwrap_or_default();
                         if create_dir_all(path).is_ok() {
@@ -231,7 +231,7 @@ impl Engine {
                     Type::Function(Function::BuiltIn(|_, engine| {
                         if let Some((_, depend)) = engine.project.clone() {
                             for i in depend.get_struct()?.get("depend")?.get_list() {
-                                let path = i.get_text().trim().to_string();
+                                let path = i.get_text()?.trim().to_string();
                                 if let Ok(res) = blocking::get(path.clone()) {
                                     if let Ok(code) = res.text() {
                                         if let Ok(mut file) = File::create(&format!(
@@ -261,7 +261,7 @@ impl Engine {
                 (
                     "login".to_string(),
                     Type::Function(Function::BuiltIn(|arg, engine| {
-                        let path = arg.get_text().trim().to_string();
+                        let path = arg.get_text()?.trim().to_string();
                         if Path::new(&path).exists() {
                             engine.project = Some((
                                 path.clone(),
@@ -595,7 +595,7 @@ impl Expr {
             Expr::Struct(st) => {
                 let mut result = HashMap::new();
                 for (k, x) in st {
-                    result.insert(k.eval(engine)?.get_text(), x.eval(engine)?);
+                    result.insert(k.eval(engine)?.get_text()?, x.eval(engine)?);
                 }
                 Type::Struct(result)
             }
@@ -687,6 +687,8 @@ impl Expr {
         } else if token.starts_with("*") {
             let token = token.replacen("*", "", 1);
             Expr::Derefer(Box::new(Expr::parse(token)?))
+        } else if token == "null" {
+            Expr::Value(Type::Null)
         } else {
             Expr::Value(Type::Symbol(token))
         };
@@ -1031,7 +1033,7 @@ impl Infix {
             Operator::As => match right?.get_signature()? {
                 Signature::Number => Type::Number(left?.get_number()?),
                 Signature::Symbol => Type::Symbol(left?.get_symbol()),
-                Signature::Text => Type::Text(left?.get_text()),
+                Signature::Text => Type::Text(left?.get_text()?),
                 Signature::List => Type::List(left?.get_list()),
                 Signature::Function => Type::Function(left?.get_function()?),
                 Signature::Refer => Type::Refer(left?.get_symbol()),
@@ -1047,7 +1049,7 @@ impl Infix {
                 }
             },
             Operator::Assign => {
-                let name = left?.get_text();
+                let name = left?.get_text()?;
                 let val = right?;
                 if name != "_" {
                     engine.env.insert(name, val.clone());
@@ -1212,11 +1214,10 @@ impl Type {
         }
     }
 
-    fn get_text(&self) -> String {
+    fn get_text(&self) -> Option<String> {
         match self {
-            Type::Number(n) => n.to_string(),
-            Type::Symbol(s) | Type::Text(s) => s.to_string(),
-            _ => String::new(),
+            Type::Symbol(s) | Type::Text(s) => Some(s.to_string()),
+            _ => None,
         }
     }
 
@@ -1246,7 +1247,7 @@ impl Type {
             Type::Signature(_) => Signature::Signature,
             Type::Function(_) => Signature::Function,
             Type::Struct(_) => Signature::Struct,
-            Type::Null => Signature::Refer,
+            Type::Null => Signature::Symbol,
         }
     }
 
