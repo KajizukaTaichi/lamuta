@@ -720,18 +720,16 @@ impl Expr {
                 })
             };
             if let Some(operator) = is_operator(operator.to_string()) {
-                let mut result = Some(Expr::Infix(Box::new(Infix {
+                Some(Expr::Infix(Box::new(Infix {
                     operator,
                     values: (
                         Expr::parse(token_list.get(..token_list.len() - 2)?.join(" "))?,
                         token,
                     ),
-                })))?;
-                result.optimize();
-                Some(result)
+                })))
             } else if operator.starts_with("`") && operator.ends_with("`") {
                 let operator = operator[1..operator.len() - 1].to_string();
-                let mut result = Some(Expr::Infix(Box::new(Infix {
+                Some(Expr::Infix(Box::new(Infix {
                     operator: Operator::Apply,
                     values: (
                         Expr::Infix(Box::new(Infix {
@@ -743,91 +741,18 @@ impl Expr {
                         })),
                         token,
                     ),
-                })))?;
-                result.optimize();
-                Some(result)
+                })))
             } else {
-                let mut result = Some(Expr::Infix(Box::new(Infix {
+                Some(Expr::Infix(Box::new(Infix {
                     operator: Operator::Apply,
                     values: (
                         Expr::parse(token_list.get(..token_list.len() - 1)?.join(" "))?,
                         token,
                     ),
-                })))?;
-                result.optimize();
-                Some(result)
+                })))
             }
         } else {
             Some(token)
-        }
-    }
-
-    fn optimize(&mut self) {
-        if let Expr::Infix(infix) = self {
-            if let Infix {
-                operator: Operator::Add,
-                values: (expr, Expr::Value(Type::Number(0.0))),
-            }
-            | Infix {
-                operator: Operator::Add,
-                values: (Expr::Value(Type::Number(0.0)), expr),
-            }
-            | Infix {
-                operator: Operator::Mul,
-                values: (expr, Expr::Value(Type::Number(1.0))),
-            }
-            | Infix {
-                operator: Operator::Mul,
-                values: (Expr::Value(Type::Number(1.0)), expr),
-            }
-            | Infix {
-                operator: Operator::Sub,
-                values: (expr, Expr::Value(Type::Number(0.0))),
-            } = *infix.clone()
-            {
-                *self = expr.clone();
-            } else if let Infix {
-                operator: Operator::Access,
-                values: (Expr::List(list), mut index),
-            } = *infix.clone()
-            {
-                index.optimize();
-                if let Expr::Value(Type::Number(index)) = index {
-                    if let Some(expr) = list.get(index as usize) {
-                        let mut expr = expr.clone();
-                        expr.optimize();
-                        *self = expr.clone()
-                    }
-                }
-            } else if let Infix {
-                operator: Operator::Add,
-                values: (Expr::Value(Type::Number(a)), Expr::Value(Type::Number(b))),
-            } = *infix.clone()
-            {
-                *self = Expr::Value(Type::Number(a + b));
-            } else if let Infix {
-                operator: Operator::Sub,
-                values: (Expr::Value(Type::Number(a)), Expr::Value(Type::Number(b))),
-            } = *infix.clone()
-            {
-                *self = Expr::Value(Type::Number(a - b));
-            } else if let Infix {
-                operator: Operator::Mul,
-                values: (Expr::Value(Type::Number(a)), Expr::Value(Type::Number(b))),
-            } = *infix.clone()
-            {
-                *self = Expr::Value(Type::Number(a * b));
-            } else if let Infix {
-                operator: Operator::Div,
-                values: (Expr::Value(Type::Number(a)), Expr::Value(Type::Number(b))),
-            } = *infix.clone()
-            {
-                *self = Expr::Value(Type::Number(a / b));
-            }
-        } else if let Expr::List(exprs) = self {
-            for expr in exprs {
-                expr.optimize();
-            }
         }
     }
 
