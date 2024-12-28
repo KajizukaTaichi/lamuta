@@ -334,78 +334,7 @@ impl Engine {
     fn eval(&mut self, program: Program) -> Option<Type> {
         let mut result = Type::Null;
         for code in program {
-            result = match code {
-                Statement::Print(expr) => {
-                    for i in expr {
-                        print!(
-                            "{}",
-                            match i.eval(self)? {
-                                Type::Text(text) => text,
-                                other => other.get_symbol(),
-                            }
-                        );
-                    }
-                    println!();
-                    io::stdout().flush().unwrap();
-                    Type::Null
-                }
-                Statement::Let(name, sig, expr) => {
-                    let val = expr.eval(self)?;
-                    if let Some(sig) = sig {
-                        if val.get_type().format() != sig.format() {
-                            return None;
-                        }
-                    }
-                    if name != "_" {
-                        self.env.insert(name, val.clone());
-                    }
-                    val
-                }
-                Statement::If(expr, then, r#else) => {
-                    if let Some(it) = expr.eval(self) {
-                        self.env.insert("it".to_string(), it);
-                        then.eval(self)?
-                    } else {
-                        if let Some(r#else) = r#else {
-                            r#else.eval(self)?
-                        } else {
-                            Type::Null
-                        }
-                    }
-                }
-                Statement::Match(expr, conds) => {
-                    let expr = expr.eval(self)?;
-                    for (conds, value) in conds {
-                        for cond in conds {
-                            let cond = cond.eval(self)?;
-                            if expr.is_match(&cond) {
-                                return value.eval(self);
-                            }
-                        }
-                    }
-                    return None;
-                }
-                Statement::For(counter, expr, code) => {
-                    let mut result = Type::Null;
-                    for i in expr.eval(self)?.get_list() {
-                        if counter != "_" {
-                            self.env.insert(counter.clone(), i);
-                        }
-                        result = code.eval(self)?;
-                    }
-                    result
-                }
-                Statement::While(expr, code) => {
-                    let mut result = Type::Null;
-                    while let Some(it) = expr.eval(self) {
-                        self.env.insert("it".to_string(), it);
-                        result = code.eval(self)?;
-                    }
-                    result
-                }
-                Statement::Fault => return None,
-                Statement::Return(expr) => expr.eval(self)?,
-            };
+            result = code.eval(self)?
         }
         Some(result)
     }
@@ -424,6 +353,81 @@ enum Statement {
 }
 
 impl Statement {
+    fn eval(&self, engine: &mut Engine) -> Option<Type> {
+        Some(match self {
+            Statement::Print(expr) => {
+                for i in expr {
+                    print!(
+                        "{}",
+                        match i.eval(engine)? {
+                            Type::Text(text) => text,
+                            other => other.get_symbol(),
+                        }
+                    );
+                }
+                println!();
+                io::stdout().flush().unwrap();
+                Type::Null
+            }
+            Statement::Let(name, sig, expr) => {
+                let val = expr.eval(engine)?;
+                if let Some(sig) = sig {
+                    if val.get_type().format() != sig.format() {
+                        return None;
+                    }
+                }
+                if name != "_" {
+                    engine.env.insert(name.to_owned(), val.clone());
+                }
+                val
+            }
+            Statement::If(expr, then, r#else) => {
+                if let Some(it) = expr.eval(engine) {
+                    engine.env.insert("it".to_string(), it);
+                    then.eval(engine)?
+                } else {
+                    if let Some(r#else) = r#else {
+                        r#else.eval(engine)?
+                    } else {
+                        Type::Null
+                    }
+                }
+            }
+            Statement::Match(expr, conds) => {
+                let expr = expr.eval(engine)?;
+                for (conds, value) in conds {
+                    for cond in conds {
+                        let cond = cond.eval(engine)?;
+                        if expr.is_match(&cond) {
+                            return value.eval(engine);
+                        }
+                    }
+                }
+                return None;
+            }
+            Statement::For(counter, expr, code) => {
+                let mut result = Type::Null;
+                for i in expr.eval(engine)?.get_list() {
+                    if counter != "_" {
+                        engine.env.insert(counter.clone(), i);
+                    }
+                    result = code.eval(engine)?;
+                }
+                result
+            }
+            Statement::While(expr, code) => {
+                let mut result = Type::Null;
+                while let Some(it) = expr.eval(engine) {
+                    engine.env.insert("it".to_string(), it);
+                    result = code.eval(engine)?;
+                }
+                result
+            }
+            Statement::Fault => return None,
+            Statement::Return(expr) => expr.eval(engine)?,
+        })
+    }
+
     fn parse(code: String) -> Option<Statement> {
         let code = code.trim().to_string();
         if code.starts_with("print") {
