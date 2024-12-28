@@ -159,7 +159,7 @@ let env = @{
             "type": "number",
             "value": (reduce λa.λb.(a ^ b) (map getNumber l))
         }
-        },
+    },
     "concat": @{
         "type": "function",
         "value": λl.@{
