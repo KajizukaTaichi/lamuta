@@ -1188,20 +1188,6 @@ enum Type {
 }
 
 impl Type {
-    fn get_number(&self) -> Option<f64> {
-        match self {
-            Type::Number(n) => Some(n.to_owned()),
-            Type::Symbol(s) | Type::Text(s) => {
-                if let Ok(n) = s.trim().parse::<f64>() {
-                    Some(n)
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        }
-    }
-
     fn get_symbol(&self) -> String {
         match self {
             Type::Symbol(s) => s.to_string(),
@@ -1231,9 +1217,25 @@ impl Type {
         }
     }
 
+    fn get_number(&self) -> Option<f64> {
+        match self {
+            Type::Number(n) => Some(n.to_owned()),
+            Type::Symbol(s) | Type::Text(s) => {
+                if let Ok(n) = s.trim().parse::<f64>() {
+                    Some(n)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+
     fn get_text(&self) -> Option<String> {
         match self {
             Type::Symbol(s) | Type::Text(s) => Some(s.to_string()),
+            Type::Number(n) => Some(n.to_string()),
+            Type::Signature(s) => Some(s.format()),
             _ => None,
         }
     }
