@@ -481,10 +481,13 @@ impl Statement {
                 let tokens = tokenize(i, SPACE.to_vec())?;
                 let pos = tokens.iter().position(|i| i == "=>")?;
                 let mut cond = vec![];
-                for i in tokenize(tokens.get(..pos)?.join(" "), vec!['|'])? {
+                for i in tokenize(tokens.get(..pos)?.join(&SPACE[0].to_string()), vec!['|'])? {
                     cond.push(Expr::parse(i.to_string())?)
                 }
-                body.push((cond, Expr::parse(tokens.get(pos + 1..)?.join(" "))?))
+                body.push((
+                    cond,
+                    Expr::parse(tokens.get(pos + 1..)?.join(&SPACE[0].to_string()))?,
+                ))
             }
             Some(Statement::Match(expr, body))
         } else if code.starts_with("for") {
@@ -726,7 +729,11 @@ impl Expr {
                 Some(Expr::Infix(Box::new(Infix {
                     operator,
                     values: (
-                        Expr::parse(token_list.get(..token_list.len() - 2)?.join(" "))?,
+                        Expr::parse(
+                            token_list
+                                .get(..token_list.len() - 2)?
+                                .join(&SPACE[0].to_string()),
+                        )?,
                         token,
                     ),
                 })))
@@ -739,7 +746,11 @@ impl Expr {
                             operator: Operator::Apply,
                             values: (
                                 Expr::parse(operator)?,
-                                Expr::parse(token_list.get(..token_list.len() - 2)?.join(" "))?,
+                                Expr::parse(
+                                    token_list
+                                        .get(..token_list.len() - 2)?
+                                        .join(&SPACE[0].to_string()),
+                                )?,
                             ),
                         })),
                         token,
@@ -749,7 +760,11 @@ impl Expr {
                 Some(Expr::Infix(Box::new(Infix {
                     operator: Operator::Apply,
                     values: (
-                        Expr::parse(token_list.get(..token_list.len() - 1)?.join(" "))?,
+                        Expr::parse(
+                            token_list
+                                .get(..token_list.len() - 1)?
+                                .join(&SPACE[0].to_string()),
+                        )?,
                         token,
                     ),
                 })))
