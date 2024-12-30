@@ -1336,16 +1336,18 @@ impl Signature {
     fn parse(token: String) -> Option<Signature> {
         Some(if token == "number" {
             Signature::Number
+        } else if token == "symbol" {
+            Signature::Symbol
         } else if token == "text" {
             Signature::Text
         } else if token == "refer" {
             Signature::Refer
         } else if token == "list" {
             Signature::List
-        } else if token == "symbol" {
-            Signature::Symbol
         } else if token == "function" {
             Signature::Function
+        } else if token == "signature" {
+            Signature::Signature
         } else if token == "struct" {
             Signature::Struct
         } else {
