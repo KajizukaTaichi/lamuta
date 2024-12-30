@@ -511,6 +511,9 @@ impl Statement {
             ))
         } else if code == "fault" {
             Some(Statement::Fault)
+        } else if code.starts_with("return") {
+            let code = code["return".len()..].to_string();
+            Some(Statement::Return(Expr::parse(code.to_string())?))
         } else {
             Some(Statement::Return(Expr::parse(code.to_string())?))
         }
