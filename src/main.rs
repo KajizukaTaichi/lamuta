@@ -299,7 +299,11 @@ impl Engine {
                                             lib_file.to_str()?
                                         ))) {
                                             engine.eval(Engine::parse(code)?);
+                                        } else {
+                                            return None;
                                         }
+                                    } else {
+                                        return None;
                                     }
                                 }
                             }
