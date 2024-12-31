@@ -1,30 +1,4 @@
 # Lamuta
 ラムダ計算の数式がそのまま書ける関数型プログラミング言語
 
-<img height=500 src="docs/repl.png" />
-
-##  機能
-
-- 関数
-  - ラムダ抽象
-  - 関数適用
-  - カリー化
-  - 部分適用
-  - パイプライン演算子
-  - 関数の演算子化
-  - 高階関数
-- ゴール指向評価
-  - 型変換
-  - 数値演算
-  - 文字列操作
-  - リスト操作
-  - 構造体
-- 制御構文
-  - **let** 変数定義
-  - **if** 条件分岐
-  - **for** ループ
-  - **while** 文
-  - **match** 文
-- インターフェース
-  - REPLの対話環境
-  - 組み込みのパッケージ管理
+<img width="778" alt="image" src="https://github.com/user-attachments/assets/ad0eaa3d-df0e-4d0f-98a2-f35acab84642" />
