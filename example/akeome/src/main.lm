@@ -14,12 +14,12 @@
 λx.x     λxxx.xxx       λx.x λx.x λx.x           λxxx.xxx          λxxx.xxx
 
 
-λx.x        λx.x        λx.x λx.x λx.x           λxxx.xxx           λx.x λx.x λx.x
- λx.x      λx.x         λx.x                    λx.x  λx.x          λx.x        λx.x
-   λx.x  λx.x           λx.x λx.x λx.x         λx.x    λx.x         λx.x        λx.x
-     λxx.xx             λx.x λx.x λx.x        λx.x λx.x λx.x        λx.x λx.x λx.x
-      λx.x              λx.x                 λx.x λxx.xx λx.x       λx.x        λx.x
-      λx.x              λx.x λx.x λx.x      λx.x          λx.x      λx.x          λx.x
+λx.x        λx.x        λx.x λx.x λx.x           λxxx.xxx           λx.x λxx.xx
+ λx.x      λx.x         λx.x                    λx.x  λx.x          λx.x     λx.x
+   λx.x  λx.x           λx.x λx.x λx.x         λx.x    λx.x         λx.x     λx.x
+     λxx.xx             λx.x λx.x λx.x        λx.x λx.x λx.x        λx.x λxxx.xxx
+      λx.x              λx.x                 λx.x λxx.xx λx.x       λx.x      λx.x
+      λx.x              λx.x λx.x λx.x      λx.x          λx.x      λx.x       λx.x
 
 
 今年も宜しくお願いします
