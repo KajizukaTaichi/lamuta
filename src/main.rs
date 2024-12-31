@@ -702,30 +702,32 @@ impl Expr {
             .checked_sub(2)
             .and_then(|idx| token_list.get(idx))
         {
-            let left = Expr::parse(
-                token_list
-                    .get(..token_list.len() - 2)?
-                    .join(&SPACE[0].to_string()),
-            )?;
+            let has_left = |token_list: Vec<String>| {
+                Some(Expr::parse(
+                    token_list
+                        .get(..token_list.len() - 2)?
+                        .join(&SPACE[0].to_string()),
+                )?)
+            };
             Some(Expr::Infix(Box::new(match operator.as_str() {
-                "+" => Operator::Add(left, token),
-                "-" => Operator::Sub(left, token),
-                "*" => Operator::Mul(left, token),
-                "/" => Operator::Div(left, token),
-                "%" => Operator::Mod(left, token),
-                "^" => Operator::Pow(left, token),
-                "==" => Operator::Equal(left, token),
-                "!=" => Operator::NotEq(left, token),
-                "<" => Operator::LessThan(left, token),
-                "<=" => Operator::LessThanEq(left, token),
-                ">" => Operator::GreaterThan(left, token),
-                ">=" => Operator::GreaterThanEq(left, token),
-                "&" => Operator::And(left, token),
-                "|" => Operator::Or(left, token),
-                "::" => Operator::Access(left, token),
-                "as" => Operator::As(left, token),
-                ":=" => Operator::Assign(left, token),
-                "|>" => Operator::PipeLine(left, token),
+                "+" => Operator::Add(has_left(token_list)?, token),
+                "-" => Operator::Sub(has_left(token_list)?, token),
+                "*" => Operator::Mul(has_left(token_list)?, token),
+                "/" => Operator::Div(has_left(token_list)?, token),
+                "%" => Operator::Mod(has_left(token_list)?, token),
+                "^" => Operator::Pow(has_left(token_list)?, token),
+                "==" => Operator::Equal(has_left(token_list)?, token),
+                "!=" => Operator::NotEq(has_left(token_list)?, token),
+                "<" => Operator::LessThan(has_left(token_list)?, token),
+                "<=" => Operator::LessThanEq(has_left(token_list)?, token),
+                ">" => Operator::GreaterThan(has_left(token_list)?, token),
+                ">=" => Operator::GreaterThanEq(has_left(token_list)?, token),
+                "&" => Operator::And(has_left(token_list)?, token),
+                "|" => Operator::Or(has_left(token_list)?, token),
+                "::" => Operator::Access(has_left(token_list)?, token),
+                "as" => Operator::As(has_left(token_list)?, token),
+                ":=" => Operator::Assign(has_left(token_list)?, token),
+                "|>" => Operator::PipeLine(has_left(token_list)?, token),
                 operator => {
                     if operator.starts_with("`") && operator.ends_with("`") {
                         let operator = operator[1..operator.len() - 1].to_string();
