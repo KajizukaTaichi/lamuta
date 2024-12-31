@@ -4,7 +4,9 @@ use std::{
     collections::HashMap,
     env::{current_dir, set_current_dir},
     fs::{create_dir_all, read_dir, read_to_string, File},
+    intrinsics::mir::Static,
     io::{self, Write},
+    ops::Add,
     path::Path,
     process::exit,
 };
@@ -745,7 +747,7 @@ impl Expr {
                 Some(Expr::Infix(Box::new(Infix {
                     operator: Operator::Apply,
                     values: (
-                        Expr::Infix(Box::new(Infix {
+                        Expr::Infix(Box::new(Operator {
                             operator: Operator::Apply,
                             values: (
                                 Expr::parse(operator)?,
@@ -820,12 +822,64 @@ impl Expr {
                     .map(|(k, x)| (k.replace(from, to), x.replace(from, to)))
                     .collect::<Vec<(Expr, Expr)>>(),
             ),
-            Expr::Infix(infix) => Expr::Infix(Box::new(Infix {
-                operator: infix.operator.clone(),
-                values: (
-                    infix.values.0.replace(from, to),
-                    infix.values.1.replace(from, to),
-                ),
+            Expr::Infix(infix) => Expr::Infix(Box::new(match *infix.clone() {
+                Operator::Add(left, right) => {
+                    Operator::Add(left.replace(from, to), right.replace(from, to))
+                }
+                Operator::Sub(left, right) => {
+                    Operator::Sub(left.replace(from, to), right.replace(from, to))
+                }
+                Operator::Mul(left, right) => {
+                    Operator::Mul(left.replace(from, to), right.replace(from, to))
+                }
+                Operator::Div(left, right) => {
+                    Operator::Div(left.replace(from, to), right.replace(from, to))
+                }
+                Operator::Mod(left, right) => {
+                    Operator::Mod(left.replace(from, to), right.replace(from, to))
+                }
+                Operator::Pow(left, right) => {
+                    Operator::Pow(left.replace(from, to), right.replace(from, to))
+                }
+                Operator::Equal(left, right) => {
+                    Operator::Equal(left.replace(from, to), right.replace(from, to))
+                }
+                Operator::NotEq(left, right) => {
+                    Operator::NotEq(left.replace(from, to), right.replace(from, to))
+                }
+                Operator::LessThan(left, right) => {
+                    Operator::LessThan(left.replace(from, to), right.replace(from, to))
+                }
+                Operator::LessThanEq(left, right) => {
+                    Operator::LessThanEq(left.replace(from, to), right.replace(from, to))
+                }
+                Operator::GreaterThan(left, right) => {
+                    Operator::GreaterThan(left.replace(from, to), right.replace(from, to))
+                }
+                Operator::GreaterThanEq(left, right) => {
+                    Operator::GreaterThanEq(left.replace(from, to), right.replace(from, to))
+                }
+                Operator::And(left, right) => {
+                    Operator::And(left.replace(from, to), right.replace(from, to))
+                }
+                Operator::Or(left, right) => {
+                    Operator::Or(left.replace(from, to), right.replace(from, to))
+                }
+                Operator::Access(left, right) => {
+                    Operator::Access(left.replace(from, to), right.replace(from, to))
+                }
+                Operator::As(left, right) => {
+                    Operator::As(left.replace(from, to), right.replace(from, to))
+                }
+                Operator::Apply(left, right) => {
+                    Operator::Apply(left.replace(from, to), right.replace(from, to))
+                }
+                Operator::Assign(left, right) => {
+                    Operator::Assign(left.replace(from, to), right.replace(from, to))
+                }
+                Operator::PipeLine(left, right) => {
+                    Operator::PipeLine(left.replace(from, to), right.replace(from, to))
+                }
             })),
             Expr::Block(block) => Expr::Block(
                 block
@@ -1035,9 +1089,11 @@ impl Operator {
                 }
             }
             Operator::Access(left, right) => {
+                let left = left.eval(engine)?;
+                let right = right.eval(engine)?;
                 if let (Type::List(list), Type::Number(index)) = (left.clone(), right.clone()) {
                     list.get(index as usize)?.clone()
-                } else if let (Some(Type::Text(text)), Some(Type::Number(index))) =
+                } else if let (Type::Text(text), Type::Number(index)) =
                     (left.clone(), right.clone())
                 {
                     Type::Text(
@@ -1046,115 +1102,74 @@ impl Operator {
                             .get(index as usize)?
                             .to_string(),
                     )
-                } else if let (Some(Type::Struct(st)), Some(Type::Text(index))) =
-                    (left.clone(), right.clone())
+                } else if let (Type::Struct(st), Type::Text(index)) = (left.clone(), right.clone())
                 {
                     st.get(&index)?.clone()
                 } else {
                     return None;
                 }
             }
-            Operator::As => match right?.get_signature()? {
-                Signature::Number => Type::Number(left?.get_number()?),
-                Signature::Symbol => Type::Symbol(left?.get_symbol()),
-                Signature::Text => Type::Text(left?.get_text()?),
-                Signature::List => Type::List(left?.get_list()),
-                Signature::Function => Type::Function(left?.get_function()?),
-                Signature::Refer => Type::Refer(left?.get_symbol()),
-                Signature::Struct => Type::Struct(left?.get_struct()?),
-                Signature::Signature => Type::Signature(Signature::parse(left?.get_symbol())?),
-            },
-            Operator::Apply => match left?.get_function()? {
-                Function::BuiltIn(func) => func(right?, engine)?,
-                Function::UserDefined(parameter, code) => {
-                    let code =
-                        code.replace(&Expr::Value(Type::Symbol(parameter)), &Expr::Value(right?));
-                    code.eval(&mut engine.clone())?
+            Operator::As(left, right) => {
+                let left = left.eval(engine)?;
+                let right = right.eval(engine)?;
+                match right.get_signature()? {
+                    Signature::Number => Type::Number(left.get_number()?),
+                    Signature::Symbol => Type::Symbol(left.get_symbol()),
+                    Signature::Text => Type::Text(left.get_text()?),
+                    Signature::List => Type::List(left.get_list()),
+                    Signature::Function => Type::Function(left.get_function()?),
+                    Signature::Refer => Type::Refer(left.get_symbol()),
+                    Signature::Struct => Type::Struct(left.get_struct()?),
+                    Signature::Signature => Type::Signature(Signature::parse(left.get_symbol())?),
                 }
-            },
-            Operator::Assign => {
-                let name = left?.get_text()?;
-                let val = right?;
-                if name != "_" {
-                    engine.env.insert(name, val.clone());
-                }
-                val
             }
-            Operator::PipeLine => match right?.get_function()? {
-                Function::BuiltIn(func) => func(left?, engine)?,
-                Function::UserDefined(parameter, code) => {
-                    let code =
-                        code.replace(&Expr::Value(Type::Symbol(parameter)), &Expr::Value(left?));
-                    code.eval(&mut engine.clone())?
+            Operator::Apply(left, right) => {
+                let left = left.eval(engine)?;
+                let right = right.eval(engine)?;
+                match left.get_function()? {
+                    Function::BuiltIn(func) => func(right, engine)?,
+                    Function::UserDefined(parameter, code) => {
+                        let code = code
+                            .replace(&Expr::Value(Type::Symbol(parameter)), &Expr::Value(right));
+                        code.eval(&mut engine.clone())?
+                    }
                 }
-            },
+            }
+            Operator::Assign(left, right) => {
+                let name = left.eval(engine)?.get_text()?;
+                Statement::Let(name, None, right.to_owned()).eval(engine)?
+            }
+            Operator::PipeLine(left, right) => {
+                Operator::Apply(right.to_owned(), left.to_owned()).eval(engine)?
+            }
         })
     }
 
     fn format(&self) -> String {
-        let is_operator = |op| {
-            Some(
-                match op {
-                    Operator::Add => "+",
-                    Operator::Sub => "-",
-                    Operator::Mul => "*",
-                    Operator::Div => "/",
-                    Operator::Mod => "%",
-                    Operator::Pow => "^",
-                    Operator::Equal => "==",
-                    Operator::NotEq => "!=",
-                    Operator::LessThan => "<",
-                    Operator::LessThanEq => "<=",
-                    Operator::GreaterThan => ">",
-                    Operator::GreaterThanEq => ">=",
-                    Operator::And => "&",
-                    Operator::Or => "|",
-                    Operator::Access => "::",
-                    Operator::As => "as",
-                    Operator::Assign => ":=",
-                    Operator::PipeLine => "|>",
-                    Operator::Apply => return None,
-                }
-                .to_string(),
-            )
-        };
-        if let Some(op) = is_operator(self.operator.clone()) {
-            if let Expr::Infix(infix) = self.values.1.clone() {
-                format!("{} {op} ({})", self.values.0.format(), infix.format())
-            } else {
-                format!(
-                    "{} {op} {}",
-                    if let Expr::Infix(infix) = self.values.0.clone() {
-                        infix.format()
-                    } else {
-                        self.values.0.format()
-                    },
-                    if let Expr::Infix(infix) = self.values.1.clone() {
-                        infix.format()
-                    } else {
-                        self.values.1.format()
-                    },
-                )
+        match self {
+            Operator::Add(left, right) => format!("{} + {}", left.format(), right.format()),
+            Operator::Sub(left, right) => format!("{} - {}", left.format(), right.format()),
+            Operator::Mul(left, right) => format!("{} * {}", left.format(), right.format()),
+            Operator::Div(left, right) => format!("{} / {}", left.format(), right.format()),
+            Operator::Mod(left, right) => format!("{} % {}", left.format(), right.format()),
+            Operator::Pow(left, right) => format!("{} ^ {}", left.format(), right.format()),
+            Operator::Equal(left, right) => format!("{} == {}", left.format(), right.format()),
+            Operator::NotEq(left, right) => format!("{} != {}", left.format(), right.format()),
+            Operator::LessThan(left, right) => format!("{} < {}", left.format(), right.format()),
+            Operator::LessThanEq(left, right) => format!("{} <= {}", left.format(), right.format()),
+            Operator::GreaterThan(left, right) => format!("{} > {}", left.format(), right.format()),
+            Operator::GreaterThanEq(left, right) => {
+                format!("{} >= {}", left.format(), right.format())
             }
-        } else {
-            if let Expr::Infix(infix) = self.values.1.clone() {
-                format!("{} ({})", self.values.0.format(), infix.format())
-            } else {
-                format!(
-                    "{} {}",
-                    if let Expr::Infix(infix) = self.values.0.clone() {
-                        infix.format()
-                    } else {
-                        self.values.0.format()
-                    },
-                    if let Expr::Infix(infix) = self.values.1.clone() {
-                        infix.format()
-                    } else {
-                        self.values.1.format()
-                    },
-                )
-            }
+            Operator::And(left, right) => format!("{} & {}", left.format(), right.format()),
+            Operator::Or(left, right) => format!("{} | {}", left.format(), right.format()),
+            Operator::Access(left, right) => format!("{} :: {}", left.format(), right.format()),
+            Operator::As(left, right) => format!("{} as {}", left.format(), right.format()),
+            Operator::Assign(left, right) => format!("{} := {}", left.format(), right.format()),
+            Operator::PipeLine(left, right) => format!("{} |> {}", left.format(), right.format()),
+            Operator::Apply(left, right) => format!("{} {}", left.format(), right.format()),
         }
+        .to_string()
     }
 }
 
