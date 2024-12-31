@@ -306,6 +306,8 @@ impl Engine {
                                         return None;
                                     }
                                 }
+                            } else {
+                                return None;
                             }
                             if let Ok(code) =
                                 read_to_string(Path::new(&format!("{project_path}/src/main.lm")))
