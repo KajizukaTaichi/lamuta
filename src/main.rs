@@ -679,11 +679,20 @@ impl Expr {
         } else if token.starts_with("fn(") && token.contains("->") && token.ends_with(")") {
             let token = token.replacen("fn(", "", 1);
             let token = token.get(..token.len() - 1)?.to_string();
-            let (arg, body) = token.split_once("->")?;
-            Expr::Value(Type::Function(Function::UserDefined(
-                arg.trim().to_string(),
+            let (args, body) = token.split_once("->")?;
+            let mut args: Vec<&str> = args.split(",").collect();
+            args.reverse();
+            let mut func = Expr::Value(Type::Function(Function::UserDefined(
+                args.first()?.trim().to_string(),
                 Box::new(Expr::parse(body.to_string())?),
-            )))
+            )));
+            for arg in args.get(1..)? {
+                func = Expr::Value(Type::Function(Function::UserDefined(
+                    arg.trim().to_string(),
+                    Box::new(func),
+                )));
+            }
+            func
         } else if token.contains('(') && token.ends_with(')') {
             let token = token.get(..token.len() - 1)?.to_string();
             let (name, arg) = token.split_once("(")?;
