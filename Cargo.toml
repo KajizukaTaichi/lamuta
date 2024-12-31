@@ -1,6 +1,6 @@
 [package]
 name = "lamuta"
-version = "0.3.1"
+version = "0.3.2"
 edition = "2021"
 authors = ["梶塚太智 <kajizukataichi@outlook.jp>"]
 license = "MIT"
