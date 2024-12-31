@@ -1,1 +1,5 @@
-@{ "depend": ["https://kajizukataichi.github.io/lamuta/lib/std.lm"], "name": "example/akeome" }
+@{
+    "name": "akeome",
+    "about": "年賀状2025",
+    "depend": []
+}
