@@ -945,13 +945,14 @@ impl Operator {
                     return None;
                 }
             }
-            Operator::Mul => {
-                if let (Some(Type::Number(left)), Some(Type::Number(right))) = (&left, &right) {
+            Operator::Mul(left, right) => {
+                let left = left.eval(engine)?;
+                let right = right.eval(engine)?;
+                if let (Type::Number(left), Type::Number(right)) = (&left, &right) {
                     Type::Number(left * right)
-                } else if let (Some(Type::Text(left)), Some(Type::Number(right))) = (&left, &right)
-                {
+                } else if let (Type::Text(left), Type::Number(right)) = (&left, &right) {
                     Type::Text(left.repeat(*right as usize))
-                } else if let (Some(Type::List(left)), Some(Type::Number(right))) = (left, right) {
+                } else if let (Type::List(left), Type::Number(right)) = (left, right) {
                     Type::List((0..right as usize).flat_map(|_| left.clone()).collect())
                 } else {
                     return None;
@@ -994,44 +995,47 @@ impl Operator {
             }
             Operator::LessThanEq(left, right) => {
                 let right = right.eval(engine)?;
-                if left.eval(engine)?.get_number() <= right.clone()?.get_number() {
+                if left.eval(engine)?.get_number() <= right.get_number() {
+                    right
+                } else {
+                    return None;
+                }
+            }
+            Operator::GreaterThan(left, right) => {
+                let right = right.eval(engine)?;
+                if left.eval(engine)?.get_number() > right.get_number() {
+                    right
+                } else {
+                    return None;
+                }
+            }
+            Operator::GreaterThanEq(left, right) => {
+                let right = right.eval(engine)?;
+                if left.eval(engine)?.get_number() >= right.get_number() {
+                    right
+                } else {
+                    return None;
+                }
+            }
+            Operator::And(left, right) => {
+                let right = right.eval(engine);
+                if left.eval(engine).is_some() && right.is_some() {
                     right?
                 } else {
                     return None;
                 }
             }
-            Operator::GreaterThan => {
-                if left?.get_number() > right.clone()?.get_number() {
-                    right?
-                } else {
-                    return None;
-                }
-            }
-            Operator::GreaterThanEq => {
-                if left?.get_number() >= right.clone()?.get_number() {
-                    right?
-                } else {
-                    return None;
-                }
-            }
-            Operator::And => {
-                if left.is_some() && right.is_some() {
-                    right?
-                } else {
-                    return None;
-                }
-            }
-            Operator::Or => {
+            Operator::Or(left, right) => {
+                let left = left.eval(engine);
+                let right = right.eval(engine);
                 if left.is_some() || right.is_some() {
                     right.unwrap_or(left?)
                 } else {
                     return None;
                 }
             }
-            Operator::Access => {
-                if let (Some(Type::List(list)), Some(Type::Number(index))) =
-                    (left.clone(), right.clone())
-                {
+            Operator::Access(left, right) => {
+                if let (Type::List(list), Type::Number(index)) = (left.clone(), right.clone()) {
                     list.get(index as usize)?.clone()
                 } else if let (Some(Type::Text(text)), Some(Type::Number(index))) =
                     (left.clone(), right.clone())
