@@ -4,9 +4,7 @@ use std::{
     collections::HashMap,
     env::{current_dir, set_current_dir},
     fs::{create_dir_all, read_dir, read_to_string, File},
-    intrinsics::mir::Static,
     io::{self, Write},
-    ops::Add,
     path::Path,
     process::exit,
 };
@@ -683,13 +681,10 @@ impl Expr {
         } else if token.contains('(') && token.ends_with(')') {
             let token = token.get(..token.len() - 1)?.to_string();
             let (name, arg) = token.split_once("(")?;
-            Expr::Infix(Box::new(Infix {
-                operator: Operator::Apply,
-                values: (
-                    Expr::parse(name.to_string())?,
-                    Expr::parse(arg.to_string())?,
-                ),
-            }))
+            Expr::Infix(Box::new(Operator::Apply(
+                Expr::parse(name.to_string())?,
+                Expr::parse(arg.to_string())?,
+            )))
         } else if token.starts_with("&") {
             let token = token.replacen("&", "", 1);
             Expr::Value(Type::Refer(token))
@@ -707,73 +702,56 @@ impl Expr {
             .checked_sub(2)
             .and_then(|idx| token_list.get(idx))
         {
-            let is_operator: fn(String) -> Option<Operator> = |operator| {
-                Some(match operator.as_str() {
-                    "+" => Operator::Add,
-                    "-" => Operator::Sub,
-                    "*" => Operator::Mul,
-                    "/" => Operator::Div,
-                    "%" => Operator::Mod,
-                    "^" => Operator::Pow,
-                    "==" => Operator::Equal,
-                    "!=" => Operator::NotEq,
-                    "<" => Operator(Expr, Expr),
-                    "<=" => Operator::LessThanEq,
-                    ">" => Operator(Expr, Expr),
-                    ">=" => Operator::GreaterThanEq,
-                    "&" => Operator::And,
-                    "|" => Operator::Or,
-                    "::" => Operator::Access,
-                    "as" => Operator::As,
-                    ":=" => Operator::Assign,
-                    "|>" => Operator::PipeLine,
-                    _ => return None,
-                })
-            };
-            if let Some(operator) = is_operator(operator.to_string()) {
-                Some(Expr::Infix(Box::new(Infix {
-                    operator,
-                    values: (
-                        Expr::parse(
-                            token_list
-                                .get(..token_list.len() - 2)?
-                                .join(&SPACE[0].to_string()),
-                        )?,
-                        token,
-                    ),
-                })))
-            } else if operator.starts_with("`") && operator.ends_with("`") {
-                let operator = operator[1..operator.len() - 1].to_string();
-                Some(Expr::Infix(Box::new(Infix {
-                    operator: Operator::Apply,
-                    values: (
-                        Expr::Infix(Box::new(Operator {
-                            operator: Operator::Apply,
-                            values: (
+            let left = Expr::parse(
+                token_list
+                    .get(..token_list.len() - 2)?
+                    .join(&SPACE[0].to_string()),
+            )?;
+            Some(Expr::Infix(Box::new(match operator.as_str() {
+                "+" => Operator::Add(left, token),
+                "-" => Operator::Sub(left, token),
+                "*" => Operator::Mul(left, token),
+                "/" => Operator::Div(left, token),
+                "%" => Operator::Mod(left, token),
+                "^" => Operator::Pow(left, token),
+                "==" => Operator::Equal(left, token),
+                "!=" => Operator::NotEq(left, token),
+                "<" => Operator::LessThan(left, token),
+                "<=" => Operator::LessThanEq(left, token),
+                ">" => Operator::GreaterThan(left, token),
+                ">=" => Operator::GreaterThanEq(left, token),
+                "&" => Operator::And(left, token),
+                "|" => Operator::Or(left, token),
+                "::" => Operator::Access(left, token),
+                "as" => Operator::As(left, token),
+                ":=" => Operator::Assign(left, token),
+                "|>" => Operator::PipeLine(left, token),
+                operator => {
+                    if operator.starts_with("`") && operator.ends_with("`") {
+                        let operator = operator[1..operator.len() - 1].to_string();
+                        Operator::Apply(
+                            Expr::Infix(Box::new(Operator::Apply(
                                 Expr::parse(operator)?,
                                 Expr::parse(
                                     token_list
                                         .get(..token_list.len() - 2)?
                                         .join(&SPACE[0].to_string()),
                                 )?,
-                            ),
-                        })),
-                        token,
-                    ),
-                })))
-            } else {
-                Some(Expr::Infix(Box::new(Infix {
-                    operator: Operator::Apply,
-                    values: (
-                        Expr::parse(
-                            token_list
-                                .get(..token_list.len() - 1)?
-                                .join(&SPACE[0].to_string()),
-                        )?,
-                        token,
-                    ),
-                })))
-            }
+                            ))),
+                            token,
+                        )
+                    } else {
+                        Operator::Apply(
+                            Expr::parse(
+                                token_list
+                                    .get(..token_list.len() - 1)?
+                                    .join(&SPACE[0].to_string()),
+                            )?,
+                            token,
+                        )
+                    }
+                }
+            })))
         } else {
             Some(token)
         }
