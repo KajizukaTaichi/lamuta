@@ -6,12 +6,12 @@
 λx.x      λx.x      λx.x          λx.x      λx.x            λx.x                    λx.x
 
 
-λxxx.xxx     λx.x       λx.x λx.x λx.x      λx.x         λxx.xx          λx.x
-λx.x λx.x    λx.x       λx.x                 λx.x       λx.x λx.x       λx.x
-λx.x  λx.x   λx.x       λx.x λx.x λx.x        λx.x     λx.x   λx.x     λx.x
-λx.x   λx.x  λx.x       λx.x λx.x λx.x         λx.x   λx.x     λx.x   λx.x
-λx.x    λx.x λx.x       λx.x                    λx.x λx.x       λx.x λx.x
-λx.x     λxxx.xxx       λx.x λx.x λx.x           λxx.xx          λxx.xx
+λxxx.xxx     λx.x       λx.x λx.x λx.x      λx.x          λxxx.xxx          λx.x
+λx.x λx.x    λx.x       λx.x                 λx.x        λx.x  λx.x        λx.x
+λx.x  λx.x   λx.x       λx.x λx.x λx.x        λx.x      λx.x    λx.x      λx.x
+λx.x   λx.x  λx.x       λx.x λx.x λx.x         λx.x    λx.x      λx.x    λx.x
+λx.x    λx.x λx.x       λx.x                    λx.x  λx.x        λx.x  λx.x
+λx.x     λxxx.xxx       λx.x λx.x λx.x           λxxx.xxx          λxxx.xxx
 
 
 λx.x        λx.x        λx.x λx.x λx.x           λxxx.xxx           λx.x λx.x λx.x
