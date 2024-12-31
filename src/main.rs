@@ -9,7 +9,7 @@ use std::{
     process::exit,
 };
 
-const VERSION: &str = "0.3.1";
+const VERSION: &str = "0.3.2";
 const SPACE: [char; 5] = [' ', '　', '\n', '\t', '\r'];
 
 fn main() {
