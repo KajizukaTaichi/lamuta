@@ -724,6 +724,7 @@ impl Expr {
                 ">=" => Operator::GreaterThanEq(has_left(token_list)?, token),
                 "&" => Operator::And(has_left(token_list)?, token),
                 "|" => Operator::Or(has_left(token_list)?, token),
+                "!" => Operator::Not(token),
                 "::" => Operator::Access(has_left(token_list)?, token),
                 "as" => Operator::As(has_left(token_list)?, token),
                 ":=" => Operator::Assign(has_left(token_list)?, token),
@@ -845,6 +846,7 @@ impl Expr {
                 Operator::Or(left, right) => {
                     Operator::Or(left.replace(from, to), right.replace(from, to))
                 }
+                Operator::Not(val) => Operator::Not(val.replace(from, to)),
                 Operator::Access(left, right) => {
                     Operator::Access(left.replace(from, to), right.replace(from, to))
                 }
@@ -949,6 +951,7 @@ enum Operator {
     GreaterThanEq(Expr, Expr),
     And(Expr, Expr),
     Or(Expr, Expr),
+    Not(Expr),
     Access(Expr, Expr),
     As(Expr, Expr),
     Apply(Expr, Expr),
@@ -1091,6 +1094,14 @@ impl Operator {
                     return None;
                 }
             }
+            Operator::Not(val) => {
+                let val = val.eval(engine);
+                if val.is_some() {
+                    return None;
+                } else {
+                    Type::Null
+                }
+            }
             Operator::Access(left, right) => {
                 let left = left.eval(engine)?;
                 let right = right.eval(engine)?;
@@ -1166,6 +1177,7 @@ impl Operator {
             }
             Operator::And(left, right) => format!("{} & {}", left.format(), right.format()),
             Operator::Or(left, right) => format!("{} | {}", left.format(), right.format()),
+            Operator::Not(val) => format!("! {}", val.format()),
             Operator::Access(left, right) => format!("{} :: {}", left.format(), right.format()),
             Operator::As(left, right) => format!("{} as {}", left.format(), right.format()),
             Operator::Assign(left, right) => format!("{} := {}", left.format(), right.format()),
