@@ -933,6 +933,29 @@ enum Function {
     UserDefined(String, Box<Expr>),
 }
 
+#[derive(Debug, Clone)]
+enum Operator {
+    Add(Expr, Expr),
+    Sub(Expr, Expr),
+    Mul(Expr, Expr),
+    Div(Expr, Expr),
+    Mod(Expr, Expr),
+    Pow(Expr, Expr),
+    Equal(Expr, Expr),
+    NotEq(Expr, Expr),
+    LessThan(Expr, Expr),
+    LessThanEq(Expr, Expr),
+    GreaterThan(Expr, Expr),
+    GreaterThanEq(Expr, Expr),
+    And(Expr, Expr),
+    Or(Expr, Expr),
+    Access(Expr, Expr),
+    As(Expr, Expr),
+    Apply(Expr, Expr),
+    Assign(Expr, Expr),
+    PipeLine(Expr, Expr),
+}
+
 impl Operator {
     fn eval(&self, engine: &mut Engine) -> Option<Type> {
         Some(match self {
@@ -1151,29 +1174,6 @@ impl Operator {
         }
         .to_string()
     }
-}
-
-#[derive(Debug, Clone)]
-enum Operator {
-    Add(Expr, Expr),
-    Sub(Expr, Expr),
-    Mul(Expr, Expr),
-    Div(Expr, Expr),
-    Mod(Expr, Expr),
-    Pow(Expr, Expr),
-    Equal(Expr, Expr),
-    NotEq(Expr, Expr),
-    LessThan(Expr, Expr),
-    LessThanEq(Expr, Expr),
-    GreaterThan(Expr, Expr),
-    GreaterThanEq(Expr, Expr),
-    And(Expr, Expr),
-    Or(Expr, Expr),
-    Access(Expr, Expr),
-    As(Expr, Expr),
-    Apply(Expr, Expr),
-    Assign(Expr, Expr),
-    PipeLine(Expr, Expr),
 }
 
 #[derive(Debug, Clone)]
