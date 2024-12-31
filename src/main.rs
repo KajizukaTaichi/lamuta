@@ -580,7 +580,7 @@ impl Statement {
 #[derive(Debug, Clone)]
 enum Expr {
     Derefer(Box<Expr>),
-    Infix(Box<Infix>),
+    Infix(Box<Operator>),
     List(Vec<Expr>),
     Struct(Vec<(Expr, Expr)>),
     Block(Program),
@@ -715,9 +715,9 @@ impl Expr {
                     "^" => Operator::Pow,
                     "==" => Operator::Equal,
                     "!=" => Operator::NotEq,
-                    "<" => Operator::LessThan,
+                    "<" => Operator(Expr, Expr),
                     "<=" => Operator::LessThanEq,
-                    ">" => Operator::GreaterThan,
+                    ">" => Operator(Expr, Expr),
                     ">=" => Operator::GreaterThanEq,
                     "&" => Operator::And,
                     "|" => Operator::Or,
@@ -899,27 +899,19 @@ enum Function {
     UserDefined(String, Box<Expr>),
 }
 
-#[derive(Debug, Clone)]
-struct Infix {
-    operator: Operator,
-    values: (Expr, Expr),
-}
-
-impl Infix {
+impl Operator {
     fn eval(&self, engine: &mut Engine) -> Option<Type> {
-        let left = self.values.0.eval(engine);
-        let right = self.values.1.eval(engine);
-
-        Some(match self.operator {
-            Operator::Add => {
-                if let (Some(Type::Number(left)), Some(Type::Number(right))) = (&left, &right) {
+        Some(match self {
+            Operator::Add(left, right) => {
+                let left = left.eval(engine)?;
+                let right = right.eval(engine)?;
+                if let (Type::Number(left), Type::Number(right)) = (&left, &right) {
                     Type::Number(left + right)
-                } else if let (Some(Type::Text(left)), Some(Type::Text(right))) = (&left, &right) {
+                } else if let (Type::Text(left), Type::Text(right)) = (&left, &right) {
                     Type::Text(left.clone() + &right)
-                } else if let (Some(Type::List(left)), Some(Type::List(right))) = (&left, &right) {
+                } else if let (Type::List(left), Type::List(right)) = (&left, &right) {
                     Type::List([left.clone(), right.clone()].concat())
-                } else if let (Some(Type::Struct(mut left)), Some(Type::Struct(right))) =
-                    (left.clone(), &right)
+                } else if let (Type::Struct(mut left), Type::Struct(right)) = (left.clone(), &right)
                 {
                     left.extend(right.clone());
                     Type::Struct(left)
@@ -927,14 +919,14 @@ impl Infix {
                     return None;
                 }
             }
-            Operator::Sub => {
-                if let (Some(Type::Number(left)), Some(Type::Number(right))) = (&left, &right) {
+            Operator::Sub(left, right) => {
+                let left = left.eval(engine)?;
+                let right = right.eval(engine)?;
+                if let (Type::Number(left), Type::Number(right)) = (&left, &right) {
                     Type::Number(left - right)
-                } else if let (Some(Type::Text(left)), Some(Type::Text(right))) = (&left, &right) {
+                } else if let (Type::Text(left), Type::Text(right)) = (&left, &right) {
                     Type::Text(left.replacen(right, "", 1))
-                } else if let (Some(Type::List(mut left)), Some(Type::List(right))) =
-                    (left.clone(), &right)
-                {
+                } else if let (Type::List(mut left), Type::List(right)) = (left.clone(), &right) {
                     let first_index = left.windows(right.len()).position(|i| {
                         i.iter().map(|j| j.get_symbol()).collect::<Vec<_>>()
                             == right.iter().map(|j| j.get_symbol()).collect::<Vec<_>>()
@@ -943,14 +935,10 @@ impl Infix {
                         left.remove(first_index);
                     }
                     Type::List(left)
-                } else if let (Some(Type::List(mut left)), Some(Type::Number(right))) =
-                    (left.clone(), &right)
-                {
+                } else if let (Type::List(mut left), Type::Number(right)) = (left.clone(), &right) {
                     left.remove(right.clone() as usize);
                     Type::List(left)
-                } else if let (Some(Type::Text(mut left)), Some(Type::Number(right))) =
-                    (left, right)
-                {
+                } else if let (Type::Text(mut left), Type::Number(right)) = (left, right) {
                     left.remove(right as usize);
                     Type::Text(left)
                 } else {
@@ -969,32 +957,44 @@ impl Infix {
                     return None;
                 }
             }
-            Operator::Div => Type::Number(left?.get_number()? / right?.get_number()?),
-            Operator::Mod => Type::Number(left?.get_number()? % right?.get_number()?),
-            Operator::Pow => Type::Number(left?.get_number()?.powf(right?.get_number()?)),
-            Operator::Equal => {
-                if left?.get_symbol() == right.clone()?.get_symbol() {
-                    right?
+            Operator::Div(left, right) => {
+                Type::Number(left.eval(engine)?.get_number()? / right.eval(engine)?.get_number()?)
+            }
+            Operator::Mod(left, right) => {
+                Type::Number(left.eval(engine)?.get_number()? % right.eval(engine)?.get_number()?)
+            }
+            Operator::Pow(left, right) => Type::Number(
+                left.eval(engine)?
+                    .get_number()?
+                    .powf(right.eval(engine)?.get_number()?),
+            ),
+            Operator::Equal(left, right) => {
+                let right = right.eval(engine)?;
+                if left.eval(engine)?.get_symbol() == right.get_symbol() {
+                    right
                 } else {
                     return None;
                 }
             }
-            Operator::NotEq => {
-                if left?.get_symbol() != right.clone()?.get_symbol() {
-                    right?
+            Operator::NotEq(left, right) => {
+                let right = right.eval(engine)?;
+                if left.eval(engine)?.get_symbol() != right.get_symbol() {
+                    right
                 } else {
                     return None;
                 }
             }
-            Operator::LessThan => {
-                if left.clone()?.get_number() < right.clone()?.get_number() {
-                    right?
+            Operator::LessThan(left, right) => {
+                let right = right.eval(engine)?;
+                if left.eval(engine)?.get_number() < right.get_number() {
+                    right
                 } else {
                     return None;
                 }
             }
-            Operator::LessThanEq => {
-                if left?.get_number() <= right.clone()?.get_number() {
+            Operator::LessThanEq(left, right) => {
+                let right = right.eval(engine)?;
+                if left.eval(engine)?.get_number() <= right.clone()?.get_number() {
                     right?
                 } else {
                     return None;
@@ -1156,25 +1156,25 @@ impl Infix {
 
 #[derive(Debug, Clone)]
 enum Operator {
-    Add,
-    Sub,
-    Mul,
-    Div,
-    Mod,
-    Pow,
-    Equal,
-    NotEq,
-    LessThan,
-    LessThanEq,
-    GreaterThan,
-    GreaterThanEq,
-    And,
-    Or,
-    Access,
-    As,
-    Apply,
-    Assign,
-    PipeLine,
+    Add(Expr, Expr),
+    Sub(Expr, Expr),
+    Mul(Expr, Expr),
+    Div(Expr, Expr),
+    Mod(Expr, Expr),
+    Pow(Expr, Expr),
+    Equal(Expr, Expr),
+    NotEq(Expr, Expr),
+    LessThan(Expr, Expr),
+    LessThanEq(Expr, Expr),
+    GreaterThan(Expr, Expr),
+    GreaterThanEq(Expr, Expr),
+    And(Expr, Expr),
+    Or(Expr, Expr),
+    Access(Expr, Expr),
+    As(Expr, Expr),
+    Apply(Expr, Expr),
+    Assign(Expr, Expr),
+    PipeLine(Expr, Expr),
 }
 
 #[derive(Debug, Clone)]
