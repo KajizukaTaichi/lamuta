@@ -695,11 +695,19 @@ impl Expr {
             func
         } else if token.contains('(') && token.ends_with(')') {
             let token = token.get(..token.len() - 1)?.to_string();
-            let (name, arg) = token.split_once("(")?;
-            Expr::Infix(Box::new(Operator::Apply(
+            let (name, args) = token.split_once("(")?;
+            let args = tokenize(args.to_string(), vec![','])?;
+            let mut call = Expr::Infix(Box::new(Operator::Apply(
                 Expr::parse(name.to_string())?,
-                Expr::parse(arg.to_string())?,
-            )))
+                Expr::parse(args.first()?.to_string())?,
+            )));
+            for arg in args.get(1..)? {
+                call = Expr::Infix(Box::new(Operator::Apply(
+                    call,
+                    Expr::parse(arg.to_string())?,
+                )));
+            }
+            call
         } else if token.starts_with("&") {
             let token = token.replacen("&", "", 1);
             Expr::Value(Type::Refer(token))
