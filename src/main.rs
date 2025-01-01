@@ -927,10 +927,10 @@ impl Expr {
                 Expr::Value(Type::Function(Function::UserDefined(
                     arg.to_string(),
                     // Protect from duplicate replacing
-                    if from.format() != *arg {
-                        Box::new(func.replace(from, to))
-                    } else {
+                    if from.format() == "self" || from.format() == *arg {
                         func.clone()
+                    } else {
+                        Box::new(func.replace(from, to))
                     },
                 )))
             }
