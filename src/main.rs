@@ -1048,16 +1048,18 @@ impl Operator {
                     .powf(rhs.eval(engine)?.get_number()?),
             ),
             Operator::Equal(lhs, rhs) => {
+                let lhs = lhs.eval(engine)?;
                 let rhs = rhs.eval(engine)?;
-                if lhs.eval(engine)?.get_symbol() == rhs.get_symbol() {
+                if rhs.is_match(&lhs) {
                     rhs
                 } else {
                     return None;
                 }
             }
             Operator::NotEq(lhs, rhs) => {
+                let lhs = lhs.eval(engine)?;
                 let rhs = rhs.eval(engine)?;
-                if lhs.eval(engine)?.get_symbol() != rhs.get_symbol() {
+                if !rhs.is_match(&lhs) {
                     rhs
                 } else {
                     return None;
