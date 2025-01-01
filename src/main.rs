@@ -461,16 +461,18 @@ impl Statement {
         } else if code.starts_with("if") {
             let code = code["if".len()..].to_string();
             let code = tokenize(code, SPACE.to_vec())?;
-            if code.get(2).and_then(|x| Some(x == "else")).unwrap_or(false) {
+            if let Some(pos) = code.iter().position(|i| i == "else") {
                 Some(Statement::If(
                     Expr::parse(code.get(0)?.to_string())?,
-                    Expr::parse(code.get(1)?.to_string())?,
-                    Some(Expr::parse(code.get(3)?.to_string())?),
+                    Expr::parse(code.get(1..pos)?.join(&SPACE[0].to_string()))?,
+                    Some(Expr::parse(
+                        code.get(pos + 1..)?.join(&SPACE[0].to_string()),
+                    )?),
                 ))
             } else {
                 Some(Statement::If(
                     Expr::parse(code.get(0)?.to_string())?,
-                    Expr::parse(code.get(1)?.to_string())?,
+                    Expr::parse(code.get(1..)?.join(&SPACE[0].to_string()))?,
                     None,
                 ))
             }
