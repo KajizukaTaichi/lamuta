@@ -1187,9 +1187,7 @@ impl Operator {
             Operator::LessThan(lhs, rhs) => format!("{} < {}", lhs.format(), rhs.format()),
             Operator::LessThanEq(lhs, rhs) => format!("{} <= {}", lhs.format(), rhs.format()),
             Operator::GreaterThan(lhs, rhs) => format!("{} > {}", lhs.format(), rhs.format()),
-            Operator::GreaterThanEq(lhs, rhs) => {
-                format!("{} >= {}", lhs.format(), rhs.format())
-            }
+            Operator::GreaterThanEq(lhs, rhs) => format!("{} >= {}", lhs.format(), rhs.format()),
             Operator::And(lhs, rhs) => format!("{} & {}", lhs.format(), rhs.format()),
             Operator::Or(lhs, rhs) => format!("{} | {}", lhs.format(), rhs.format()),
             Operator::Not(val) => format!("! {}", val.format()),
