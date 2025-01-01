@@ -725,7 +725,7 @@ impl Expr {
             .checked_sub(2)
             .and_then(|idx| token_list.get(idx))
         {
-            let has_left = |token_list: Vec<String>| {
+            let has_lhs = |token_list: Vec<String>| {
                 Some(Expr::parse(
                     token_list
                         .get(..token_list.len() - 2)?
@@ -733,32 +733,32 @@ impl Expr {
                 )?)
             };
             Some(Expr::Infix(Box::new(match operator.as_str() {
-                "+" => Operator::Add(has_left(token_list)?, token),
-                "-" => Operator::Sub(has_left(token_list)?, token),
-                "*" => Operator::Mul(has_left(token_list)?, token),
-                "/" => Operator::Div(has_left(token_list)?, token),
-                "%" => Operator::Mod(has_left(token_list)?, token),
-                "^" => Operator::Pow(has_left(token_list)?, token),
-                "==" => Operator::Equal(has_left(token_list)?, token),
-                "!=" => Operator::NotEq(has_left(token_list)?, token),
-                "<" => Operator::LessThan(has_left(token_list)?, token),
-                "<=" => Operator::LessThanEq(has_left(token_list)?, token),
-                ">" => Operator::GreaterThan(has_left(token_list)?, token),
-                ">=" => Operator::GreaterThanEq(has_left(token_list)?, token),
-                "&" => Operator::And(has_left(token_list)?, token),
-                "|" => Operator::Or(has_left(token_list)?, token),
+                "+" => Operator::Add(has_lhs(token_list)?, token),
+                "-" => Operator::Sub(has_lhs(token_list)?, token),
+                "*" => Operator::Mul(has_lhs(token_list)?, token),
+                "/" => Operator::Div(has_lhs(token_list)?, token),
+                "%" => Operator::Mod(has_lhs(token_list)?, token),
+                "^" => Operator::Pow(has_lhs(token_list)?, token),
+                "==" => Operator::Equal(has_lhs(token_list)?, token),
+                "!=" => Operator::NotEq(has_lhs(token_list)?, token),
+                "<" => Operator::LessThan(has_lhs(token_list)?, token),
+                "<=" => Operator::LessThanEq(has_lhs(token_list)?, token),
+                ">" => Operator::GreaterThan(has_lhs(token_list)?, token),
+                ">=" => Operator::GreaterThanEq(has_lhs(token_list)?, token),
+                "&" => Operator::And(has_lhs(token_list)?, token),
+                "|" => Operator::Or(has_lhs(token_list)?, token),
                 "!" => Operator::Not(token),
-                "::" => Operator::Access(has_left(token_list)?, token),
-                "as" => Operator::As(has_left(token_list)?, token),
-                ":=" => Operator::Assign(has_left(token_list)?, token),
-                "|>" => Operator::PipeLine(has_left(token_list)?, token),
+                "::" => Operator::Access(has_lhs(token_list)?, token),
+                "as" => Operator::As(has_lhs(token_list)?, token),
+                ":=" => Operator::Assign(has_lhs(token_list)?, token),
+                "|>" => Operator::PipeLine(has_lhs(token_list)?, token),
                 operator => {
                     if operator.starts_with("`") && operator.ends_with("`") {
                         let operator = operator[1..operator.len() - 1].to_string();
                         Operator::Apply(
                             Expr::Infix(Box::new(Operator::Apply(
                                 Expr::parse(operator)?,
-                                has_left(token_list)?,
+                                has_lhs(token_list)?,
                             ))),
                             token,
                         )
@@ -823,63 +823,63 @@ impl Expr {
                     .collect::<Vec<(Expr, Expr)>>(),
             ),
             Expr::Infix(infix) => Expr::Infix(Box::new(match *infix.clone() {
-                Operator::Add(left, right) => {
-                    Operator::Add(left.replace(from, to), right.replace(from, to))
+                Operator::Add(lhs, rhs) => {
+                    Operator::Add(lhs.replace(from, to), rhs.replace(from, to))
                 }
-                Operator::Sub(left, right) => {
-                    Operator::Sub(left.replace(from, to), right.replace(from, to))
+                Operator::Sub(lhs, rhs) => {
+                    Operator::Sub(lhs.replace(from, to), rhs.replace(from, to))
                 }
-                Operator::Mul(left, right) => {
-                    Operator::Mul(left.replace(from, to), right.replace(from, to))
+                Operator::Mul(lhs, rhs) => {
+                    Operator::Mul(lhs.replace(from, to), rhs.replace(from, to))
                 }
-                Operator::Div(left, right) => {
-                    Operator::Div(left.replace(from, to), right.replace(from, to))
+                Operator::Div(lhs, rhs) => {
+                    Operator::Div(lhs.replace(from, to), rhs.replace(from, to))
                 }
-                Operator::Mod(left, right) => {
-                    Operator::Mod(left.replace(from, to), right.replace(from, to))
+                Operator::Mod(lhs, rhs) => {
+                    Operator::Mod(lhs.replace(from, to), rhs.replace(from, to))
                 }
-                Operator::Pow(left, right) => {
-                    Operator::Pow(left.replace(from, to), right.replace(from, to))
+                Operator::Pow(lhs, rhs) => {
+                    Operator::Pow(lhs.replace(from, to), rhs.replace(from, to))
                 }
-                Operator::Equal(left, right) => {
-                    Operator::Equal(left.replace(from, to), right.replace(from, to))
+                Operator::Equal(lhs, rhs) => {
+                    Operator::Equal(lhs.replace(from, to), rhs.replace(from, to))
                 }
-                Operator::NotEq(left, right) => {
-                    Operator::NotEq(left.replace(from, to), right.replace(from, to))
+                Operator::NotEq(lhs, rhs) => {
+                    Operator::NotEq(lhs.replace(from, to), rhs.replace(from, to))
                 }
-                Operator::LessThan(left, right) => {
-                    Operator::LessThan(left.replace(from, to), right.replace(from, to))
+                Operator::LessThan(lhs, rhs) => {
+                    Operator::LessThan(lhs.replace(from, to), rhs.replace(from, to))
                 }
-                Operator::LessThanEq(left, right) => {
-                    Operator::LessThanEq(left.replace(from, to), right.replace(from, to))
+                Operator::LessThanEq(lhs, rhs) => {
+                    Operator::LessThanEq(lhs.replace(from, to), rhs.replace(from, to))
                 }
-                Operator::GreaterThan(left, right) => {
-                    Operator::GreaterThan(left.replace(from, to), right.replace(from, to))
+                Operator::GreaterThan(lhs, rhs) => {
+                    Operator::GreaterThan(lhs.replace(from, to), rhs.replace(from, to))
                 }
-                Operator::GreaterThanEq(left, right) => {
-                    Operator::GreaterThanEq(left.replace(from, to), right.replace(from, to))
+                Operator::GreaterThanEq(lhs, rhs) => {
+                    Operator::GreaterThanEq(lhs.replace(from, to), rhs.replace(from, to))
                 }
-                Operator::And(left, right) => {
-                    Operator::And(left.replace(from, to), right.replace(from, to))
+                Operator::And(lhs, rhs) => {
+                    Operator::And(lhs.replace(from, to), rhs.replace(from, to))
                 }
-                Operator::Or(left, right) => {
-                    Operator::Or(left.replace(from, to), right.replace(from, to))
+                Operator::Or(lhs, rhs) => {
+                    Operator::Or(lhs.replace(from, to), rhs.replace(from, to))
                 }
                 Operator::Not(val) => Operator::Not(val.replace(from, to)),
-                Operator::Access(left, right) => {
-                    Operator::Access(left.replace(from, to), right.replace(from, to))
+                Operator::Access(lhs, rhs) => {
+                    Operator::Access(lhs.replace(from, to), rhs.replace(from, to))
                 }
-                Operator::As(left, right) => {
-                    Operator::As(left.replace(from, to), right.replace(from, to))
+                Operator::As(lhs, rhs) => {
+                    Operator::As(lhs.replace(from, to), rhs.replace(from, to))
                 }
-                Operator::Apply(left, right) => {
-                    Operator::Apply(left.replace(from, to), right.replace(from, to))
+                Operator::Apply(lhs, rhs) => {
+                    Operator::Apply(lhs.replace(from, to), rhs.replace(from, to))
                 }
-                Operator::Assign(left, right) => {
-                    Operator::Assign(left.replace(from, to), right.replace(from, to))
+                Operator::Assign(lhs, rhs) => {
+                    Operator::Assign(lhs.replace(from, to), rhs.replace(from, to))
                 }
-                Operator::PipeLine(left, right) => {
-                    Operator::PipeLine(left.replace(from, to), right.replace(from, to))
+                Operator::PipeLine(lhs, rhs) => {
+                    Operator::PipeLine(lhs.replace(from, to), rhs.replace(from, to))
                 }
             })),
             Expr::Block(block) => Expr::Block(
@@ -981,134 +981,133 @@ enum Operator {
 impl Operator {
     fn eval(&self, engine: &mut Engine) -> Option<Type> {
         Some(match self {
-            Operator::Add(left, right) => {
-                let left = left.eval(engine)?;
-                let right = right.eval(engine)?;
-                if let (Type::Number(left), Type::Number(right)) = (&left, &right) {
-                    Type::Number(left + right)
-                } else if let (Type::Text(left), Type::Text(right)) = (&left, &right) {
-                    Type::Text(left.clone() + &right)
-                } else if let (Type::List(left), Type::List(right)) = (&left, &right) {
-                    Type::List([left.clone(), right.clone()].concat())
-                } else if let (Type::Struct(mut left), Type::Struct(right)) = (left.clone(), &right)
-                {
-                    left.extend(right.clone());
-                    Type::Struct(left)
+            Operator::Add(lhs, rhs) => {
+                let lhs = lhs.eval(engine)?;
+                let rhs = rhs.eval(engine)?;
+                if let (Type::Number(lhs), Type::Number(rhs)) = (&lhs, &rhs) {
+                    Type::Number(lhs + rhs)
+                } else if let (Type::Text(lhs), Type::Text(rhs)) = (&lhs, &rhs) {
+                    Type::Text(lhs.clone() + &rhs)
+                } else if let (Type::List(lhs), Type::List(rhs)) = (&lhs, &rhs) {
+                    Type::List([lhs.clone(), rhs.clone()].concat())
+                } else if let (Type::Struct(mut lhs), Type::Struct(rhs)) = (lhs.clone(), &rhs) {
+                    lhs.extend(rhs.clone());
+                    Type::Struct(lhs)
                 } else {
                     return None;
                 }
             }
-            Operator::Sub(left, right) => {
-                let left = left.eval(engine)?;
-                let right = right.eval(engine)?;
-                if let (Type::Number(left), Type::Number(right)) = (&left, &right) {
-                    Type::Number(left - right)
-                } else if let (Type::Text(left), Type::Text(right)) = (&left, &right) {
-                    Type::Text(left.replacen(right, "", 1))
-                } else if let (Type::List(mut left), Type::List(right)) = (left.clone(), &right) {
-                    let first_index = left.windows(right.len()).position(|i| {
+            Operator::Sub(lhs, rhs) => {
+                let lhs = lhs.eval(engine)?;
+                let rhs = rhs.eval(engine)?;
+                if let (Type::Number(lhs), Type::Number(rhs)) = (&lhs, &rhs) {
+                    Type::Number(lhs - rhs)
+                } else if let (Type::Text(lhs), Type::Text(rhs)) = (&lhs, &rhs) {
+                    Type::Text(lhs.replacen(rhs, "", 1))
+                } else if let (Type::List(mut lhs), Type::List(rhs)) = (lhs.clone(), &rhs) {
+                    let first_index = lhs.windows(rhs.len()).position(|i| {
                         i.iter().map(|j| j.get_symbol()).collect::<Vec<_>>()
-                            == right.iter().map(|j| j.get_symbol()).collect::<Vec<_>>()
+                            == rhs.iter().map(|j| j.get_symbol()).collect::<Vec<_>>()
                     })?;
-                    for _ in 0..right.len() {
-                        left.remove(first_index);
+                    for _ in 0..rhs.len() {
+                        lhs.remove(first_index);
                     }
-                    Type::List(left)
-                } else if let (Type::List(mut left), Type::Number(right)) = (left.clone(), &right) {
-                    left.remove(right.clone() as usize);
-                    Type::List(left)
-                } else if let (Type::Text(mut left), Type::Number(right)) = (left, right) {
-                    left.remove(right as usize);
-                    Type::Text(left)
+                    Type::List(lhs)
+                } else if let (Type::List(mut lhs), Type::Number(rhs)) = (lhs.clone(), &rhs) {
+                    lhs.remove(rhs.clone() as usize);
+                    Type::List(lhs)
+                } else if let (Type::Text(mut lhs), Type::Number(rhs)) = (lhs, rhs) {
+                    lhs.remove(rhs as usize);
+                    Type::Text(lhs)
                 } else {
                     return None;
                 }
             }
-            Operator::Mul(left, right) => {
-                let left = left.eval(engine)?;
-                let right = right.eval(engine)?;
-                if let (Type::Number(left), Type::Number(right)) = (&left, &right) {
-                    Type::Number(left * right)
-                } else if let (Type::Text(left), Type::Number(right)) = (&left, &right) {
-                    Type::Text(left.repeat(*right as usize))
-                } else if let (Type::List(left), Type::Number(right)) = (left, right) {
-                    Type::List((0..right as usize).flat_map(|_| left.clone()).collect())
+            Operator::Mul(lhs, rhs) => {
+                let lhs = lhs.eval(engine)?;
+                let rhs = rhs.eval(engine)?;
+                if let (Type::Number(lhs), Type::Number(rhs)) = (&lhs, &rhs) {
+                    Type::Number(lhs * rhs)
+                } else if let (Type::Text(lhs), Type::Number(rhs)) = (&lhs, &rhs) {
+                    Type::Text(lhs.repeat(*rhs as usize))
+                } else if let (Type::List(lhs), Type::Number(rhs)) = (lhs, rhs) {
+                    Type::List((0..rhs as usize).flat_map(|_| lhs.clone()).collect())
                 } else {
                     return None;
                 }
             }
-            Operator::Div(left, right) => {
-                Type::Number(left.eval(engine)?.get_number()? / right.eval(engine)?.get_number()?)
+            Operator::Div(lhs, rhs) => {
+                Type::Number(lhs.eval(engine)?.get_number()? / rhs.eval(engine)?.get_number()?)
             }
-            Operator::Mod(left, right) => {
-                Type::Number(left.eval(engine)?.get_number()? % right.eval(engine)?.get_number()?)
+            Operator::Mod(lhs, rhs) => {
+                Type::Number(lhs.eval(engine)?.get_number()? % rhs.eval(engine)?.get_number()?)
             }
-            Operator::Pow(left, right) => Type::Number(
-                left.eval(engine)?
+            Operator::Pow(lhs, rhs) => Type::Number(
+                lhs.eval(engine)?
                     .get_number()?
-                    .powf(right.eval(engine)?.get_number()?),
+                    .powf(rhs.eval(engine)?.get_number()?),
             ),
-            Operator::Equal(left, right) => {
-                let right = right.eval(engine)?;
-                if left.eval(engine)?.get_symbol() == right.get_symbol() {
-                    right
+            Operator::Equal(lhs, rhs) => {
+                let rhs = rhs.eval(engine)?;
+                if lhs.eval(engine)?.get_symbol() == rhs.get_symbol() {
+                    rhs
                 } else {
                     return None;
                 }
             }
-            Operator::NotEq(left, right) => {
-                let right = right.eval(engine)?;
-                if left.eval(engine)?.get_symbol() != right.get_symbol() {
-                    right
+            Operator::NotEq(lhs, rhs) => {
+                let rhs = rhs.eval(engine)?;
+                if lhs.eval(engine)?.get_symbol() != rhs.get_symbol() {
+                    rhs
                 } else {
                     return None;
                 }
             }
-            Operator::LessThan(left, right) => {
-                let right = right.eval(engine)?;
-                if left.eval(engine)?.get_number() < right.get_number() {
-                    right
+            Operator::LessThan(lhs, rhs) => {
+                let rhs = rhs.eval(engine)?;
+                if lhs.eval(engine)?.get_number() < rhs.get_number() {
+                    rhs
                 } else {
                     return None;
                 }
             }
-            Operator::LessThanEq(left, right) => {
-                let right = right.eval(engine)?;
-                if left.eval(engine)?.get_number() <= right.get_number() {
-                    right
+            Operator::LessThanEq(lhs, rhs) => {
+                let rhs = rhs.eval(engine)?;
+                if lhs.eval(engine)?.get_number() <= rhs.get_number() {
+                    rhs
                 } else {
                     return None;
                 }
             }
-            Operator::GreaterThan(left, right) => {
-                let right = right.eval(engine)?;
-                if left.eval(engine)?.get_number() > right.get_number() {
-                    right
+            Operator::GreaterThan(lhs, rhs) => {
+                let rhs = rhs.eval(engine)?;
+                if lhs.eval(engine)?.get_number() > rhs.get_number() {
+                    rhs
                 } else {
                     return None;
                 }
             }
-            Operator::GreaterThanEq(left, right) => {
-                let right = right.eval(engine)?;
-                if left.eval(engine)?.get_number() >= right.get_number() {
-                    right
+            Operator::GreaterThanEq(lhs, rhs) => {
+                let rhs = rhs.eval(engine)?;
+                if lhs.eval(engine)?.get_number() >= rhs.get_number() {
+                    rhs
                 } else {
                     return None;
                 }
             }
-            Operator::And(left, right) => {
-                let right = right.eval(engine);
-                if left.eval(engine).is_some() && right.is_some() {
-                    right?
+            Operator::And(lhs, rhs) => {
+                let rhs = rhs.eval(engine);
+                if lhs.eval(engine).is_some() && rhs.is_some() {
+                    rhs?
                 } else {
                     return None;
                 }
             }
-            Operator::Or(left, right) => {
-                let left = left.eval(engine);
-                let right = right.eval(engine);
-                if left.is_some() || right.is_some() {
-                    right.unwrap_or(left?)
+            Operator::Or(lhs, rhs) => {
+                let lhs = lhs.eval(engine);
+                let rhs = rhs.eval(engine);
+                if lhs.is_some() || rhs.is_some() {
+                    rhs.unwrap_or(lhs?)
                 } else {
                     return None;
                 }
@@ -1121,87 +1120,84 @@ impl Operator {
                     Type::Null
                 }
             }
-            Operator::Access(left, right) => {
-                let left = left.eval(engine)?;
-                let right = right.eval(engine)?;
-                if let (Type::List(list), Type::Number(index)) = (left.clone(), right.clone()) {
+            Operator::Access(lhs, rhs) => {
+                let lhs = lhs.eval(engine)?;
+                let rhs = rhs.eval(engine)?;
+                if let (Type::List(list), Type::Number(index)) = (lhs.clone(), rhs.clone()) {
                     list.get(index as usize)?.clone()
-                } else if let (Type::Text(text), Type::Number(index)) =
-                    (left.clone(), right.clone())
-                {
+                } else if let (Type::Text(text), Type::Number(index)) = (lhs.clone(), rhs.clone()) {
                     Type::Text(
                         text.chars()
                             .collect::<Vec<char>>()
                             .get(index as usize)?
                             .to_string(),
                     )
-                } else if let (Type::Struct(st), Type::Text(index)) = (left.clone(), right.clone())
-                {
+                } else if let (Type::Struct(st), Type::Text(index)) = (lhs.clone(), rhs.clone()) {
                     st.get(&index)?.clone()
                 } else {
                     return None;
                 }
             }
-            Operator::As(left, right) => {
-                let left = left.eval(engine)?;
-                let right = right.eval(engine)?;
-                match right.get_signature()? {
-                    Signature::Number => Type::Number(left.get_number()?),
-                    Signature::Symbol => Type::Symbol(left.get_symbol()),
-                    Signature::Text => Type::Text(left.get_text()?),
-                    Signature::List => Type::List(left.get_list()),
-                    Signature::Function => Type::Function(left.get_function()?),
-                    Signature::Refer => Type::Refer(left.get_symbol()),
-                    Signature::Struct => Type::Struct(left.get_struct()?),
-                    Signature::Signature => Type::Signature(Signature::parse(left.get_symbol())?),
+            Operator::As(lhs, rhs) => {
+                let lhs = lhs.eval(engine)?;
+                let rhs = rhs.eval(engine)?;
+                match rhs.get_signature()? {
+                    Signature::Number => Type::Number(lhs.get_number()?),
+                    Signature::Symbol => Type::Symbol(lhs.get_symbol()),
+                    Signature::Text => Type::Text(lhs.get_text()?),
+                    Signature::List => Type::List(lhs.get_list()),
+                    Signature::Function => Type::Function(lhs.get_function()?),
+                    Signature::Refer => Type::Refer(lhs.get_symbol()),
+                    Signature::Struct => Type::Struct(lhs.get_struct()?),
+                    Signature::Signature => Type::Signature(Signature::parse(lhs.get_symbol())?),
                 }
             }
-            Operator::Apply(left, right) => {
-                let left = left.eval(engine)?;
-                let right = right.eval(engine)?;
-                match left.get_function()? {
-                    Function::BuiltIn(func) => func(right, engine)?,
+            Operator::Apply(lhs, rhs) => {
+                let lhs = lhs.eval(engine)?;
+                let rhs = rhs.eval(engine)?;
+                match lhs.get_function()? {
+                    Function::BuiltIn(func) => func(rhs, engine)?,
                     Function::UserDefined(parameter, code) => {
-                        let code = code
-                            .replace(&Expr::Value(Type::Symbol(parameter)), &Expr::Value(right));
+                        let code =
+                            code.replace(&Expr::Value(Type::Symbol(parameter)), &Expr::Value(rhs));
                         code.eval(&mut engine.clone())?
                     }
                 }
             }
-            Operator::Assign(left, right) => {
-                let name = left.eval(engine)?.get_text()?;
-                Statement::Let(name, None, right.to_owned()).eval(engine)?
+            Operator::Assign(lhs, rhs) => {
+                let name = lhs.eval(engine)?.get_text()?;
+                Statement::Let(name, None, rhs.to_owned()).eval(engine)?
             }
-            Operator::PipeLine(left, right) => {
-                Operator::Apply(right.to_owned(), left.to_owned()).eval(engine)?
+            Operator::PipeLine(lhs, rhs) => {
+                Operator::Apply(rhs.to_owned(), lhs.to_owned()).eval(engine)?
             }
         })
     }
 
     fn format(&self) -> String {
         match self {
-            Operator::Add(left, right) => format!("{} + {}", left.format(), right.format()),
-            Operator::Sub(left, right) => format!("{} - {}", left.format(), right.format()),
-            Operator::Mul(left, right) => format!("{} * {}", left.format(), right.format()),
-            Operator::Div(left, right) => format!("{} / {}", left.format(), right.format()),
-            Operator::Mod(left, right) => format!("{} % {}", left.format(), right.format()),
-            Operator::Pow(left, right) => format!("{} ^ {}", left.format(), right.format()),
-            Operator::Equal(left, right) => format!("{} == {}", left.format(), right.format()),
-            Operator::NotEq(left, right) => format!("{} != {}", left.format(), right.format()),
-            Operator::LessThan(left, right) => format!("{} < {}", left.format(), right.format()),
-            Operator::LessThanEq(left, right) => format!("{} <= {}", left.format(), right.format()),
-            Operator::GreaterThan(left, right) => format!("{} > {}", left.format(), right.format()),
-            Operator::GreaterThanEq(left, right) => {
-                format!("{} >= {}", left.format(), right.format())
+            Operator::Add(lhs, rhs) => format!("{} + {}", lhs.format(), rhs.format()),
+            Operator::Sub(lhs, rhs) => format!("{} - {}", lhs.format(), rhs.format()),
+            Operator::Mul(lhs, rhs) => format!("{} * {}", lhs.format(), rhs.format()),
+            Operator::Div(lhs, rhs) => format!("{} / {}", lhs.format(), rhs.format()),
+            Operator::Mod(lhs, rhs) => format!("{} % {}", lhs.format(), rhs.format()),
+            Operator::Pow(lhs, rhs) => format!("{} ^ {}", lhs.format(), rhs.format()),
+            Operator::Equal(lhs, rhs) => format!("{} == {}", lhs.format(), rhs.format()),
+            Operator::NotEq(lhs, rhs) => format!("{} != {}", lhs.format(), rhs.format()),
+            Operator::LessThan(lhs, rhs) => format!("{} < {}", lhs.format(), rhs.format()),
+            Operator::LessThanEq(lhs, rhs) => format!("{} <= {}", lhs.format(), rhs.format()),
+            Operator::GreaterThan(lhs, rhs) => format!("{} > {}", lhs.format(), rhs.format()),
+            Operator::GreaterThanEq(lhs, rhs) => {
+                format!("{} >= {}", lhs.format(), rhs.format())
             }
-            Operator::And(left, right) => format!("{} & {}", left.format(), right.format()),
-            Operator::Or(left, right) => format!("{} | {}", left.format(), right.format()),
+            Operator::And(lhs, rhs) => format!("{} & {}", lhs.format(), rhs.format()),
+            Operator::Or(lhs, rhs) => format!("{} | {}", lhs.format(), rhs.format()),
             Operator::Not(val) => format!("! {}", val.format()),
-            Operator::Access(left, right) => format!("{} :: {}", left.format(), right.format()),
-            Operator::As(left, right) => format!("{} as {}", left.format(), right.format()),
-            Operator::Assign(left, right) => format!("{} := {}", left.format(), right.format()),
-            Operator::PipeLine(left, right) => format!("{} |> {}", left.format(), right.format()),
-            Operator::Apply(left, right) => format!("{} {}", left.format(), right.format()),
+            Operator::Access(lhs, rhs) => format!("{} :: {}", lhs.format(), rhs.format()),
+            Operator::As(lhs, rhs) => format!("{} as {}", lhs.format(), rhs.format()),
+            Operator::Assign(lhs, rhs) => format!("{} := {}", lhs.format(), rhs.format()),
+            Operator::PipeLine(lhs, rhs) => format!("{} |> {}", lhs.format(), rhs.format()),
+            Operator::Apply(lhs, rhs) => format!("{} {}", lhs.format(), rhs.format()),
         }
         .to_string()
     }
