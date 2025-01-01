@@ -1160,8 +1160,12 @@ impl Operator {
                 match lhs.get_function()? {
                     Function::BuiltIn(func) => func(rhs, engine)?,
                     Function::UserDefined(parameter, code) => {
-                        let code =
-                            code.replace(&Expr::Value(Type::Symbol(parameter)), &Expr::Value(rhs));
+                        let code = code
+                            .replace(&Expr::Value(Type::Symbol(parameter)), &Expr::Value(rhs))
+                            .replace(
+                                &Expr::Value(Type::Symbol("self".to_string())),
+                                &Expr::Value(lhs),
+                            );
                         code.eval(&mut engine.clone())?
                     }
                 }
