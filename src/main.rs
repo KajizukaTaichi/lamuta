@@ -1427,11 +1427,9 @@ fn tokenize(input: String, delimiter: Vec<char>) -> Option<Vec<String>> {
     if in_quote || in_parentheses != 0 {
         return None;
     }
-
     if in_parentheses == 0 && !current_token.is_empty() {
         tokens.push(current_token.clone());
         current_token.clear();
     }
-
     Some(tokens)
 }
