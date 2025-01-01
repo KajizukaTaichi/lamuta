@@ -758,11 +758,7 @@ impl Expr {
                         Operator::Apply(
                             Expr::Infix(Box::new(Operator::Apply(
                                 Expr::parse(operator)?,
-                                Expr::parse(
-                                    token_list
-                                        .get(..token_list.len() - 2)?
-                                        .join(&SPACE[0].to_string()),
-                                )?,
+                                has_left(token_list)?,
                             ))),
                             token,
                         )
