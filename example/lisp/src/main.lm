@@ -122,42 +122,42 @@ let env = @{
         "type": "function",
         "value": λl.@{
             "type": "number",
-            "value": (reduce λa.λb.(a + b) (map getNumber l))
+            "value": reduce λa.λb.(a + b) (map getNumber l)
         }
     },
     "-": @{
         "type": "function",
         "value": λl.@{
             "type": "number",
-            "value": (reduce λa.λb.(a - b) (map getNumber l))
+            "value": reduce λa.λb.(a - b) (map getNumber l)
         }
     },
     "*": @{
         "type": "function",
         "value": λl.@{
             "type": "number",
-            "value": (reduce λa.λb.(a * b) (map getNumber l))
+            "value": reduce λa.λb.(a * b) (map getNumber l)
         }
     },
     "/": @{
         "type": "function",
         "value": λl.@{
             "type": "number",
-            "value": (reduce λa.λb.(a / b) (map getNumber l))
+            "value": reduce λa.λb.(a / b) (map getNumber l)
         }
     },
     "%": @{
         "type": "function",
         "value": λl.@{
             "type": "number",
-            "value": (reduce λa.λb.(a % b) (map getNumber l))
+            "value": reduce λa.λb.(a % b) (map getNumber l)
         }
     },
     "^": @{
         "type": "function",
         "value": λl.@{
             "type": "number",
-            "value": (reduce λa.λb.(a ^ b) (map getNumber l))
+            "value": reduce λa.λb.(a ^ b) (map getNumber l)
         }
     },
     "concat": @{
@@ -180,7 +180,7 @@ let main = λ_.{
     print "Lamuta Lisp";
     let flag = 1;
     while (flag == 1) {
-        let entered = (input ">>> ");
+        let entered = input ">>> ";
         if (entered == "") {
             let flag = 0;
         } else {
