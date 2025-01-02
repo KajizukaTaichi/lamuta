@@ -805,7 +805,7 @@ impl Expr {
         }
     }
 
-    /// Replacing constant arguments when apply function
+    /// Beta reduction constant arguments when apply function
     fn replace(&self, from: &Expr, to: &Expr) -> Expr {
         match self {
             Expr::List(list) => Expr::List(
