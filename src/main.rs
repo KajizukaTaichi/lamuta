@@ -90,13 +90,11 @@ impl Engine {
                     "eval".to_string(),
                     Type::Function(Function::BuiltIn(|args, engine| {
                         let args = args.get_list();
-                        let func = args.get(0)?;
-                        let value = args.get(1)?;
-                        let env = args.get(2)?.get_struct()?;
+                        let code = args.get(0)?.get_text()?;
+                        let env = args.get(1)?.get_struct()?;
                         let mut engine = engine.clone();
                         engine.env = env;
-                        Operator::Apply(Expr::Value(func.to_owned()), Expr::Value(value.to_owned()))
-                            .eval(&mut engine)
+                        engine.eval(Engine::parse(code)?)
                     })),
                 ),
                 (
