@@ -91,10 +91,13 @@ impl Engine {
                     Type::Function(Function::BuiltIn(|args, engine| {
                         let args = args.get_list();
                         let code = args.get(0)?.get_text()?;
-                        let env = args.get(1)?.get_struct()?;
-                        let mut engine = engine.clone();
-                        engine.env = env;
-                        engine.eval(Engine::parse(code)?)
+                        if let Some(env) = args.get(1) {
+                            let mut engine = engine.clone();
+                            engine.env = env.get_struct()?;
+                            engine.eval(Engine::parse(code)?)
+                        } else {
+                            engine.eval(Engine::parse(code)?)
+                        }
                     })),
                 ),
                 (
