@@ -728,52 +728,45 @@ impl Expr {
             .checked_sub(2)
             .and_then(|idx| token_list.get(idx))
         {
-            let has_lhs = || {
+            let has_lhs = |len: usize| {
                 Expr::parse(
                     token_list
-                        .get(..token_list.len() - 2)?
+                        .get(..token_list.len() - len)?
                         .join(&SPACE[0].to_string()),
                 )
             };
             Some(Expr::Infix(Box::new(match operator.as_str() {
-                "+" => Operator::Add(has_lhs()?, token),
-                "-" => Operator::Sub(has_lhs()?, token),
-                "*" => Operator::Mul(has_lhs()?, token),
-                "/" => Operator::Div(has_lhs()?, token),
-                "%" => Operator::Mod(has_lhs()?, token),
-                "^" => Operator::Pow(has_lhs()?, token),
-                "==" => Operator::Equal(has_lhs()?, token),
-                "!=" => Operator::NotEq(has_lhs()?, token),
-                "<" => Operator::LessThan(has_lhs()?, token),
-                "<=" => Operator::LessThanEq(has_lhs()?, token),
-                ">" => Operator::GreaterThan(has_lhs()?, token),
-                ">=" => Operator::GreaterThanEq(has_lhs()?, token),
-                "&" => Operator::And(has_lhs()?, token),
-                "|" => Operator::Or(has_lhs()?, token),
+                "+" => Operator::Add(has_lhs(2)?, token),
+                "-" => Operator::Sub(has_lhs(2)?, token),
+                "*" => Operator::Mul(has_lhs(2)?, token),
+                "/" => Operator::Div(has_lhs(2)?, token),
+                "%" => Operator::Mod(has_lhs(2)?, token),
+                "^" => Operator::Pow(has_lhs(2)?, token),
+                "==" => Operator::Equal(has_lhs(2)?, token),
+                "!=" => Operator::NotEq(has_lhs(2)?, token),
+                "<" => Operator::LessThan(has_lhs(2)?, token),
+                "<=" => Operator::LessThanEq(has_lhs(2)?, token),
+                ">" => Operator::GreaterThan(has_lhs(2)?, token),
+                ">=" => Operator::GreaterThanEq(has_lhs(2)?, token),
+                "&" => Operator::And(has_lhs(2)?, token),
+                "|" => Operator::Or(has_lhs(2)?, token),
                 "!" => Operator::Not(token),
-                "::" => Operator::Access(has_lhs()?, token),
-                "as" => Operator::As(has_lhs()?, token),
-                ":=" => Operator::Assign(has_lhs()?, token),
-                "|>" => Operator::PipeLine(has_lhs()?, token),
+                "::" => Operator::Access(has_lhs(2)?, token),
+                "as" => Operator::As(has_lhs(2)?, token),
+                ":=" => Operator::Assign(has_lhs(2)?, token),
+                "|>" => Operator::PipeLine(has_lhs(2)?, token),
                 operator => {
                     if operator.starts_with("`") && operator.ends_with("`") {
                         let operator = operator[1..operator.len() - 1].to_string();
                         Operator::Apply(
                             Expr::Infix(Box::new(Operator::Apply(
                                 Expr::parse(operator)?,
-                                has_lhs()?,
+                                has_lhs(2)?,
                             ))),
                             token,
                         )
                     } else {
-                        Operator::Apply(
-                            Expr::parse(
-                                token_list
-                                    .get(..token_list.len() - 1)?
-                                    .join(&SPACE[0].to_string()),
-                            )?,
-                            token,
-                        )
+                        Operator::Apply(has_lhs(1)?, token)
                     }
                 }
             })))
