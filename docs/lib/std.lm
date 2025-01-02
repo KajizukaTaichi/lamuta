@@ -6,3 +6,4 @@ let reduce = λf.λl.{ let result = (l :: 0); for i in ((slice l) (range [1, (le
 let map = λf.λl.{ let result = []; for i in l { let result = (result + [(f i)]) }; result };
 let find = λt.λq.{ let result = null; let index = 0; while (index < ((len t) - (len q) + 1)) { let item = ((slice t) (range [index, (len q + index)])); if (item == q) { let result = index }; let index = (index + 1) }; if (result == null) { fault } else result };
 let slice = λl.λs.{ let result = { if (type l == text) "" else [] }; for index in s { let result = (result + { if (type l == text) (l :: index) else [(l :: index)] }) }; result };
+let compose = λf.λg.λx.(f (g x));
