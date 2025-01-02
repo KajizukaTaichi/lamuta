@@ -688,6 +688,7 @@ impl Expr {
                 args.first()?.trim().to_string(),
                 Box::new(Expr::parse(body.to_string())?),
             )));
+            // Currying
             for arg in args.get(1..)? {
                 func = Expr::Value(Type::Function(Function::UserDefined(
                     arg.trim().to_string(),
