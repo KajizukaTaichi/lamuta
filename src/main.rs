@@ -729,11 +729,11 @@ impl Expr {
             .and_then(|idx| token_list.get(idx))
         {
             let has_lhs = || {
-                Some(Expr::parse(
+                Expr::parse(
                     token_list
                         .get(..token_list.len() - 2)?
                         .join(&SPACE[0].to_string()),
-                )?)
+                )
             };
             Some(Expr::Infix(Box::new(match operator.as_str() {
                 "+" => Operator::Add(has_lhs()?, token),
