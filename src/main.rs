@@ -1154,7 +1154,7 @@ impl Operator {
                     Signature::Function => Type::Function(lhs.get_function()?),
                     Signature::Refer => Type::Refer(lhs.get_symbol()),
                     Signature::Struct => Type::Struct(lhs.get_struct()?),
-                    Signature::Signature => Type::Signature(Signature::parse(lhs.get_symbol())?),
+                    Signature::Signature => Type::Signature(Signature::parse(lhs.get_text()?)?),
                 }
             }
             Operator::Apply(lhs, rhs) => {
