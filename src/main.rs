@@ -87,6 +87,24 @@ impl Engine {
                     })),
                 ),
                 (
+                    "alphaConvert".to_string(),
+                    Type::Function(Function::BuiltIn(|args, _| {
+                        let args = args.get_list();
+                        let func = args.get(0)?.get_function()?;
+                        let new_name = args.get(1)?.get_text()?;
+                        let Function::UserDefined(arg, body) = func else {
+                            return None;
+                        };
+                        Some(Type::Function(Function::UserDefined(
+                            new_name.clone(),
+                            Box::new(body.replace(
+                                &Expr::Value(Type::Symbol(arg)),
+                                &Expr::Value(Type::Symbol(new_name)),
+                            )),
+                        )))
+                    })),
+                ),
+                (
                     "input".to_string(),
                     Type::Function(Function::BuiltIn(|expr, _| {
                         let prompt = expr.get_text()?;
