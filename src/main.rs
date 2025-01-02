@@ -30,21 +30,6 @@ fn main() {
             session += 1;
             line = 1;
             continue;
-        } else if buffer == ":env" {
-            println!("Defined variables:");
-            let width = &engine
-                .env
-                .keys()
-                .map(|i| i.chars().count())
-                .max()
-                .unwrap_or(0);
-            for (k, v) in &engine.env {
-                if let Type::Function(Function::BuiltIn(_)) = v {
-                } else {
-                    println!(" {k:<width$} = {}", v.get_symbol());
-                }
-            }
-            continue;
         }
 
         code += &format!("{buffer}\n");
@@ -84,6 +69,12 @@ impl Engine {
                     "type".to_string(),
                     Type::Function(Function::BuiltIn(|expr, _| {
                         Some(Type::Signature(expr.get_type()))
+                    })),
+                ),
+                (
+                    "env".to_string(),
+                    Type::Function(Function::BuiltIn(|_, engine| {
+                        Some(Type::Struct(engine.env.clone()))
                     })),
                 ),
                 (
