@@ -4,14 +4,34 @@ use reqwest::blocking;
 use rustyline::{error::ReadlineError, DefaultEditor};
 use std::{
     collections::HashMap,
+    error,
     f64::consts::PI,
+    fmt::Error,
     fs::{read_to_string, File},
     io::{self, Write},
     process::exit,
 };
+use thiserror::Error;
 
 const VERSION: &str = "0.3.2";
 const SPACE: [char; 5] = [' ', '　', '\n', '\t', '\r'];
+
+macro_rules! ok {
+    ($option_value: expr, $fault_kind: expr) => {
+        if let Some(ok) = $option_value {
+            Ok(ok)
+        } else {
+            Err($fault_kind)
+        }
+    };
+    ($option_value: expr) => {
+        if let Some(ok) = $option_value {
+            Ok(ok)
+        } else {
+            Err(Fault::Other)
+        }
+    };
+}
 
 #[derive(Parser)]
 #[command(
@@ -57,8 +77,8 @@ fn main() {
         loop {
             match rl.readline(&format!("[{session:0>3}]> ")) {
                 Ok(code) => {
-                    if let Some(ast) = Engine::parse(code) {
-                        if let Some(result) = engine.eval(ast) {
+                    if let Ok(ast) = Engine::parse(code) {
+                        if let Ok(result) = engine.eval(ast) {
                             println!(
                                 "{navi} {result}",
                                 result = result.get_symbol(),
@@ -109,13 +129,13 @@ impl Engine {
                 (
                     "type".to_string(),
                     Type::Function(Function::BuiltIn(|expr, _| {
-                        Some(Type::Signature(expr.get_type()))
+                        Ok(Type::Signature(expr.get_type()))
                     })),
                 ),
                 (
                     "env".to_string(),
                     Type::Function(Function::BuiltIn(|_, engine| {
-                        Some(Type::Struct(engine.env.clone()))
+                        Ok(Type::Struct(engine.env.clone()))
                     })),
                 ),
                 (
@@ -123,17 +143,17 @@ impl Engine {
                     Type::Function(Function::BuiltIn(|name, engine| {
                         let name = &name.get_refer()?;
                         if engine.protect.contains(name) {
-                            return None;
+                            return Err(Fault::AccessDenied);
                         }
                         engine.env.remove(name);
-                        Some(Type::Null)
+                        Ok(Type::Null)
                     })),
                 ),
                 (
                     "eval".to_string(),
                     Type::Function(Function::BuiltIn(|args, engine| {
                         let args = args.get_list();
-                        let code = args.get(0)?.get_text()?;
+                        let code = ok!(args.get(0))?.get_text()?;
                         if let Some(env) = args.get(1) {
                             let mut engine = engine.clone();
                             engine.env = env.get_struct()?;
@@ -147,12 +167,12 @@ impl Engine {
                     "alphaConvert".to_string(),
                     Type::Function(Function::BuiltIn(|args, _| {
                         let args = args.get_list();
-                        let func = args.get(0)?.get_function()?;
-                        let new_name = args.get(1)?.get_text()?;
+                        let func = ok!(args.get(0), Err(Fault::MissMatchArgLen))?.get_function()?;
+                        let new_name = ok!(args.get(1))?.get_text()?;
                         let Function::UserDefined(arg, body) = func else {
-                            return None;
+                            return Err(Fault::Other);
                         };
-                        Some(Type::Function(Function::UserDefined(
+                        Ok(Type::Function(Function::UserDefined(
                             new_name.clone(),
                             Box::new(body.replace(
                                 &Expr::Value(Type::Symbol(arg)),
@@ -169,9 +189,9 @@ impl Engine {
                         io::stdout().flush().unwrap();
                         let mut buffer = String::new();
                         if io::stdin().read_line(&mut buffer).is_ok() {
-                            Some(Type::Text(buffer.trim().to_string()))
+                            Ok(Type::Text(buffer.trim().to_string()))
                         } else {
-                            None
+                            Err(Fault::IO)
                         }
                     })),
                 ),
@@ -186,7 +206,7 @@ impl Engine {
                                 range.push(Type::Number(current));
                                 current += 1.0;
                             }
-                            Some(Type::List(range))
+                            Ok(Type::List(range))
                         } else if params.len() == 2 {
                             let mut range: Vec<Type> = vec![];
                             let mut current: f64 = params[0].get_number()?;
@@ -194,7 +214,7 @@ impl Engine {
                                 range.push(Type::Number(current));
                                 current += 1.0;
                             }
-                            Some(Type::List(range))
+                            Ok(Type::List(range))
                         } else if params.len() == 3 {
                             let mut range: Vec<Type> = vec![];
                             let mut current: f64 = params[0].get_number()?;
@@ -202,9 +222,9 @@ impl Engine {
                                 range.push(Type::Number(current));
                                 current += params[2].get_number()?;
                             }
-                            Some(Type::List(range))
+                            Ok(Type::List(range))
                         } else {
-                            None
+                            Err(Fault::MissMatchArgLen)
                         }
                     })),
                 ),
@@ -222,10 +242,10 @@ impl Engine {
                             if let Ok(code) = module.text() {
                                 engine.eval(Engine::parse(code)?)
                             } else {
-                                None
+                                Err(Fault::IO)
                             }
                         } else {
-                            None
+                            Err(Fault::IO)
                         }
                     })),
                 ),
@@ -240,12 +260,12 @@ impl Engine {
                         }
                         if let Ok(mut file) = File::create(arg.get_text()?) {
                             if file.write_all(render.as_bytes()).is_ok() {
-                                Some(Type::Text("Saved environment".to_string()))
+                                Ok(Type::Text("Saved environment".to_string()))
                             } else {
-                                None
+                                Err(Fault::IO)
                             }
                         } else {
-                            None
+                            Err(Fault::IO)
                         }
                     })),
                 ),
@@ -254,7 +274,7 @@ impl Engine {
         }
     }
 
-    fn parse(source: String) -> Option<Program> {
+    fn parse(source: String) -> Result<Program, Fault> {
         let mut program: Program = Vec::new();
         for line in tokenize(source, vec![';'])? {
             let line = line.trim().to_string();
@@ -264,15 +284,15 @@ impl Engine {
             }
             program.push(Statement::parse(line)?);
         }
-        Some(program)
+        Ok(program)
     }
 
-    fn eval(&mut self, program: Program) -> Option<Type> {
+    fn eval(&mut self, program: Program) -> Result<Type, Fault> {
         let mut result = Type::Null;
         for code in program {
             result = code.eval(self)?
         }
-        Some(result)
+        Ok(result)
     }
 }
 
@@ -289,8 +309,8 @@ enum Statement {
 }
 
 impl Statement {
-    fn eval(&self, engine: &mut Engine) -> Option<Type> {
-        Some(match self {
+    fn eval(&self, engine: &mut Engine) -> Result<Type, Fault> {
+        Ok(match self {
             Statement::Print(expr) => {
                 for i in expr {
                     print!(
@@ -307,11 +327,14 @@ impl Statement {
             Statement::Let(name, protect, sig, expr) => {
                 let val = expr.eval(engine)?;
                 if engine.protect.contains(name) {
-                    return None;
+                    return Err(Fault::Other);
                 }
                 if let Some(sig) = sig {
                     if val.get_type().format() != sig.format() {
-                        return None;
+                        return Err(Fault::Type {
+                            value: val,
+                            annotate: sig.to_owned(),
+                        });
                     }
                 }
                 if name != "_" {
@@ -323,7 +346,7 @@ impl Statement {
                 val
             }
             Statement::If(expr, then, r#else) => {
-                if let Some(it) = expr.eval(engine) {
+                if let Ok(it) = expr.eval(engine) {
                     engine.env.insert("it".to_string(), it);
                     then.eval(engine)?
                 } else {
@@ -344,7 +367,7 @@ impl Statement {
                         }
                     }
                 }
-                return None;
+                return Err(Fault::Other);
             }
             Statement::For(counter, expr, code) => {
                 let mut result = Type::Null;
@@ -358,37 +381,37 @@ impl Statement {
             }
             Statement::While(expr, code) => {
                 let mut result = Type::Null;
-                while let Some(it) = expr.eval(engine) {
+                while let Ok(it) = expr.eval(engine) {
                     engine.env.insert("it".to_string(), it);
                     result = code.eval(engine)?;
                 }
                 result
             }
-            Statement::Fault => return None,
+            Statement::Fault => return Err(Fault::Other),
             Statement::Return(expr) => expr.eval(engine)?,
         })
     }
 
-    fn parse(code: String) -> Option<Statement> {
+    fn parse(code: String) -> Result<Statement, Fault> {
         let code = code.trim().to_string();
         if code.starts_with("print") {
             let mut exprs = vec![];
             for i in tokenize(code["print".len()..].to_string(), vec![','])? {
                 exprs.push(Expr::parse(i)?)
             }
-            Some(Statement::Print(exprs))
+            Ok(Statement::Print(exprs))
         } else if code.starts_with("let") {
             let code = code["let".len()..].to_string();
-            let (name, code) = code.split_once("=")?;
+            let (name, code) = ok!(code.split_once("="))?;
             if let Some((name, sig)) = name.split_once(":") {
-                Some(Statement::Let(
+                Ok(Statement::Let(
                     name.trim().to_string(),
                     false,
-                    Some(Signature::parse(sig.trim().to_string())?),
+                    Some(ok!(Signature::parse(sig.trim().to_string()))?),
                     Expr::parse(code.to_string())?,
                 ))
             } else {
-                Some(Statement::Let(
+                Ok(Statement::Let(
                     name.trim().to_string(),
                     false,
                     None,
@@ -397,77 +420,80 @@ impl Statement {
             }
         } else if code.starts_with("const") {
             let code = code["const".len()..].to_string();
-            let (name, code) = code.split_once("=")?;
-            let (name, sig) = name.split_once(":")?;
-            Some(Statement::Let(
+            let (name, code) = ok!(code.split_once("="))?;
+            let (name, sig) = ok!(name.split_once(":"))?;
+            Ok(Statement::Let(
                 name.trim().to_string(),
                 true,
-                Some(Signature::parse(sig.trim().to_string())?),
+                Some(ok!(Signature::parse(sig.trim().to_string()))?),
                 Expr::parse(code.to_string())?,
             ))
         } else if code.starts_with("if") {
             let code = code["if".len()..].to_string();
             let code = tokenize(code, SPACE.to_vec())?;
             if let Some(pos) = code.iter().position(|i| i == "else") {
-                Some(Statement::If(
-                    Expr::parse(code.get(0)?.to_string())?,
-                    Expr::parse(code.get(1..pos)?.join(&SPACE[0].to_string()))?,
+                Ok(Statement::If(
+                    Expr::parse(ok!(code.get(0))?.to_string())?,
+                    Expr::parse(ok!(code.get(1..pos))?.join(&SPACE[0].to_string()))?,
                     Some(Expr::parse(
-                        code.get(pos + 1..)?.join(&SPACE[0].to_string()),
+                        ok!(code.get(pos + 1..))?.join(&SPACE[0].to_string()),
                     )?),
                 ))
             } else {
-                Some(Statement::If(
-                    Expr::parse(code.get(0)?.to_string())?,
-                    Expr::parse(code.get(1..)?.join(&SPACE[0].to_string()))?,
+                Ok(Statement::If(
+                    Expr::parse(ok!(code.get(0))?.to_string())?,
+                    Expr::parse(ok!(code.get(1..))?.join(&SPACE[0].to_string()))?,
                     None,
                 ))
             }
         } else if code.starts_with("match") {
             let code = code["match".len()..].to_string();
             let tokens = tokenize(code, SPACE.to_vec())?;
-            let expr = Expr::parse(tokens.get(0)?.to_string())?;
+            let expr = Expr::parse(ok!(tokens.get(0))?.to_string())?;
             let tokens = tokenize(
-                tokens.get(1)?[1..tokens.get(1)?.len() - 1].to_string(),
+                ok!(tokens.get(1))?[1..ok!(tokens.get(1))?.len() - 1].to_string(),
                 vec![','],
             )?;
             let mut body = vec![];
             for i in tokens {
                 let tokens = tokenize(i, SPACE.to_vec())?;
-                let pos = tokens.iter().position(|i| i == "=>")?;
+                let pos = ok!(tokens.iter().position(|i| i == "=>"))?;
                 let mut cond = vec![];
-                for i in tokenize(tokens.get(..pos)?.join(&SPACE[0].to_string()), vec!['|'])? {
+                for i in tokenize(
+                    ok!(tokens.get(..pos))?.join(&SPACE[0].to_string()),
+                    vec!['|'],
+                )? {
                     cond.push(Expr::parse(i.to_string())?)
                 }
                 body.push((
                     cond,
-                    Expr::parse(tokens.get(pos + 1..)?.join(&SPACE[0].to_string()))?,
+                    Expr::parse(ok!(tokens.get(pos + 1..))?.join(&SPACE[0].to_string()))?,
                 ))
             }
-            Some(Statement::Match(expr, body))
+            Ok(Statement::Match(expr, body))
         } else if code.starts_with("for") {
             let code = code["for".len()..].to_string();
             let code = tokenize(code, SPACE.to_vec())?;
             if code.get(1).and_then(|x| Some(x == "in")).unwrap_or(false) {
-                Some(Statement::For(
-                    code.get(0)?.to_string(),
-                    Expr::parse(code.get(2)?.to_string())?,
-                    Expr::parse(code.get(3)?.to_string())?,
+                Ok(Statement::For(
+                    ok!(code.get(0))?.to_string(),
+                    Expr::parse(ok!(code.get(2))?.to_string())?,
+                    Expr::parse(ok!(code.get(3))?.to_string())?,
                 ))
             } else {
-                None
+                Err(Fault::Other)
             }
         } else if code.starts_with("while") {
             let code = code["while".len()..].to_string();
             let code = tokenize(code, SPACE.to_vec())?;
-            Some(Statement::While(
-                Expr::parse(code.get(0)?.to_string())?,
-                Expr::parse(code.get(1)?.to_string())?,
+            Ok(Statement::While(
+                Expr::parse(ok!(code.get(0))?.to_string())?,
+                Expr::parse(ok!(code.get(1))?.to_string())?,
             ))
         } else if code == "fault" {
-            Some(Statement::Fault)
+            Ok(Statement::Fault)
         } else {
-            Some(Statement::Return(Expr::parse(code.to_string())?))
+            Ok(Statement::Return(Expr::parse(code.to_string())?))
         }
     }
 
@@ -541,8 +567,8 @@ enum Expr {
 }
 
 impl Expr {
-    fn eval(&self, engine: &mut Engine) -> Option<Type> {
-        Some(match self {
+    fn eval(&self, engine: &mut Engine) -> Result<Type, Fault> {
+        Ok(match self {
             Expr::Infix(infix) => (*infix).eval(engine)?,
             Expr::Block(block) => engine.eval(block.clone())?,
             Expr::List(list) => {
@@ -571,9 +597,9 @@ impl Expr {
         })
     }
 
-    fn parse(source: String) -> Option<Expr> {
+    fn parse(source: String) -> Result<Expr, Fault> {
         let token_list: Vec<String> = tokenize(source, SPACE.to_vec())?;
-        let token = token_list.last()?.trim().to_string();
+        let token = ok!(token_list.last())?.trim().to_string();
         let token = if let Ok(n) = token.parse::<f64>() {
             Expr::Value(Type::Number(n))
         } else if let Some(sig) = Signature::parse(token.clone()) {
@@ -595,36 +621,36 @@ impl Expr {
                 Expr::parse(token)?,
             )))
         } else if token.starts_with('(') && token.ends_with(')') {
-            let token = token.get(1..token.len() - 1)?.to_string();
+            let token = ok!(token.get(1..token.len() - 1))?.to_string();
             Expr::parse(token)?
         } else if token.starts_with('{') && token.ends_with('}') {
-            let token = token.get(1..token.len() - 1)?.to_string();
+            let token = ok!(token.get(1..token.len() - 1))?.to_string();
             Expr::Block(Engine::parse(token.clone())?)
         } else if token.starts_with("@{") && token.ends_with('}') {
-            let token = token.get(2..token.len() - 1)?.to_string();
+            let token = ok!(token.get(2..token.len() - 1))?.to_string();
             let mut result = Vec::new();
             for i in tokenize(token.clone(), vec![','])? {
                 let splited = tokenize(i, vec![':'])?;
                 result.push((
-                    Expr::parse(splited.get(0)?.to_string())?,
-                    Expr::parse(splited.get(1)?.to_string())?,
+                    Expr::parse(ok!(splited.get(0))?.to_string())?,
+                    Expr::parse(ok!(splited.get(1))?.to_string())?,
                 ));
             }
             Expr::Struct(result)
         } else if token.starts_with('[') && token.ends_with(']') {
-            let token = token.get(1..token.len() - 1)?.to_string();
+            let token = ok!(token.get(1..token.len() - 1))?.to_string();
             let mut list = vec![];
             for elm in tokenize(token, vec![','])? {
                 list.push(Expr::parse(elm.trim().to_string())?);
             }
             Expr::List(list)
         } else if token.starts_with('"') && token.ends_with('"') {
-            let token = token.get(1..token.len() - 1)?.to_string();
+            let token = ok!(token.get(1..token.len() - 1))?.to_string();
             Expr::Value(Type::Text(text_escape(token)))
         // Lambda abstract that original formula in the theory
         } else if token.starts_with('λ') && token.contains('.') {
             let token = token.replacen("λ", "", 1);
-            let (arg, body) = token.split_once(".")?;
+            let (arg, body) = ok!(token.split_once("."))?;
             Expr::Value(Type::Function(Function::UserDefined(
                 arg.to_string(),
                 Box::new(Expr::parse(body.to_string())?),
@@ -632,7 +658,7 @@ impl Expr {
         // Lambda abstract using back-slash instead of lambda mark
         } else if token.starts_with('\\') && token.contains('.') {
             let token = token.replacen('\\', "", 1);
-            let (arg, body) = token.split_once(".")?;
+            let (arg, body) = ok!(token.split_once("."))?;
             Expr::Value(Type::Function(Function::UserDefined(
                 arg.to_string(),
                 Box::new(Expr::parse(body.to_string())?),
@@ -640,16 +666,16 @@ impl Expr {
         // Imperative style syntactic sugar of lambda abstract
         } else if token.starts_with("fn(") && token.contains("->") && token.ends_with(")") {
             let token = token.replacen("fn(", "", 1);
-            let token = token.get(..token.len() - 1)?.to_string();
-            let (args, body) = token.split_once("->")?;
+            let token = ok!(token.get(..token.len() - 1))?.to_string();
+            let (args, body) = ok!(token.split_once("->"))?;
             let mut args: Vec<&str> = args.split(",").collect();
             args.reverse();
             let mut func = Expr::Value(Type::Function(Function::UserDefined(
-                args.first()?.trim().to_string(),
+                ok!(args.first())?.trim().to_string(),
                 Box::new(Expr::parse(body.to_string())?),
             )));
             // Currying
-            for arg in args.get(1..)? {
+            for arg in ok!(args.get(1..))? {
                 func = Expr::Value(Type::Function(Function::UserDefined(
                     arg.trim().to_string(),
                     Box::new(func),
@@ -658,14 +684,14 @@ impl Expr {
             func
         // Imperative style syntactic sugar of function application
         } else if token.contains('(') && token.ends_with(')') {
-            let token = token.get(..token.len() - 1)?.to_string();
-            let (name, args) = token.split_once("(")?;
+            let token = ok!(token.get(..token.len() - 1))?.to_string();
+            let (name, args) = ok!(token.split_once("("))?;
             let args = tokenize(args.to_string(), vec![','])?;
             let mut call = Expr::Infix(Box::new(Operator::Apply(
                 Expr::parse(name.to_string())?,
-                Expr::parse(args.first()?.to_string())?,
+                Expr::parse(ok!(args.first())?.to_string())?,
             )));
-            for arg in args.get(1..)? {
+            for arg in ok!(args.get(1..))? {
                 call = Expr::Infix(Box::new(Operator::Apply(
                     call,
                     Expr::parse(arg.to_string())?,
@@ -679,15 +705,13 @@ impl Expr {
         };
 
         if token_list.len() >= 2 {
-            let operator = token_list.get(token_list.len() - 2)?;
+            let operator = ok!(token_list.get(token_list.len() - 2))?;
             let has_lhs = |len: usize| {
                 Expr::parse(
-                    token_list
-                        .get(..token_list.len() - len)?
-                        .join(&SPACE[0].to_string()),
+                    ok!(token_list.get(..token_list.len() - len))?.join(&SPACE[0].to_string()),
                 )
             };
-            Some(Expr::Infix(Box::new(match operator.as_str() {
+            Ok(Expr::Infix(Box::new(match operator.as_str() {
                 "+" => Operator::Add(has_lhs(2)?, token),
                 "-" => Operator::Sub(has_lhs(2)?, token),
                 "*" => Operator::Mul(has_lhs(2)?, token),
@@ -728,7 +752,7 @@ impl Expr {
                 }
             })))
         } else {
-            Some(token)
+            Ok(token)
         }
     }
 
@@ -869,7 +893,7 @@ impl Expr {
                         Statement::If(cond, then, r#else) => Statement::If(
                             cond.replace(from, to),
                             then.replace(from, to),
-                            r#else.clone().and_then(|j| Some(j.replace(from, to))),
+                            r#else.clone().and_then(|j| Ok(j.replace(from, to))),
                         ),
                         Statement::Match(expr, cond) => Statement::Match(
                             expr.replace(from, to),
@@ -923,7 +947,7 @@ impl Expr {
 
 #[derive(Clone, Debug)]
 enum Function {
-    BuiltIn(fn(Type, &mut Engine) -> Option<Type>),
+    BuiltIn(fn(Type, &mut Engine) -> Result<Type, Fault>),
     UserDefined(String, Box<Expr>),
 }
 
@@ -959,8 +983,8 @@ enum Operator {
 }
 
 impl Operator {
-    fn eval(&self, engine: &mut Engine) -> Option<Type> {
-        Some(match self {
+    fn eval(&self, engine: &mut Engine) -> Result<Type, Fault> {
+        Ok(match self {
             Operator::Add(lhs, rhs) => {
                 let lhs = lhs.eval(engine)?;
                 let rhs = rhs.eval(engine)?;
@@ -974,7 +998,7 @@ impl Operator {
                     lhs.extend(rhs.clone());
                     Type::Struct(lhs)
                 } else {
-                    return None;
+                    return Err(Fault::Other);
                 }
             }
             Operator::Sub(lhs, rhs) => {
@@ -1000,7 +1024,7 @@ impl Operator {
                     lhs.remove(rhs as usize);
                     Type::Text(lhs)
                 } else {
-                    return None;
+                    return Err(Fault::Other);
                 }
             }
             Operator::Mul(lhs, rhs) => {
@@ -1013,7 +1037,7 @@ impl Operator {
                 } else if let (Type::List(lhs), Type::Number(rhs)) = (lhs, rhs) {
                     Type::List((0..rhs as usize).flat_map(|_| lhs.clone()).collect())
                 } else {
-                    return None;
+                    return Err(Fault::Other);
                 }
             }
             Operator::Div(lhs, rhs) => {
@@ -1033,7 +1057,7 @@ impl Operator {
                 if rhs.is_match(&lhs) {
                     rhs
                 } else {
-                    return None;
+                    return Err(Fault::Other);
                 }
             }
             Operator::NotEq(lhs, rhs) => {
@@ -1042,7 +1066,7 @@ impl Operator {
                 if !rhs.is_match(&lhs) {
                     rhs
                 } else {
-                    return None;
+                    return Err(Fault::Other);
                 }
             }
             Operator::LessThan(lhs, rhs) => {
@@ -1050,7 +1074,7 @@ impl Operator {
                 if lhs.eval(engine)?.get_number() < rhs.get_number() {
                     rhs
                 } else {
-                    return None;
+                    return Err(Fault::Other);
                 }
             }
             Operator::LessThanEq(lhs, rhs) => {
@@ -1058,7 +1082,7 @@ impl Operator {
                 if lhs.eval(engine)?.get_number() <= rhs.get_number() {
                     rhs
                 } else {
-                    return None;
+                    return Err(Fault::Other);
                 }
             }
             Operator::GreaterThan(lhs, rhs) => {
@@ -1066,7 +1090,7 @@ impl Operator {
                 if lhs.eval(engine)?.get_number() > rhs.get_number() {
                     rhs
                 } else {
-                    return None;
+                    return Err(Fault::Other);
                 }
             }
             Operator::GreaterThanEq(lhs, rhs) => {
@@ -1074,7 +1098,7 @@ impl Operator {
                 if lhs.eval(engine)?.get_number() >= rhs.get_number() {
                     rhs
                 } else {
-                    return None;
+                    return Err(Fault::Other);
                 }
             }
             Operator::And(lhs, rhs) => {
@@ -1082,7 +1106,7 @@ impl Operator {
                 if lhs.eval(engine).is_some() && rhs.is_some() {
                     rhs?
                 } else {
-                    return None;
+                    return Err(Fault::Other);
                 }
             }
             Operator::Or(lhs, rhs) => {
@@ -1091,13 +1115,13 @@ impl Operator {
                 if lhs.is_some() || rhs.is_some() {
                     rhs.unwrap_or(lhs?)
                 } else {
-                    return None;
+                    return Err(Fault::Other);
                 }
             }
             Operator::Not(val) => {
                 let val = val.eval(engine);
                 if val.is_some() {
-                    return None;
+                    return Err(Fault::Other);
                 } else {
                     Type::Null
                 }
@@ -1117,12 +1141,12 @@ impl Operator {
                 } else if let (Type::Struct(st), Type::Text(index)) = (lhs.clone(), rhs.clone()) {
                     st.get(&index)?.clone()
                 } else {
-                    return None;
+                    return Err(Fault::Other);
                 }
             }
             Operator::Derefer(pointer) => match pointer.clone().eval(engine)? {
                 Type::Refer(to) => Expr::Value(Type::Symbol(to.to_string())).eval(engine)?,
-                _ => return None,
+                _ => return Err(Fault::Other),
             },
             Operator::As(lhs, rhs) => {
                 let lhs = lhs.eval(engine)?;
@@ -1156,7 +1180,7 @@ impl Operator {
             }
             Operator::Assign(lhs, rhs) => {
                 let Expr::Value(Type::Symbol(name)) = lhs else {
-                    return None;
+                    return Err(Fault::Other);
                 };
                 Statement::Let(name.to_owned(), false, None, rhs.to_owned()).eval(engine)?
             }
@@ -1248,6 +1272,27 @@ impl Operator {
     }
 }
 
+#[derive(Debug, Error)]
+enum Fault {
+    #[error("access is denied because it's protected memory area")]
+    AccessDenied,
+
+    #[error("can not type cast `{}` to {}", value.get_symbol(), to.format())]
+    Cast { value: Type, to: Signature },
+
+    #[error("at the IO processing")]
+    IO,
+
+    #[error("the result value `{}` is different to expected type `{}`", value.get_symbol(), annotate.format())]
+    Type { value: Type, annotate: Signature },
+
+    #[error("missmatching of arguments length when function application")]
+    MissMatchArgLen,
+
+    #[error("")]
+    Other,
+}
+
 #[derive(Debug, Clone)]
 enum Type {
     Number(f64),
@@ -1300,28 +1345,35 @@ impl Type {
         }
     }
 
-    fn get_number(&self) -> Option<f64> {
+    fn get_number(&self) -> Result<f64, Fault> {
+        let err = Err(Fault::Cast {
+            value: self.clone(),
+            to: Signature::Number,
+        });
         match self {
-            Type::Number(n) => Some(n.to_owned()),
+            Type::Number(n) => Ok(n.to_owned()),
             Type::Symbol(s) | Type::Text(s) => {
                 if let Ok(n) = s.trim().parse::<f64>() {
-                    Some(n)
+                    Ok(n)
                 } else {
-                    None
+                    err
                 }
             }
-            Type::Null => Some(0.0),
-            _ => None,
+            Type::Null => Ok(0.0),
+            _ => err,
         }
     }
 
-    fn get_text(&self) -> Option<String> {
+    fn get_text(&self) -> Result<String, Fault> {
         match self {
-            Type::Symbol(s) | Type::Text(s) => Some(s.to_string()),
-            Type::Number(n) => Some(n.to_string()),
-            Type::Signature(s) => Some(s.format()),
-            Type::Null => Some(String::new()),
-            _ => None,
+            Type::Symbol(s) | Type::Text(s) => Ok(s.to_string()),
+            Type::Number(n) => Ok(n.to_string()),
+            Type::Signature(s) => Ok(s.format()),
+            Type::Null => Ok(String::new()),
+            _ => Err(Fault::Cast {
+                value: self.clone(),
+                to: Signature::Text,
+            }),
         }
     }
 
@@ -1334,11 +1386,14 @@ impl Type {
         }
     }
 
-    fn get_function(&self) -> Option<Function> {
+    fn get_function(&self) -> Result<Function, Fault> {
         if let Type::Function(func) = self {
-            Some(func.to_owned())
+            Ok(func.to_owned())
         } else {
-            None
+            Err(Fault::Cast {
+                value: self.clone(),
+                to: Signature::Function,
+            })
         }
     }
 
@@ -1356,27 +1411,36 @@ impl Type {
         }
     }
 
-    fn get_signature(&self) -> Option<Signature> {
+    fn get_signature(&self) -> Result<Signature, Fault> {
         if let Type::Signature(sig) = self {
-            Some(sig.clone())
+            Ok(sig.clone())
         } else {
-            None
+            Err(Fault::Cast {
+                value: self.clone(),
+                to: Signature::Signature,
+            })
         }
     }
 
-    fn get_struct(&self) -> Option<HashMap<String, Type>> {
+    fn get_struct(&self) -> Result<HashMap<String, Type>, Fault> {
         if let Type::Struct(val) = self {
-            Some(val.clone())
+            Ok(val.clone())
         } else {
-            None
+            Err(Fault::Cast {
+                value: self.clone(),
+                to: Signature::Struct,
+            })
         }
     }
 
-    fn get_refer(&self) -> Option<String> {
+    fn get_refer(&self) -> Result<String, Fault> {
         if let Type::Refer(val) = self {
-            Some(val.clone())
+            Ok(val.clone())
         } else {
-            None
+            Err(Fault::Cast {
+                value: self.clone(),
+                to: Signature::Refer,
+            })
         }
     }
 
@@ -1442,7 +1506,7 @@ impl Signature {
         } else if token == "struct" {
             Signature::Struct
         } else {
-            return None;
+            return Err(Fault::Other);
         })
     }
 
@@ -1451,7 +1515,7 @@ impl Signature {
     }
 }
 
-fn tokenize(input: String, delimiter: Vec<char>) -> Option<Vec<String>> {
+fn tokenize(input: String, delimiter: Vec<char>) -> Result<Vec<String>, Fault> {
     let mut tokens: Vec<String> = Vec::new();
     let mut current_token = String::new();
     let mut in_parentheses: usize = 0;
@@ -1478,7 +1542,7 @@ fn tokenize(input: String, delimiter: Vec<char>) -> Option<Vec<String>> {
                     if in_parentheses > 0 {
                         in_parentheses -= 1;
                     } else {
-                        return None;
+                        return Err(Fault::Other);
                     }
                 }
                 '"' | '\'' | '`' => {
@@ -1507,13 +1571,13 @@ fn tokenize(input: String, delimiter: Vec<char>) -> Option<Vec<String>> {
 
     // Syntax error check
     if is_escape || in_quote || in_parentheses != 0 {
-        return None;
+        return Err(Fault::Other);
     }
     if !current_token.is_empty() {
         tokens.push(current_token.clone());
         current_token.clear();
     }
-    Some(tokens)
+    Ok(tokens)
 }
 
 fn text_escape(text: String) -> String {
