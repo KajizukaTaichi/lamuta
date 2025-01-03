@@ -8,3 +8,4 @@ license = "MIT"
 [dependencies]
 colored = "2.0"
 reqwest = { version = "0.12.10", features = ["blocking"] }
+rustyline = "15.0.0"
