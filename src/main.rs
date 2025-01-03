@@ -78,18 +78,14 @@ fn main() {
         loop {
             match rl.readline(&format!("[{session:0>3}]> ")) {
                 Ok(code) => {
-                    if let Ok(ast) = Engine::parse(code) {
-                        if let Ok(result) = engine.eval(ast) {
-                            println!(
-                                "{navi} {result}",
-                                result = result.get_symbol(),
-                                navi = "=>".green()
-                            );
-                        } else {
-                            println!("{navi} Fault", navi = "=>".red());
-                        }
-                    } else {
-                        println!("{navi} Fault", navi = "=>".red());
+                    match Engine::parse(code) {
+                        Ok(ast) => match engine.eval(ast) {
+                            Ok(result) => {
+                                println!("{navi} {}", result.get_symbol(), navi = "=>".green())
+                            }
+                            Err(e) => println!("{navi} Fault: {e}", navi = "=>".red()),
+                        },
+                        Err(e) => println!("{navi} Syntax Error: {e}", navi = "=>".red()),
                     }
                     session += 1;
                 }
