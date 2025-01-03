@@ -78,6 +78,13 @@ impl Engine {
                     })),
                 ),
                 (
+                    "free".to_string(),
+                    Type::Function(Function::BuiltIn(|name, engine| {
+                        engine.env.remove(&name.get_text()?);
+                        Some(Type::Null)
+                    })),
+                ),
+                (
                     "eval".to_string(),
                     Type::Function(Function::BuiltIn(|args, engine| {
                         let args = args.get_list();
