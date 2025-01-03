@@ -175,7 +175,7 @@ impl Engine {
                     Type::Function(Function::BuiltIn(|args, _| {
                         let args = args.get_list();
                         let func = ok!(args.get(0), Fault::ArgLen)?;
-                        let new_name = ok!(args.get(1))?.get_text()?;
+                        let new_name = ok!(args.get(1), Fault::ArgLen)?.get_text()?;
                         let Type::Function(Function::UserDefined(arg, body)) = func else {
                             return Err(Fault::Type {
                                 value: func.to_owned(),
