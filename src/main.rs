@@ -31,6 +31,16 @@ macro_rules! ok {
     };
 }
 
+macro_rules! some {
+    ($result_value: expr) => {
+        if let Ok(ok) = $result_value {
+            Some(ok)
+        } else {
+            None
+        }
+    };
+}
+
 #[derive(Parser)]
 #[command(
     name = "Lamuta",version = VERSION,
@@ -304,7 +314,7 @@ enum Statement {
     Match(Expr, Vec<(Vec<Expr>, Expr)>),
     For(String, Expr, Expr),
     While(Expr, Expr),
-    Fault,
+    Fault(Option<Expr>),
     Return(Expr),
 }
 
@@ -387,7 +397,10 @@ impl Statement {
                 }
                 result
             }
-            Statement::Fault => return Err(Fault::Syntax),
+            Statement::Fault(Some(msg)) => {
+                return Err(Fault::General(Some(msg.eval(engine)?.get_text()?)))
+            }
+            Statement::Fault(None) => return Err(Fault::General(None)),
             Statement::Return(expr) => expr.eval(engine)?,
         })
     }
@@ -490,8 +503,9 @@ impl Statement {
                 Expr::parse(ok!(code.get(0))?.to_string())?,
                 Expr::parse(ok!(code.get(1))?.to_string())?,
             ))
-        } else if code == "fault" {
-            Ok(Statement::Fault)
+        } else if code.starts_with("fault") {
+            let code = code["fault".len()..].to_string();
+            Ok(Statement::Fault(some!(Expr::parse(code.to_string()))))
         } else {
             Ok(Statement::Return(Expr::parse(code.to_string())?))
         }
@@ -551,7 +565,8 @@ impl Statement {
             Statement::While(cond, code) => {
                 format!("while {} {}", cond.format(), code.format())
             }
-            Statement::Fault => "fault".to_string(),
+            Statement::Fault(Some(msg)) => format!("fault {}", msg.format()),
+            Statement::Fault(None) => "fault".to_string(),
             Statement::Return(expr) => format!("{}", expr.format()),
         }
     }
@@ -914,7 +929,10 @@ impl Expr {
                         Statement::While(cond, code) => {
                             Statement::While(cond.replace(from, to), code.replace(from, to))
                         }
-                        Statement::Fault => Statement::Fault,
+                        Statement::Fault(Some(msg)) => {
+                            Statement::Fault(Some(msg.replace(from, to)))
+                        }
+                        Statement::Fault(None) => Statement::Fault(None),
                         Statement::Return(val) => Statement::Return(val.replace(from, to)),
                     })
                     .collect(),
@@ -1296,6 +1314,9 @@ enum Fault {
 
     #[error("the logical operation has bankruptcy")]
     Logic,
+
+    #[error("{}", if let Some(msg) = _0 { msg } else { "" })]
+    General(Option<String>),
 }
 
 #[derive(Debug, Clone)]
