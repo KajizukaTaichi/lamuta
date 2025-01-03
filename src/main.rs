@@ -1207,10 +1207,10 @@ impl Type {
             Type::Symbol(s) => s.to_string(),
             Type::Text(text) => format!(
                 "\"{}\"",
-                text.replace("'", "\\'")
+                text.replace("\\", "\\\\")
+                    .replace("'", "\\'")
                     .replace("\"", "\\\"")
                     .replace("`", "\\`")
-                    .replace("\\", "\\\\")
                     .replace("\n", "\\n")
                     .replace("\t", "\\t")
                     .replace("\r", "\\r")
