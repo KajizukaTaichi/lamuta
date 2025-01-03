@@ -1435,8 +1435,15 @@ fn tokenize(input: String, delimiter: Vec<char>) -> Option<Vec<String>> {
     let mut current_token = String::new();
     let mut in_parentheses: usize = 0;
     let mut in_quote = false;
+    let mut is_escape = false;
 
     for c in input.chars() {
+        if is_escape {
+            current_token.push(c);
+            is_escape = false;
+            continue;
+        }
+
         match c {
             '(' | '{' | '[' if !in_quote => {
                 current_token.push(c);
@@ -1450,9 +1457,12 @@ fn tokenize(input: String, delimiter: Vec<char>) -> Option<Vec<String>> {
                     return None;
                 }
             }
-            '"' | '`' => {
+            '"' | '\'' | '`' => {
                 in_quote = !in_quote;
                 current_token.push(c);
+            }
+            '\\' if in_quote => {
+                is_escape = true;
             }
             other => {
                 if delimiter.contains(&other) && !in_quote {
