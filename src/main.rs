@@ -1,3 +1,4 @@
+use clap::Parser;
 use colored::*;
 use reqwest::blocking;
 use rustyline::{error::ReadlineError, DefaultEditor};
@@ -11,33 +12,50 @@ use std::{
 const VERSION: &str = "0.3.2";
 const SPACE: [char; 5] = [' ', '　', '\n', '\t', '\r'];
 
-fn main() {
-    println!("{title} {VERSION}", title = "Lamuta".blue().bold());
-    let mut rl = DefaultEditor::new().unwrap();
-    let mut engine = Engine::new();
-    let mut session = 1;
+#[derive(Parser)]
+#[command(name = "Lamuta",version = VERSION)]
+#[command(about = "ラムダ計算の数式がそのまま書ける関数型プログラミング言語")]
+struct Cli {
+    /// 評価するソースファイル
+    #[arg(index = 1)]
+    file: Option<String>,
+}
 
-    loop {
-        match rl.readline(&format!("[{session:0>3}]> ")) {
-            Ok(code) => {
-                if let Some(ast) = Engine::parse(code) {
-                    if let Some(result) = engine.eval(ast) {
-                        println!(
-                            "{navi} {result}",
-                            result = result.get_symbol(),
-                            navi = "=>".green()
-                        );
+fn main() {
+    let mut engine = Engine::new();
+    if let Some(file) = Cli::parse().file {
+        Operator::Apply(
+            Expr::Value(Type::Symbol("load".to_string())),
+            Expr::Value(Type::Text(file)),
+        )
+        .eval(&mut engine);
+    } else {
+        println!("{title} {VERSION}", title = "Lamuta".blue().bold());
+        let mut rl = DefaultEditor::new().unwrap();
+        let mut session = 1;
+
+        loop {
+            match rl.readline(&format!("[{session:0>3}]> ")) {
+                Ok(code) => {
+                    if let Some(ast) = Engine::parse(code) {
+                        if let Some(result) = engine.eval(ast) {
+                            println!(
+                                "{navi} {result}",
+                                result = result.get_symbol(),
+                                navi = "=>".green()
+                            );
+                        } else {
+                            println!("{navi} Fault", navi = "=>".red());
+                        }
                     } else {
                         println!("{navi} Fault", navi = "=>".red());
                     }
-                } else {
-                    println!("{navi} Fault", navi = "=>".red());
+                    session += 1;
                 }
-                session += 1;
+                Err(ReadlineError::Interrupted) => println!("^C"),
+                Err(ReadlineError::Eof) => println!("^D"),
+                _ => {}
             }
-            Err(ReadlineError::Interrupted) => println!("^C"),
-            Err(ReadlineError::Eof) => println!("^D"),
-            _ => {}
         }
     }
 }
