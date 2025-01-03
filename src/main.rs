@@ -533,7 +533,7 @@ impl Expr {
         } else if token.starts_with('"') && token.ends_with('"') {
             let token = token.get(1..token.len() - 1)?.to_string();
             Expr::Value(Type::Text(text_escape(token)))
-        // Lambda abstract
+        // Lambda abstract that original formula of theory
         } else if token.starts_with('λ') && token.contains('.') {
             let token = token.replacen("λ", "", 1);
             let (arg, body) = token.split_once(".")?;
