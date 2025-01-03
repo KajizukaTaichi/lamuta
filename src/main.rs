@@ -1210,6 +1210,10 @@ impl Type {
                 text.replace("'", "\\'")
                     .replace("\"", "\\\"")
                     .replace("`", "\\`")
+                    .replace("\\", "\\\\")
+                    .replace("\n", "\\\n")
+                    .replace("\t", "\\\t")
+                    .replace("\r", "\\\r")
             ),
             Type::Number(n) => n.to_string(),
             Type::Null => "null".to_string(),
@@ -1393,7 +1397,12 @@ fn tokenize(input: String, delimiter: Vec<char>) -> Option<Vec<String>> {
 
     for c in input.chars() {
         if is_escape {
-            current_token.push(c);
+            current_token.push(match c {
+                'n' => '\n',
+                't' => '\t',
+                'r' => '\r',
+                _ => c,
+            });
             is_escape = false;
         } else {
             match c {
