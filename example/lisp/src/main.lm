@@ -1,10 +1,9 @@
-let eval = λe.λp.{
-    let env = e;
+let lisp.eval = λe.λp.{
     match (p :: "type") {
         "expr" => {
             let code = [];
             for i in (p :: "value") {
-                let code = code + [eval env i];
+                let code = code + [lisp.eval e i];
             };
             if (code :: 0 :: "type" == "function") {
                 let func = code :: 0 :: "value";
@@ -13,7 +12,7 @@ let eval = λe.λp.{
                 fault
             }
         },
-        "symbol" => { if (env :: (p :: "value")) it else p },
+        "symbol" => { if (e :: (p :: "value")) it else p },
         _ => p
     }
 };
@@ -117,7 +116,7 @@ let tokenize = λsource.{
     tokens
 };
 
-let env = @{
+let lisp.env = @{
     "+": @{
         "type": "function",
         "value": λl.@{
@@ -171,7 +170,7 @@ let env = @{
         "type": "function",
         "value": λl.{
             let expr = getList (l :: 0);
-            eval env @{ "type": "expr", "value": expr }
+            lisp.eval lisp.env @{ "type": "expr", "value": expr }
         }
     }
 };
@@ -187,9 +186,9 @@ let main = λ_.{
             if (find entered ":=") {
                 let name = tokenize (slice entered (range [0, it])) :: 0;
                 let expr = tokenize (slice entered (range [it + 2, len entered])) :: 0;
-                let env = env + @{ name: eval env (parse expr) };
+                let lisp.env = lisp.env + @{ name: lisp.eval lisp.env (parse expr) };
             } else {
-                print eval env (parse entered);
+                print lisp.eval lisp.env (parse entered);
             }
         }
     }
