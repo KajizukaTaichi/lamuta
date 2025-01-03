@@ -68,7 +68,7 @@ impl Engine {
                 (
                     "free".to_string(),
                     Type::Function(Function::BuiltIn(|name, engine| {
-                        engine.env.remove(&name.get_text()?);
+                        engine.env.remove(&name.get_refer()?);
                         Some(Type::Null)
                     })),
                 ),
@@ -1279,6 +1279,14 @@ impl Type {
 
     fn get_struct(&self) -> Option<HashMap<String, Type>> {
         if let Type::Struct(val) = self {
+            Some(val.clone())
+        } else {
+            None
+        }
+    }
+
+    fn get_refer(&self) -> Option<String> {
+        if let Type::Refer(val) = self {
             Some(val.clone())
         } else {
             None
