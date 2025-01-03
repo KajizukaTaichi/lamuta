@@ -8,5 +8,5 @@ let fizzbuzz = fn(n -> {
 });
 
 for i in (range [1, 101]) {
-    print fizzbuzz i
+    print fizzbuzz i, "\n"
 }
