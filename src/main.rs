@@ -36,6 +36,7 @@ fn main() {
                 session += 1;
             }
             Err(ReadlineError::Interrupted) => println!("^C"),
+            Err(ReadlineError::Eof) => println!("^D"),
             _ => {}
         }
     }
