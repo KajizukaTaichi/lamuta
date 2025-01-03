@@ -11,7 +11,7 @@ use std::{
 };
 use thiserror::Error;
 
-const VERSION: &str = "0.3.2";
+const VERSION: &str = "0.4.0";
 const SPACE: [char; 5] = [' ', '　', '\n', '\t', '\r'];
 
 macro_rules! ok {
