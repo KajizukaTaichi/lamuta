@@ -263,7 +263,6 @@ impl Statement {
                         }
                     );
                 }
-                println!();
                 io::stdout().flush().unwrap();
                 Type::Null
             }
