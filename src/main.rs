@@ -1307,7 +1307,7 @@ enum Fault {
     Infix(Operator),
     #[error("the logical operation has bankruptcy")]
     Logic,
-    #[error("{}", if let Some(msg) = _0 { msg } else { "" })]
+    #[error("{}", if let Some(msg) = _0 { msg } else { "throwed by user-defined program" })]
     General(Option<String>),
 }
 
