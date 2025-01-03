@@ -1229,7 +1229,7 @@ impl Operator {
             Operator::GreaterThanEq(lhs, rhs) => format!("{} >= {}", lhs.format(), rhs.format()),
             Operator::And(lhs, rhs) => format!("{} & {}", lhs.format(), rhs.format()),
             Operator::Or(lhs, rhs) => format!("{} | {}", lhs.format(), rhs.format()),
-            Operator::Not(val) => format!("! {}", val.format()),
+            Operator::Not(val) => format!("!{}", val.format()),
             Operator::Access(lhs, rhs) => format!("{} :: {}", lhs.format(), rhs.format()),
             Operator::As(lhs, rhs) => format!("{} as {}", lhs.format(), rhs.format()),
             Operator::Assign(lhs, rhs) => format!("{} := {}", lhs.format(), rhs.format()),
