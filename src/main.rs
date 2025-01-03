@@ -893,7 +893,7 @@ impl Expr {
                         Statement::If(cond, then, r#else) => Statement::If(
                             cond.replace(from, to),
                             then.replace(from, to),
-                            r#else.clone().and_then(|j| Ok(j.replace(from, to))),
+                            r#else.clone().and_then(|j| Some(j.replace(from, to))),
                         ),
                         Statement::Match(expr, cond) => Statement::Match(
                             expr.replace(from, to),
@@ -1009,10 +1009,10 @@ impl Operator {
                 } else if let (Type::Text(lhs), Type::Text(rhs)) = (&lhs, &rhs) {
                     Type::Text(lhs.replacen(rhs, "", 1))
                 } else if let (Type::List(mut lhs), Type::List(rhs)) = (lhs.clone(), &rhs) {
-                    let first_index = lhs.windows(rhs.len()).position(|i| {
+                    let first_index = ok!(lhs.windows(rhs.len()).position(|i| {
                         i.iter().map(|j| j.get_symbol()).collect::<Vec<_>>()
                             == rhs.iter().map(|j| j.get_symbol()).collect::<Vec<_>>()
-                    })?;
+                    }))?;
                     for _ in 0..rhs.len() {
                         lhs.remove(first_index);
                     }
@@ -1071,7 +1071,7 @@ impl Operator {
             }
             Operator::LessThan(lhs, rhs) => {
                 let rhs = rhs.eval(engine)?;
-                if lhs.eval(engine)?.get_number() < rhs.get_number() {
+                if lhs.eval(engine)?.get_number()? < rhs.get_number()? {
                     rhs
                 } else {
                     return Err(Fault::Other);
@@ -1079,7 +1079,7 @@ impl Operator {
             }
             Operator::LessThanEq(lhs, rhs) => {
                 let rhs = rhs.eval(engine)?;
-                if lhs.eval(engine)?.get_number() <= rhs.get_number() {
+                if lhs.eval(engine)?.get_number()? <= rhs.get_number()? {
                     rhs
                 } else {
                     return Err(Fault::Other);
@@ -1087,7 +1087,7 @@ impl Operator {
             }
             Operator::GreaterThan(lhs, rhs) => {
                 let rhs = rhs.eval(engine)?;
-                if lhs.eval(engine)?.get_number() > rhs.get_number() {
+                if lhs.eval(engine)?.get_number()? > rhs.get_number()? {
                     rhs
                 } else {
                     return Err(Fault::Other);
@@ -1095,7 +1095,7 @@ impl Operator {
             }
             Operator::GreaterThanEq(lhs, rhs) => {
                 let rhs = rhs.eval(engine)?;
-                if lhs.eval(engine)?.get_number() >= rhs.get_number() {
+                if lhs.eval(engine)?.get_number()? >= rhs.get_number()? {
                     rhs
                 } else {
                     return Err(Fault::Other);
@@ -1103,7 +1103,7 @@ impl Operator {
             }
             Operator::And(lhs, rhs) => {
                 let rhs = rhs.eval(engine);
-                if lhs.eval(engine).is_some() && rhs.is_some() {
+                if lhs.eval(engine).is_ok() && rhs.is_ok() {
                     rhs?
                 } else {
                     return Err(Fault::Other);
@@ -1112,7 +1112,7 @@ impl Operator {
             Operator::Or(lhs, rhs) => {
                 let lhs = lhs.eval(engine);
                 let rhs = rhs.eval(engine);
-                if lhs.is_some() || rhs.is_some() {
+                if lhs.is_ok() || rhs.is_ok() {
                     rhs.unwrap_or(lhs?)
                 } else {
                     return Err(Fault::Other);
@@ -1120,7 +1120,7 @@ impl Operator {
             }
             Operator::Not(val) => {
                 let val = val.eval(engine);
-                if val.is_some() {
+                if val.is_ok() {
                     return Err(Fault::Other);
                 } else {
                     Type::Null
@@ -1133,13 +1133,10 @@ impl Operator {
                     list.get(index as usize)?.clone()
                 } else if let (Type::Text(text), Type::Number(index)) = (lhs.clone(), rhs.clone()) {
                     Type::Text(
-                        text.chars()
-                            .collect::<Vec<char>>()
-                            .get(index as usize)?
-                            .to_string(),
+                        ok!(text.chars().collect::<Vec<char>>().get(index as usize))?.to_string(),
                     )
                 } else if let (Type::Struct(st), Type::Text(index)) = (lhs.clone(), rhs.clone()) {
-                    st.get(&index)?.clone()
+                    ok!(st.get(&index))?.clone()
                 } else {
                     return Err(Fault::Other);
                 }
