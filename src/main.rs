@@ -1293,28 +1293,20 @@ impl Operator {
 enum Fault {
     #[error("access is denied because it's protected memory area")]
     AccessDenied,
-
     #[error("can not type cast `{}` to {}", value.get_symbol(), to.format())]
     Cast { value: Type, to: Signature },
-
     #[error("at the IO processing")]
     IO,
-
     #[error("the result value `{}` is different to expected type `{}`", value.get_symbol(), annotate.format())]
     Type { value: Type, annotate: Signature },
-
     #[error("missmatching of arguments length when function application")]
     MissMatchArgLen,
-
     #[error("the program is not able to parse. check out is the syntax correct")]
     Syntax,
-
     #[error("can not evaluate infix `{}`", _0.format())]
     Infix(Operator),
-
     #[error("the logical operation has bankruptcy")]
     Logic,
-
     #[error("{}", if let Some(msg) = _0 { msg } else { "" })]
     General(Option<String>),
 }
