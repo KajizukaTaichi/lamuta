@@ -92,43 +92,37 @@
     </script>
 
     <script>
-        function manageImage() {
-            this.imageLinks = ["lambda.png", "repl.png"];
+        function imageManager() {
+            this.imageLinks = ["static/lambda.png", "static/repl.png"];
             this.index = 0;
-            this.viewImage = function () {
+            this.view = function () {
                 let imageFrame = document.getElementById("image");
                 imageFrame.src = this.imageLinks[this.index];
             };
-            this.prevImage = function () {
+            this.prev = function () {
                 this.index -= 1;
                 this.index =
                     this.index == -1 ? this.imageLinks.length - 1 : this.index;
-                this.viewImage();
+                this.view();
             };
 
-            this.nextImage = function () {
+            this.next = function () {
                 this.index += 1;
                 this.index =
                     this.index == this.imageLinks.length ? 0 : this.index;
-                this.viewImage();
+                this.view();
             };
         }
 
         document.addEventListener("DOMContentLoaded", function () {
-            let imageManager = new manageImage();
+            let images = new imageManager();
             document
                 .getElementById("prev")
-                .addEventListener(
-                    "click",
-                    imageManager.prevImage.bind(imageManager),
-                );
+                .addEventListener("click", images.prev.bind(images));
             document
                 .getElementById("next")
-                .addEventListener(
-                    "click",
-                    imageManager.nextImage.bind(imageManager),
-                );
-            imageManager.viewImage();
+                .addEventListener("click", images.next.bind(images));
+            images.view();
         });
     </script>
 
