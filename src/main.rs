@@ -4,6 +4,7 @@ use reqwest::blocking;
 use rustyline::{error::ReadlineError, DefaultEditor};
 use std::{
     collections::HashMap,
+    f64::consts::PI,
     fs::{read_to_string, File},
     io::{self, Write},
     process::exit,
@@ -67,11 +68,25 @@ type Program = Vec<Statement>;
 #[derive(Debug, Clone)]
 struct Engine {
     env: Scope,
+    protect: Vec<String>,
 }
 
 impl Engine {
     fn new() -> Engine {
         Engine {
+            protect: vec![
+                "type".to_string(),
+                "env".to_string(),
+                "free".to_string(),
+                "eval".to_string(),
+                "alphaConvert".to_string(),
+                "input".to_string(),
+                "range".to_string(),
+                "exit".to_string(),
+                "load".to_string(),
+                "save".to_string(),
+                "pi".to_string(),
+            ],
             env: HashMap::from([
                 (
                     "type".to_string(),
@@ -213,6 +228,7 @@ impl Engine {
                         }
                     })),
                 ),
+                ("pi".to_string(), Type::Number(PI)),
             ]),
         }
     }
@@ -269,6 +285,9 @@ impl Statement {
             }
             Statement::Let(name, sig, expr) => {
                 let val = expr.eval(engine)?;
+                if engine.protect.contains(name) {
+                    return None;
+                }
                 if let Some(sig) = sig {
                     if val.get_type().format() != sig.format() {
                         return None;
