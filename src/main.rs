@@ -1,5 +1,6 @@
 use colored::*;
 use reqwest::blocking;
+use rustyline::{error::ReadlineError, DefaultEditor};
 use std::{
     collections::HashMap,
     env::{current_dir, set_current_dir},
@@ -14,40 +15,30 @@ const SPACE: [char; 5] = [' ', '　', '\n', '\t', '\r'];
 
 fn main() {
     println!("{title} {VERSION}", title = "Lamuta".blue().bold());
-    let (mut engine, mut code) = (Engine::new(), String::new());
-    let (mut session, mut line) = (1, 1);
+    let mut rl = DefaultEditor::new().unwrap();
+    let mut engine = Engine::new();
+    let mut session = 1;
 
     loop {
-        print!("[{session}:{line}]> ");
-        io::stdout().flush().unwrap();
-
-        let mut buffer = String::new();
-        io::stdin().read_line(&mut buffer).unwrap();
-        let buffer = buffer.trim().to_string();
-
-        if buffer == ":q" {
-            code.clear();
-            session += 1;
-            line = 1;
-            continue;
-        }
-
-        code += &format!("{buffer}\n");
-        if let Some(ast) = Engine::parse(code.clone()) {
-            if let Some(result) = engine.eval(ast) {
-                println!(
-                    "{navi} {result}",
-                    result = result.get_symbol(),
-                    navi = "=>".green()
-                );
-            } else {
-                println!("{navi} Fault", navi = "=>".red());
+        match rl.readline(&format!("[{session:0>3}]> ")) {
+            Ok(code) => {
+                if let Some(ast) = Engine::parse(code) {
+                    if let Some(result) = engine.eval(ast) {
+                        println!(
+                            "{navi} {result}",
+                            result = result.get_symbol(),
+                            navi = "=>".green()
+                        );
+                    } else {
+                        println!("{navi} Fault", navi = "=>".red());
+                    }
+                } else {
+                    println!("{navi} Fault", navi = "=>".red());
+                }
+                session += 1;
             }
-            code.clear();
-            session += 1;
-            line = 1;
-        } else {
-            line += 1;
+            Err(ReadlineError::Interrupted) => println!("^C"),
+            _ => {}
         }
     }
 }
@@ -363,7 +354,7 @@ impl Engine {
             if line.is_empty() || line.starts_with("//") {
                 continue;
             }
-            program.push(Statement::parse(line.trim().to_string())?);
+            program.push(Statement::parse(line)?);
         }
         Some(program)
     }
@@ -550,9 +541,6 @@ impl Statement {
             ))
         } else if code == "fault" {
             Some(Statement::Fault)
-        } else if code.starts_with("return") {
-            let code = code["return".len()..].to_string();
-            Some(Statement::Return(Expr::parse(code.to_string())?))
         } else {
             Some(Statement::Return(Expr::parse(code.to_string())?))
         }
@@ -694,7 +682,7 @@ impl Expr {
             Expr::List(list)
         } else if token.starts_with('"') && token.ends_with('"') {
             let token = token.get(1..token.len() - 1)?.to_string();
-            Expr::Value(Type::Text(token))
+            Expr::Value(Type::Text(text_escape(token)))
         // Lambda abstract
         } else if token.starts_with('λ') && token.contains('.') {
             let token = token.replacen("λ", "", 1);
@@ -1441,51 +1429,70 @@ fn tokenize(input: String, delimiter: Vec<char>) -> Option<Vec<String>> {
         if is_escape {
             current_token.push(c);
             is_escape = false;
-            continue;
-        }
-
-        match c {
-            '(' | '{' | '[' if !in_quote => {
-                current_token.push(c);
-                in_parentheses += 1;
-            }
-            ')' | '}' | ']' if !in_quote => {
-                current_token.push(c);
-                if in_parentheses > 0 {
-                    in_parentheses -= 1;
-                } else {
-                    return None;
-                }
-            }
-            '"' | '\'' | '`' => {
-                in_quote = !in_quote;
-                current_token.push(c);
-            }
-            '\\' if in_quote => {
-                is_escape = true;
-            }
-            other => {
-                if delimiter.contains(&other) && !in_quote {
-                    if in_parentheses != 0 {
-                        current_token.push(c);
-                    } else if !current_token.is_empty() {
-                        tokens.push(current_token.clone());
-                        current_token.clear();
-                    }
-                } else {
+        } else {
+            match c {
+                '(' | '{' | '[' if !in_quote => {
                     current_token.push(c);
+                    in_parentheses += 1;
+                }
+                ')' | '}' | ']' if !in_quote => {
+                    current_token.push(c);
+                    if in_parentheses > 0 {
+                        in_parentheses -= 1;
+                    } else {
+                        return None;
+                    }
+                }
+                '"' | '\'' | '`' => {
+                    in_quote = !in_quote;
+                    current_token.push(c);
+                }
+                '\\' if in_quote => {
+                    current_token.push(c);
+                    is_escape = true;
+                }
+                other => {
+                    if delimiter.contains(&other) && !in_quote {
+                        if in_parentheses != 0 {
+                            current_token.push(c);
+                        } else if !current_token.is_empty() {
+                            tokens.push(current_token.clone());
+                            current_token.clear();
+                        }
+                    } else {
+                        current_token.push(c);
+                    }
                 }
             }
         }
     }
 
     // Syntax error check
-    if in_quote || in_parentheses != 0 {
+    if is_escape || in_quote || in_parentheses != 0 {
         return None;
     }
-    if in_parentheses == 0 && !current_token.is_empty() {
+    if !current_token.is_empty() {
         tokens.push(current_token.clone());
         current_token.clear();
     }
     Some(tokens)
+}
+
+fn text_escape(text: String) -> String {
+    let mut result = String::new();
+    let mut is_escape = false;
+    for c in text.chars() {
+        if is_escape {
+            result.push(c);
+            is_escape = false;
+        } else {
+            match c {
+                '\\' => {
+                    is_escape = true;
+                }
+                _ => result.push(c),
+            }
+        }
+    }
+    result
 }
