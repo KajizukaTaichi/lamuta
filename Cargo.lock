@@ -610,6 +610,7 @@ dependencies = [
  "colored",
  "reqwest",
  "rustyline",
+ "url",
 ]
 
 [[package]]
