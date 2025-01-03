@@ -167,7 +167,7 @@ impl Engine {
                     "alphaConvert".to_string(),
                     Type::Function(Function::BuiltIn(|args, _| {
                         let args = args.get_list();
-                        let func = ok!(args.get(0), Err(Fault::MissMatchArgLen))?.get_function()?;
+                        let func = ok!(args.get(0), Fault::MissMatchArgLen)?.get_function()?;
                         let new_name = ok!(args.get(1))?.get_text()?;
                         let Function::UserDefined(arg, body) = func else {
                             return Err(Fault::Other);
@@ -1130,7 +1130,7 @@ impl Operator {
                 let lhs = lhs.eval(engine)?;
                 let rhs = rhs.eval(engine)?;
                 if let (Type::List(list), Type::Number(index)) = (lhs.clone(), rhs.clone()) {
-                    list.get(index as usize)?.clone()
+                    ok!(list.get(index as usize))?.clone()
                 } else if let (Type::Text(text), Type::Number(index)) = (lhs.clone(), rhs.clone()) {
                     Type::Text(
                         ok!(text.chars().collect::<Vec<char>>().get(index as usize))?.to_string(),
@@ -1156,7 +1156,9 @@ impl Operator {
                     Signature::Function => Type::Function(lhs.get_function()?),
                     Signature::Refer => Type::Refer(lhs.get_symbol()),
                     Signature::Struct => Type::Struct(lhs.get_struct()?),
-                    Signature::Signature => Type::Signature(Signature::parse(lhs.get_text()?)?),
+                    Signature::Signature => {
+                        Type::Signature(ok!(Signature::parse(lhs.get_text()?))?)
+                    }
                 }
             }
             Operator::Apply(lhs, rhs) => {
@@ -1503,7 +1505,7 @@ impl Signature {
         } else if token == "struct" {
             Signature::Struct
         } else {
-            return Err(Fault::Other);
+            return None;
         })
     }
 
