@@ -636,6 +636,12 @@ impl Expr {
                 "as" => Operator::As(has_lhs(2)?, token),
                 ":=" => Operator::Assign(has_lhs(2)?, token),
                 "|>" => Operator::PipeLine(has_lhs(2)?, token),
+                "+=" => Operator::AssignAdd(has_lhs(2)?, token),
+                "-=" => Operator::AssignSub(has_lhs(2)?, token),
+                "*=" => Operator::AssignMul(has_lhs(2)?, token),
+                "/=" => Operator::AssignDiv(has_lhs(2)?, token),
+                "%=" => Operator::AssignMod(has_lhs(2)?, token),
+                "^=" => Operator::AssignPow(has_lhs(2)?, token),
                 operator => {
                     if operator.starts_with("`") && operator.ends_with("`") {
                         let operator = operator[1..operator.len() - 1].to_string();
@@ -758,6 +764,24 @@ impl Expr {
                 Operator::PipeLine(lhs, rhs) => {
                     Operator::PipeLine(lhs.replace(from, to), rhs.replace(from, to))
                 }
+                Operator::AssignAdd(lhs, rhs) => {
+                    Operator::AssignAdd(lhs.replace(from, to), rhs.replace(from, to))
+                }
+                Operator::AssignSub(lhs, rhs) => {
+                    Operator::AssignSub(lhs.replace(from, to), rhs.replace(from, to))
+                }
+                Operator::AssignMul(lhs, rhs) => {
+                    Operator::AssignMul(lhs.replace(from, to), rhs.replace(from, to))
+                }
+                Operator::AssignDiv(lhs, rhs) => {
+                    Operator::AssignDiv(lhs.replace(from, to), rhs.replace(from, to))
+                }
+                Operator::AssignMod(lhs, rhs) => {
+                    Operator::AssignMod(lhs.replace(from, to), rhs.replace(from, to))
+                }
+                Operator::AssignPow(lhs, rhs) => {
+                    Operator::AssignPow(lhs.replace(from, to), rhs.replace(from, to))
+                }
             })),
             Expr::Block(block) => Expr::Block(
                 block
@@ -853,6 +877,12 @@ enum Operator {
     Apply(Expr, Expr),
     Assign(Expr, Expr),
     PipeLine(Expr, Expr),
+    AssignAdd(Expr, Expr),
+    AssignSub(Expr, Expr),
+    AssignMul(Expr, Expr),
+    AssignDiv(Expr, Expr),
+    AssignMod(Expr, Expr),
+    AssignPow(Expr, Expr),
 }
 
 impl Operator {
@@ -1048,11 +1078,61 @@ impl Operator {
                 }
             }
             Operator::Assign(lhs, rhs) => {
-                let name = lhs.eval(engine)?.get_text()?;
-                Statement::Let(name, None, rhs.to_owned()).eval(engine)?
+                let Expr::Value(Type::Symbol(name)) = lhs else {
+                    return None;
+                };
+                Statement::Let(name.to_owned(), None, rhs.to_owned()).eval(engine)?
             }
             Operator::PipeLine(lhs, rhs) => {
                 Operator::Apply(rhs.to_owned(), lhs.to_owned()).eval(engine)?
+            }
+            Operator::AssignAdd(name, rhs) => {
+                let lhs = name.eval(engine)?;
+                Operator::Assign(
+                    name.to_owned(),
+                    Expr::Infix(Box::new(Operator::Add(Expr::Value(lhs), rhs.clone()))),
+                )
+                .eval(engine)?
+            }
+            Operator::AssignSub(name, rhs) => {
+                let lhs = name.eval(engine)?;
+                Operator::Assign(
+                    name.to_owned(),
+                    Expr::Infix(Box::new(Operator::Sub(Expr::Value(lhs), rhs.clone()))),
+                )
+                .eval(engine)?
+            }
+            Operator::AssignMul(name, rhs) => {
+                let lhs = name.eval(engine)?;
+                Operator::Assign(
+                    name.to_owned(),
+                    Expr::Infix(Box::new(Operator::Mul(Expr::Value(lhs), rhs.clone()))),
+                )
+                .eval(engine)?
+            }
+            Operator::AssignDiv(name, rhs) => {
+                let lhs = name.eval(engine)?;
+                Operator::Assign(
+                    name.to_owned(),
+                    Expr::Infix(Box::new(Operator::Div(Expr::Value(lhs), rhs.clone()))),
+                )
+                .eval(engine)?
+            }
+            Operator::AssignMod(name, rhs) => {
+                let lhs = name.eval(engine)?;
+                Operator::Assign(
+                    name.to_owned(),
+                    Expr::Infix(Box::new(Operator::Mod(Expr::Value(lhs), rhs.clone()))),
+                )
+                .eval(engine)?
+            }
+            Operator::AssignPow(name, rhs) => {
+                let lhs = name.eval(engine)?;
+                Operator::Assign(
+                    name.to_owned(),
+                    Expr::Infix(Box::new(Operator::Pow(Expr::Value(lhs), rhs.clone()))),
+                )
+                .eval(engine)?
             }
         })
     }
@@ -1079,6 +1159,12 @@ impl Operator {
             Operator::Assign(lhs, rhs) => format!("{} := {}", lhs.format(), rhs.format()),
             Operator::PipeLine(lhs, rhs) => format!("{} |> {}", lhs.format(), rhs.format()),
             Operator::Apply(lhs, rhs) => format!("{} {}", lhs.format(), rhs.format()),
+            Operator::AssignAdd(lhs, rhs) => format!("{} += {}", lhs.format(), rhs.format()),
+            Operator::AssignSub(lhs, rhs) => format!("{} -= {}", lhs.format(), rhs.format()),
+            Operator::AssignMul(lhs, rhs) => format!("{} *= {}", lhs.format(), rhs.format()),
+            Operator::AssignDiv(lhs, rhs) => format!("{} /= {}", lhs.format(), rhs.format()),
+            Operator::AssignMod(lhs, rhs) => format!("{} %= {}", lhs.format(), rhs.format()),
+            Operator::AssignPow(lhs, rhs) => format!("{} ^= {}", lhs.format(), rhs.format()),
         }
         .to_string()
     }
