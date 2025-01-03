@@ -13,10 +13,12 @@ const VERSION: &str = "0.3.2";
 const SPACE: [char; 5] = [' ', '　', '\n', '\t', '\r'];
 
 #[derive(Parser)]
-#[command(name = "Lamuta",version = VERSION)]
-#[command(about = "ラムダ計算の数式がそのまま書ける関数型プログラミング言語")]
+#[command(
+    name = "Lamuta",version = VERSION,
+    about = "A functional programming language that can write lambda calculus formula as they are"
+)]
 struct Cli {
-    /// 評価するソースファイル
+    /// Source file to evaluate
     #[arg(index = 1)]
     file: Option<String>,
 }
