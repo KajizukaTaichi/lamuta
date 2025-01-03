@@ -1,4 +1,0 @@
-@{
-    "name": "lisp",
-    "depend": ["https://kajizukataichi.github.io/lamuta/lib/std.lm"]
-}
