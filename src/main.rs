@@ -521,6 +521,22 @@ impl Expr {
             Expr::Value(Type::Number(n))
         } else if let Some(sig) = Signature::parse(token.clone()) {
             Expr::Value(Type::Signature(sig))
+        // Prefix operators
+        } else if token.starts_with("&") {
+            let token = token.replacen("&", "", 1);
+            Expr::Value(Type::Refer(token))
+        } else if token.starts_with("*") {
+            let token = token.replacen("*", "", 1);
+            Expr::Infix(Box::new(Operator::Derefer(Expr::parse(token)?)))
+        } else if token.starts_with("!") {
+            let token = token.replacen("!", "", 1);
+            Expr::Infix(Box::new(Operator::Not(Expr::parse(token)?)))
+        } else if token.starts_with("-") {
+            let token = token.replacen("-", "", 1);
+            Expr::Infix(Box::new(Operator::Sub(
+                Expr::Value(Type::Number(0.0)),
+                Expr::parse(token)?,
+            )))
         } else if token.starts_with('(') && token.ends_with(')') {
             let token = token.get(1..token.len() - 1)?.to_string();
             Expr::parse(token)?
@@ -599,22 +615,6 @@ impl Expr {
                 )));
             }
             call
-        // Prefix operators
-        } else if token.starts_with("&") {
-            let token = token.replacen("&", "", 1);
-            Expr::Value(Type::Refer(token))
-        } else if token.starts_with("*") {
-            let token = token.replacen("*", "", 1);
-            Expr::Infix(Box::new(Operator::Derefer(Expr::parse(token)?)))
-        } else if token.starts_with("!") {
-            let token = token.replacen("!", "", 1);
-            Expr::Infix(Box::new(Operator::Not(Expr::parse(token)?)))
-        } else if token.starts_with("-") {
-            let token = token.replacen("-", "", 1);
-            Expr::Infix(Box::new(Operator::Sub(
-                Expr::Value(Type::Number(0.0)),
-                Expr::parse(token)?,
-            )))
         } else if token == "null" {
             Expr::Value(Type::Null)
         } else {
