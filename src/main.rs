@@ -279,7 +279,7 @@ impl Engine {
 #[derive(Debug, Clone)]
 enum Statement {
     Print(Vec<Expr>),
-    Let(String, Option<Signature>, Expr),
+    Let(String, bool, Option<Signature>, Expr),
     If(Expr, Expr, Option<Expr>),
     Match(Expr, Vec<(Vec<Expr>, Expr)>),
     For(String, Expr, Expr),
@@ -304,7 +304,7 @@ impl Statement {
                 io::stdout().flush().unwrap();
                 Type::Null
             }
-            Statement::Let(name, sig, expr) => {
+            Statement::Let(name, protect, sig, expr) => {
                 let val = expr.eval(engine)?;
                 if engine.protect.contains(name) {
                     return None;
@@ -316,6 +316,9 @@ impl Statement {
                 }
                 if name != "_" {
                     engine.env.insert(name.to_owned(), val.clone());
+                    if *protect {
+                        engine.protect.push(name.to_owned());
+                    }
                 }
                 val
             }
@@ -380,16 +383,28 @@ impl Statement {
             if let Some((name, sig)) = name.split_once(":") {
                 Some(Statement::Let(
                     name.trim().to_string(),
+                    false,
                     Some(Signature::parse(sig.trim().to_string())?),
                     Expr::parse(code.to_string())?,
                 ))
             } else {
                 Some(Statement::Let(
                     name.trim().to_string(),
+                    false,
                     None,
                     Expr::parse(code.to_string())?,
                 ))
             }
+        } else if code.starts_with("const") {
+            let code = code["const".len()..].to_string();
+            let (name, code) = code.split_once("=")?;
+            let (name, sig) = name.split_once(":")?;
+            Some(Statement::Let(
+                name.trim().to_string(),
+                true,
+                Some(Signature::parse(sig.trim().to_string())?),
+                Expr::parse(code.to_string())?,
+            ))
         } else if code.starts_with("if") {
             let code = code["if".len()..].to_string();
             let code = tokenize(code, SPACE.to_vec())?;
@@ -466,12 +481,14 @@ impl Statement {
                     .collect::<Vec<String>>()
                     .join(", ")
             ),
-            Statement::Let(name, Some(sig), val) => {
+            Statement::Let(name, false, Some(sig), val) => {
                 format!("let {name}: {} = {}", sig.format(), val.format())
             }
-            Statement::Let(name, None, val) => {
-                format!("let {name} = {}", val.format())
+            Statement::Let(name, true, Some(sig), val) => {
+                format!("const {name}: {} = {}", sig.format(), val.format())
             }
+            Statement::Let(name, false, None, val) => format!("let {name} = {}", val.format()),
+            Statement::Let(name, true, None, val) => format!("const {name} = {}", val.format()),
             Statement::If(cond, then, r#else) => {
                 if let Some(r#else) = r#else {
                     format!(
@@ -843,9 +860,12 @@ impl Expr {
                         Statement::Print(vals) => {
                             Statement::Print(vals.iter().map(|j| j.replace(from, to)).collect())
                         }
-                        Statement::Let(name, sig, val) => {
-                            Statement::Let(name.clone(), sig.clone(), val.replace(from, to))
-                        }
+                        Statement::Let(name, protect, sig, val) => Statement::Let(
+                            name.clone(),
+                            protect.clone(),
+                            sig.clone(),
+                            val.replace(from, to),
+                        ),
                         Statement::If(cond, then, r#else) => Statement::If(
                             cond.replace(from, to),
                             then.replace(from, to),
@@ -1138,7 +1158,7 @@ impl Operator {
                 let Expr::Value(Type::Symbol(name)) = lhs else {
                     return None;
                 };
-                Statement::Let(name.to_owned(), None, rhs.to_owned()).eval(engine)?
+                Statement::Let(name.to_owned(), false, None, rhs.to_owned()).eval(engine)?
             }
             Operator::PipeLine(lhs, rhs) => {
                 Operator::Apply(rhs.to_owned(), lhs.to_owned()).eval(engine)?
