@@ -1211,9 +1211,9 @@ impl Type {
                     .replace("\"", "\\\"")
                     .replace("`", "\\`")
                     .replace("\\", "\\\\")
-                    .replace("\n", "\\\n")
-                    .replace("\t", "\\\t")
-                    .replace("\r", "\\\r")
+                    .replace("\n", "\\n")
+                    .replace("\t", "\\t")
+                    .replace("\r", "\\r")
             ),
             Type::Number(n) => n.to_string(),
             Type::Null => "null".to_string(),
