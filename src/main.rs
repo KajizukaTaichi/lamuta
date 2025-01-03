@@ -22,11 +22,28 @@ struct Cli {
     /// Source file to evaluate
     #[arg(index = 1)]
     file: Option<String>,
+
+    /// Command-line arguments to pass the script
+    #[arg(index = 2, value_name="ARGS", num_args = 0..)]
+    args_position: Option<Vec<String>>,
+
+    /// Optional command-line arguments
+    #[arg(short='a', long="args", value_name="ARGS", num_args = 0..)]
+    args_option: Option<Vec<String>>,
 }
 
 fn main() {
+    let cli = Cli::parse();
     let mut engine = Engine::new();
-    if let Some(file) = Cli::parse().file {
+
+    if let (Some(args), _) | (_, Some(args)) = (cli.args_position, cli.args_option) {
+        engine.env.insert(
+            "cmdLineArgs".to_string(),
+            Type::List(args.iter().map(|i| Type::Text(i.to_owned())).collect()),
+        );
+    }
+
+    if let Some(file) = cli.file {
         Operator::Apply(
             Expr::Value(Type::Symbol("load".to_string())),
             Expr::Value(Type::Text(file)),
@@ -86,6 +103,7 @@ impl Engine {
                 "load".to_string(),
                 "save".to_string(),
                 "pi".to_string(),
+                "cmdLineArgs".to_string(),
             ],
             env: HashMap::from([
                 (
