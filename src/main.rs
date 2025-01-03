@@ -3,10 +3,8 @@ use reqwest::blocking;
 use rustyline::{error::ReadlineError, DefaultEditor};
 use std::{
     collections::HashMap,
-    env::{current_dir, set_current_dir},
-    fs::{create_dir_all, read_dir, read_to_string, File},
+    fs::{read_to_string, File},
     io::{self, Write},
-    path::Path,
     process::exit,
 };
 
@@ -48,13 +46,11 @@ type Program = Vec<Statement>;
 #[derive(Debug, Clone)]
 struct Engine {
     env: Scope,
-    project: Option<(String, Type)>,
 }
 
 impl Engine {
     fn new() -> Engine {
         Engine {
-            project: None,
             env: HashMap::from([
                 (
                     "type".to_string(),
@@ -158,21 +154,18 @@ impl Engine {
                     "exit".to_string(),
                     Type::Function(Function::BuiltIn(|arg, _| exit(arg.get_number()? as i32))),
                 ),
-                ("doubleQuote".to_string(), Type::Text("\"".to_string())),
                 (
                     "load".to_string(),
                     Type::Function(Function::BuiltIn(|expr, engine| {
-                        let path = expr.get_text()?;
-                        let path = Path::new(&path);
-                        if let Ok(module) = read_to_string(path) {
-                            let home = current_dir().unwrap_or_default();
-                            if let Some(parent_dir) = path.parent() {
-                                set_current_dir(parent_dir).unwrap_or_default();
+                        let name = expr.get_text()?;
+                        if let Ok(module) = read_to_string(&name) {
+                            engine.eval(Engine::parse(module)?)
+                        } else if let Ok(module) = blocking::get(name) {
+                            if let Ok(code) = module.text() {
+                                engine.eval(Engine::parse(code)?)
+                            } else {
+                                None
                             }
-                            let module = Engine::parse(module)?;
-                            let result = engine.eval(module)?;
-                            set_current_dir(home).unwrap_or_default();
-                            Some(result)
                         } else {
                             None
                         }
@@ -190,150 +183,6 @@ impl Engine {
                         if let Ok(mut file) = File::create(arg.get_text()?) {
                             if file.write_all(render.as_bytes()).is_ok() {
                                 Some(Type::Text("Saved environment".to_string()))
-                            } else {
-                                None
-                            }
-                        } else {
-                            None
-                        }
-                    })),
-                ),
-                (
-                    "newProject".to_string(),
-                    Type::Function(Function::BuiltIn(|arg, _| {
-                        let name = arg.get_text()?;
-                        let path = Path::new(&name);
-                        let home = current_dir().unwrap_or_default();
-                        if create_dir_all(path).is_ok() {
-                            if set_current_dir(path).is_ok() {
-                                if create_dir_all("lib").is_err() {
-                                    return None;
-                                }
-                                if let Ok(mut file) = File::create("config.lm") {
-                                    if file.write_all(
-                                        Type::Struct(HashMap::from([
-                                        ("name".to_string(), Type::Text(name.clone())),
-                                        (
-                                            "depend".to_string(),
-                                            Type::List(vec![Type::Text(
-                                                "https://kajizukataichi.github.io/lamuta/lib/std.lm".to_string(),
-                                            )]),
-                                        ),
-                                    ])).get_symbol().as_bytes()).is_err(){return None};
-                                }
-                                if create_dir_all("src").is_ok() {
-                                    if let Ok(mut file) = File::create_new(Path::new("src/main.lm"))
-                                    {
-                                        if file
-                                            .write_all(r#"print "Hello, world!""#.as_bytes())
-                                            .is_ok()
-                                        {
-                                            set_current_dir(home).unwrap_or_default();
-                                            Some(Type::Text(format!("Created project: {name}")))
-                                        } else {
-                                            None
-                                        }
-                                    } else {
-                                        None
-                                    }
-                                } else {
-                                    None
-                                }
-                            } else {
-                                None
-                            }
-                        } else {
-                            None
-                        }
-                    })),
-                ),
-                (
-                    "install".to_string(),
-                    Type::Function(Function::BuiltIn(|_, engine| {
-                        if let Some((_, depend)) = engine.project.clone() {
-                            for i in depend.get_struct()?.get("depend")?.get_list() {
-                                let path = i.get_text()?.trim().to_string();
-                                if let Ok(res) = blocking::get(path.clone()) {
-                                    if let Ok(code) = res.text() {
-                                        if let Ok(mut file) = File::create(&format!(
-                                            "{}/lib/{}",
-                                            engine.project.clone()?.0,
-                                            Path::new(&path).file_name()?.to_str()?.to_string()
-                                        )) {
-                                            if file.write_all(code.as_bytes()).is_err() {
-                                                return None;
-                                            };
-                                        } else {
-                                            return None;
-                                        };
-                                    } else {
-                                        return None;
-                                    }
-                                } else {
-                                    return None;
-                                }
-                            }
-                            Some(Type::Text("Dependencies library is installed!".to_string()))
-                        } else {
-                            None
-                        }
-                    })),
-                ),
-                (
-                    "login".to_string(),
-                    Type::Function(Function::BuiltIn(|arg, engine| {
-                        let path = arg.get_text()?.trim().to_string();
-                        if Path::new(&path).exists() {
-                            engine.project = Some((
-                                path.clone(),
-                                engine.eval(Engine::parse(
-                                    if let Ok(code) = read_to_string(format!("{path}/config.lm")) {
-                                        code
-                                    } else {
-                                        return None;
-                                    },
-                                )?)?,
-                            ));
-                            Some(Type::Text(format!("Logged in project: {path}")))
-                        } else {
-                            None
-                        }
-                    })),
-                ),
-                (
-                    "logout".to_string(),
-                    Type::Function(Function::BuiltIn(|_, engine| {
-                        engine.project = None;
-                        Some(Type::Text("Logged out current project".to_string()))
-                    })),
-                ),
-                (
-                    "run".to_string(),
-                    Type::Function(Function::BuiltIn(|_, engine| {
-                        if let Some((project_path, _)) = engine.project.clone() {
-                            if let Ok(dir) = read_dir(Path::new(&format!("{project_path}/lib"))) {
-                                for entry in dir {
-                                    if let Ok(entry) = entry {
-                                        let lib_file = entry.file_name();
-                                        if let Ok(code) = read_to_string(Path::new(&format!(
-                                            "{project_path}/lib/{}",
-                                            lib_file.to_str()?
-                                        ))) {
-                                            engine.eval(Engine::parse(code)?);
-                                        } else {
-                                            return None;
-                                        }
-                                    } else {
-                                        return None;
-                                    }
-                                }
-                            } else {
-                                return None;
-                            }
-                            if let Ok(code) =
-                                read_to_string(Path::new(&format!("{project_path}/src/main.lm")))
-                            {
-                                engine.eval(Engine::parse(code)?)
                             } else {
                                 None
                             }
