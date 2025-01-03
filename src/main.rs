@@ -62,11 +62,14 @@ fn main() {
     }
 
     if let Some(file) = cli.file {
-        Operator::Apply(
+        if let Err(e) = Operator::Apply(
             Expr::Value(Type::Symbol("load".to_string())),
             Expr::Value(Type::Text(file)),
         )
-        .eval(&mut engine);
+        .eval(&mut engine)
+        {
+            eprintln!("Fault {e}")
+        }
     } else {
         println!("{title} {VERSION}", title = "Lamuta".blue().bold());
         let mut rl = DefaultEditor::new().unwrap();
@@ -368,7 +371,7 @@ impl Statement {
                         }
                     }
                 }
-                return Err(Fault::Other);
+                return Err(Fault::Syntax);
             }
             Statement::For(counter, expr, code) => {
                 let mut result = Type::Null;
@@ -482,7 +485,7 @@ impl Statement {
                     Expr::parse(ok!(code.get(3))?.to_string())?,
                 ))
             } else {
-                Err(Fault::Other)
+                Err(Fault::Syntax)
             }
         } else if code.starts_with("while") {
             let code = code["while".len()..].to_string();
@@ -999,7 +1002,7 @@ impl Operator {
                     lhs.extend(rhs.clone());
                     Type::Struct(lhs)
                 } else {
-                    return Err(Fault::);
+                    return Err(Fault::Infix(self.clone()));
                 }
             }
             Operator::Sub(lhs, rhs) => {
@@ -1025,7 +1028,7 @@ impl Operator {
                     lhs.remove(rhs as usize);
                     Type::Text(lhs)
                 } else {
-                    return Err(Fault::Other);
+                    return Err(Fault::Infix(self.clone()));
                 }
             }
             Operator::Mul(lhs, rhs) => {
@@ -1038,7 +1041,7 @@ impl Operator {
                 } else if let (Type::List(lhs), Type::Number(rhs)) = (lhs, rhs) {
                     Type::List((0..rhs as usize).flat_map(|_| lhs.clone()).collect())
                 } else {
-                    return Err(Fault::Other);
+                    return Err(Fault::Infix(self.clone()));
                 }
             }
             Operator::Div(lhs, rhs) => {
@@ -1058,7 +1061,7 @@ impl Operator {
                 if rhs.is_match(&lhs) {
                     rhs
                 } else {
-                    return Err(Fault::Other);
+                    return Err(Fault::Logic);
                 }
             }
             Operator::NotEq(lhs, rhs) => {
@@ -1067,7 +1070,7 @@ impl Operator {
                 if !rhs.is_match(&lhs) {
                     rhs
                 } else {
-                    return Err(Fault::Other);
+                    return Err(Fault::Logic);
                 }
             }
             Operator::LessThan(lhs, rhs) => {
@@ -1075,7 +1078,7 @@ impl Operator {
                 if lhs.eval(engine)?.get_number()? < rhs.get_number()? {
                     rhs
                 } else {
-                    return Err(Fault::Other);
+                    return Err(Fault::Logic);
                 }
             }
             Operator::LessThanEq(lhs, rhs) => {
@@ -1083,7 +1086,7 @@ impl Operator {
                 if lhs.eval(engine)?.get_number()? <= rhs.get_number()? {
                     rhs
                 } else {
-                    return Err(Fault::Other);
+                    return Err(Fault::Logic);
                 }
             }
             Operator::GreaterThan(lhs, rhs) => {
@@ -1091,7 +1094,7 @@ impl Operator {
                 if lhs.eval(engine)?.get_number()? > rhs.get_number()? {
                     rhs
                 } else {
-                    return Err(Fault::Other);
+                    return Err(Fault::Logic);
                 }
             }
             Operator::GreaterThanEq(lhs, rhs) => {
@@ -1099,7 +1102,7 @@ impl Operator {
                 if lhs.eval(engine)?.get_number()? >= rhs.get_number()? {
                     rhs
                 } else {
-                    return Err(Fault::Other);
+                    return Err(Fault::Logic);
                 }
             }
             Operator::And(lhs, rhs) => {
@@ -1107,7 +1110,7 @@ impl Operator {
                 if lhs.eval(engine).is_ok() && rhs.is_ok() {
                     rhs?
                 } else {
-                    return Err(Fault::Other);
+                    return Err(Fault::Logic);
                 }
             }
             Operator::Or(lhs, rhs) => {
@@ -1116,13 +1119,13 @@ impl Operator {
                 if lhs.is_ok() || rhs.is_ok() {
                     rhs.unwrap_or(lhs?)
                 } else {
-                    return Err(Fault::Other);
+                    return Err(Fault::Logic);
                 }
             }
             Operator::Not(val) => {
                 let val = val.eval(engine);
                 if val.is_ok() {
-                    return Err(Fault::Other);
+                    return Err(Fault::Logic);
                 } else {
                     Type::Null
                 }
@@ -1139,12 +1142,12 @@ impl Operator {
                 } else if let (Type::Struct(st), Type::Text(index)) = (lhs.clone(), rhs.clone()) {
                     ok!(st.get(&index))?.clone()
                 } else {
-                    return Err(Fault::Other);
+                    return Err(Fault::Infix(self.clone()));
                 }
             }
             Operator::Derefer(pointer) => match pointer.clone().eval(engine)? {
                 Type::Refer(to) => Expr::Value(Type::Symbol(to.to_string())).eval(engine)?,
-                _ => return Err(Fault::Other),
+                _ => return Err(Fault::Infix(self.clone())),
             },
             Operator::As(lhs, rhs) => {
                 let lhs = lhs.eval(engine)?;
@@ -1180,7 +1183,7 @@ impl Operator {
             }
             Operator::Assign(lhs, rhs) => {
                 let Expr::Value(Type::Symbol(name)) = lhs else {
-                    return Err(Fault::Other);
+                    return Err(Fault::Infix(self.clone()));
                 };
                 Statement::Let(name.to_owned(), false, None, rhs.to_owned()).eval(engine)?
             }
@@ -1292,7 +1295,11 @@ enum Fault {
     #[error("the program is not able to parse. check out is the syntax correct")]
     Syntax,
 
-    #[error("can not apply `{}` operator for `{}` and `{}` type value")]
+    #[error("can not evaluate infix `{}`", _0.format())]
+    Infix(Operator),
+
+    #[error("the logical operation has bankruptcy")]
+    Logic,
 }
 
 #[derive(Debug, Clone)]
@@ -1544,7 +1551,7 @@ fn tokenize(input: String, delimiter: Vec<char>) -> Result<Vec<String>, Fault> {
                     if in_parentheses > 0 {
                         in_parentheses -= 1;
                     } else {
-                        return Err(Fault::Other);
+                        return Err(Fault::Syntax);
                     }
                 }
                 '"' | '\'' | '`' => {
@@ -1573,7 +1580,7 @@ fn tokenize(input: String, delimiter: Vec<char>) -> Result<Vec<String>, Fault> {
 
     // Syntax error check
     if is_escape || in_quote || in_parentheses != 0 {
-        return Err(Fault::Other);
+        return Err(Fault::Syntax);
     }
     if !current_token.is_empty() {
         tokens.push(current_token.clone());
