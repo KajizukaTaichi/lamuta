@@ -738,6 +738,7 @@ impl Expr {
                 )));
             }
             call
+        // Prefix operators
         } else if token.starts_with("&") {
             let token = token.replacen("&", "", 1);
             Expr::Value(Type::Refer(token))
@@ -747,6 +748,12 @@ impl Expr {
         } else if token.starts_with("!") {
             let token = token.replacen("!", "", 1);
             Expr::Infix(Box::new(Operator::Not(Expr::parse(token)?)))
+        } else if token.starts_with("-") {
+            let token = token.replacen("-", "", 1);
+            Expr::Infix(Box::new(Operator::Sub(
+                Expr::Value(Type::Number(0.0)),
+                Expr::parse(token)?,
+            )))
         } else if token == "null" {
             Expr::Value(Type::Null)
         } else {
