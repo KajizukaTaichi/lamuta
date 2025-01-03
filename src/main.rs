@@ -352,6 +352,7 @@ impl Engine {
         let mut program: Program = Vec::new();
         for line in tokenize(source, vec![';'])? {
             let line = line.trim().to_string();
+            // Ignore empty line and comment
             if line.is_empty() || line.starts_with("//") {
                 continue;
             }
