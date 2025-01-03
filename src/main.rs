@@ -687,6 +687,7 @@ impl Expr {
         } else if token.starts_with('"') && token.ends_with('"') {
             let token = token.get(1..token.len() - 1)?.to_string();
             Expr::Value(Type::Text(token))
+        // Lambda abstract
         } else if token.starts_with('λ') && token.contains('.') {
             let token = token.replacen("λ", "", 1);
             let (arg, body) = token.split_once(".")?;
@@ -694,6 +695,7 @@ impl Expr {
                 arg.to_string(),
                 Box::new(Expr::parse(body.to_string())?),
             )))
+        // Lambda abstract using back-slash instand of lambda mark
         } else if token.starts_with('\\') && token.contains('.') {
             let token = token.replacen('\\', "", 1);
             let (arg, body) = token.split_once(".")?;
@@ -701,6 +703,7 @@ impl Expr {
                 arg.to_string(),
                 Box::new(Expr::parse(body.to_string())?),
             )))
+        // Imperative style syntactic sugar of lambda abstract
         } else if token.starts_with("fn(") && token.contains("->") && token.ends_with(")") {
             let token = token.replacen("fn(", "", 1);
             let token = token.get(..token.len() - 1)?.to_string();
@@ -719,6 +722,7 @@ impl Expr {
                 )));
             }
             func
+        // Imperative style syntactic sugar of function application
         } else if token.contains('(') && token.ends_with(')') {
             let token = token.get(..token.len() - 1)?.to_string();
             let (name, args) = token.split_once("(")?;
@@ -740,6 +744,9 @@ impl Expr {
         } else if token.starts_with("*") {
             let token = token.replacen("*", "", 1);
             Expr::Derefer(Box::new(Expr::parse(token)?))
+        } else if token.starts_with("!") {
+            let token = token.replacen("!", "", 1);
+            Expr::Infix(Box::new(Operator::Not(Expr::parse(token)?)))
         } else if token == "null" {
             Expr::Value(Type::Null)
         } else {
@@ -773,7 +780,6 @@ impl Expr {
                 ">=" => Operator::GreaterThanEq(has_lhs(2)?, token),
                 "&" => Operator::And(has_lhs(2)?, token),
                 "|" => Operator::Or(has_lhs(2)?, token),
-                "!" => Operator::Not(token),
                 "::" => Operator::Access(has_lhs(2)?, token),
                 "as" => Operator::As(has_lhs(2)?, token),
                 ":=" => Operator::Assign(has_lhs(2)?, token),
