@@ -606,11 +606,8 @@ impl Expr {
             Expr::Value(Type::Symbol(token))
         };
 
-        if let Some(operator) = token_list
-            .len()
-            .checked_sub(2)
-            .and_then(|idx| token_list.get(idx))
-        {
+        if token_list.len() >= 2 {
+            let operator = token_list.get(token_list.len() - 2)?;
             let has_lhs = |len: usize| {
                 Expr::parse(
                     token_list
