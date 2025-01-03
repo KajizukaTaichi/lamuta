@@ -197,7 +197,8 @@ impl Engine {
                     Type::Function(Function::BuiltIn(|arg, engine| {
                         let mut render = String::new();
                         for (k, v) in &engine.env {
-                            if let Type::Function(Function::UserDefined(_, _)) = v {
+                            if let Type::Function(Function::BuiltIn(_)) = v {
+                            } else {
                                 render += &format!("let {k} = {};\n", v.get_symbol());
                             }
                         }
