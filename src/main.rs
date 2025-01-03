@@ -174,7 +174,7 @@ impl Engine {
                     "alphaConvert".to_string(),
                     Type::Function(Function::BuiltIn(|args, _| {
                         let args = args.get_list();
-                        let func = ok!(args.get(0), Fault::MissMatchArgLen)?;
+                        let func = ok!(args.get(0), Fault::ArgLen)?;
                         let new_name = ok!(args.get(1))?.get_text()?;
                         let Type::Function(Function::UserDefined(arg, body)) = func else {
                             return Err(Fault::Type {
@@ -234,7 +234,7 @@ impl Engine {
                             }
                             Ok(Type::List(range))
                         } else {
-                            Err(Fault::MissMatchArgLen)
+                            Err(Fault::ArgLen)
                         }
                     })),
                 ),
@@ -1182,17 +1182,21 @@ impl Operator {
             Operator::Apply(lhs, rhs) => {
                 let lhs = lhs.eval(engine)?;
                 let rhs = rhs.eval(engine)?;
-                match lhs.get_function()? {
-                    Function::BuiltIn(func) => func(rhs, engine)?,
-                    Function::UserDefined(parameter, code) => {
-                        let code = code
-                            .replace(&Expr::Value(Type::Symbol(parameter)), &Expr::Value(rhs))
-                            .replace(
-                                &Expr::Value(Type::Symbol("self".to_string())),
-                                &Expr::Value(lhs),
-                            );
-                        code.eval(&mut engine.clone())?
+                if let Type::Function(func) = lhs.clone() {
+                    match func {
+                        Function::BuiltIn(func) => func(rhs, engine)?,
+                        Function::UserDefined(parameter, code) => {
+                            let code = code
+                                .replace(&Expr::Value(Type::Symbol(parameter)), &Expr::Value(rhs))
+                                .replace(
+                                    &Expr::Value(Type::Symbol("self".to_string())),
+                                    &Expr::Value(lhs),
+                                );
+                            code.eval(&mut engine.clone())?
+                        }
                     }
+                } else {
+                    return Err(Fault::Apply(self.clone()));
                 }
             }
             Operator::Assign(lhs, rhs) => {
@@ -1291,6 +1295,8 @@ impl Operator {
 
 #[derive(Debug, Error)]
 enum Fault {
+    #[error("can not do function application because it's not function `{}`", _0.format())]
+    Apply(Operator),
     #[error("access is denied because it's protected memory area")]
     AccessDenied,
     #[error("can not type cast `{}` to {}", value.get_symbol(), to.format())]
@@ -1300,7 +1306,7 @@ enum Fault {
     #[error("the result value `{}` is different to expected type `{}`", value.get_symbol(), annotate.format())]
     Type { value: Type, annotate: Signature },
     #[error("missmatching of arguments length when function application")]
-    MissMatchArgLen,
+    ArgLen,
     #[error("the program is not able to parse. check out is the syntax correct")]
     Syntax,
     #[error("can not evaluate infix `{}`", _0.format())]
