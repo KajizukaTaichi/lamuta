@@ -541,7 +541,7 @@ impl Expr {
                 arg.to_string(),
                 Box::new(Expr::parse(body.to_string())?),
             )))
-        // Lambda abstract using back-slash instand of lambda mark
+        // Lambda abstract using back-slash instead of lambda mark
         } else if token.starts_with('\\') && token.contains('.') {
             let token = token.replacen('\\', "", 1);
             let (arg, body) = token.split_once(".")?;
