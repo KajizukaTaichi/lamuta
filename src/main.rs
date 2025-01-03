@@ -121,7 +121,11 @@ impl Engine {
                 (
                     "free".to_string(),
                     Type::Function(Function::BuiltIn(|name, engine| {
-                        engine.env.remove(&name.get_refer()?);
+                        let name = &name.get_refer()?;
+                        if engine.protect.contains(name) {
+                            return None;
+                        }
+                        engine.env.remove(name);
                         Some(Type::Null)
                     })),
                 ),
