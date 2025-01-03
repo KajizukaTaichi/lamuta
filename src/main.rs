@@ -4,9 +4,7 @@ use reqwest::blocking;
 use rustyline::{error::ReadlineError, DefaultEditor};
 use std::{
     collections::HashMap,
-    error,
     f64::consts::PI,
-    fmt::Error,
     fs::{read_to_string, File},
     io::{self, Write},
     process::exit,
@@ -28,7 +26,7 @@ macro_rules! ok {
         if let Some(ok) = $option_value {
             Ok(ok)
         } else {
-            Err(Fault::Other)
+            Err(Fault::Syntax)
         }
     };
 }
@@ -167,15 +165,18 @@ impl Engine {
                     "alphaConvert".to_string(),
                     Type::Function(Function::BuiltIn(|args, _| {
                         let args = args.get_list();
-                        let func = ok!(args.get(0), Fault::MissMatchArgLen)?.get_function()?;
+                        let func = ok!(args.get(0), Fault::MissMatchArgLen)?;
                         let new_name = ok!(args.get(1))?.get_text()?;
-                        let Function::UserDefined(arg, body) = func else {
-                            return Err(Fault::Other);
+                        let Type::Function(Function::UserDefined(arg, body)) = func else {
+                            return Err(Fault::Type {
+                                value: func.to_owned(),
+                                annotate: Signature::Function,
+                            });
                         };
                         Ok(Type::Function(Function::UserDefined(
                             new_name.clone(),
                             Box::new(body.replace(
-                                &Expr::Value(Type::Symbol(arg)),
+                                &Expr::Value(Type::Symbol(arg.to_owned())),
                                 &Expr::Value(Type::Symbol(new_name)),
                             )),
                         )))
@@ -327,7 +328,7 @@ impl Statement {
             Statement::Let(name, protect, sig, expr) => {
                 let val = expr.eval(engine)?;
                 if engine.protect.contains(name) {
-                    return Err(Fault::Other);
+                    return Err(Fault::AccessDenied);
                 }
                 if let Some(sig) = sig {
                     if val.get_type().format() != sig.format() {
@@ -387,7 +388,7 @@ impl Statement {
                 }
                 result
             }
-            Statement::Fault => return Err(Fault::Other),
+            Statement::Fault => return Err(Fault::Syntax),
             Statement::Return(expr) => expr.eval(engine)?,
         })
     }
@@ -998,7 +999,7 @@ impl Operator {
                     lhs.extend(rhs.clone());
                     Type::Struct(lhs)
                 } else {
-                    return Err(Fault::Other);
+                    return Err(Fault::);
                 }
             }
             Operator::Sub(lhs, rhs) => {
@@ -1288,8 +1289,10 @@ enum Fault {
     #[error("missmatching of arguments length when function application")]
     MissMatchArgLen,
 
-    #[error("")]
-    Other,
+    #[error("the program is not able to parse. check out is the syntax correct")]
+    Syntax,
+
+    #[error("can not apply `{}` operator for `{}` and `{}` type value")]
 }
 
 #[derive(Debug, Clone)]
