@@ -1250,6 +1250,7 @@ impl Type {
                     None
                 }
             }
+            Type::Null => Some(0.0),
             _ => None,
         }
     }
@@ -1259,6 +1260,7 @@ impl Type {
             Type::Symbol(s) | Type::Text(s) => Some(s.to_string()),
             Type::Number(n) => Some(n.to_string()),
             Type::Signature(s) => Some(s.format()),
+            Type::Null => Some(String::new()),
             _ => None,
         }
     }
@@ -1267,6 +1269,7 @@ impl Type {
         match self {
             Type::List(list) => list.to_owned(),
             Type::Text(text) => text.chars().map(|i| Type::Text(i.to_string())).collect(),
+            Type::Null => Vec::new(),
             other => vec![other.to_owned()],
         }
     }
