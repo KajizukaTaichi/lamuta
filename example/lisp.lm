@@ -178,7 +178,7 @@ let scope = @{
 };
 
 let main = λ_.{
-    print "Lamuta Lisp";
+    print "Lamuta Lisp\n";
     let flag = 1;
     while (flag == 1) {
         let entered = input ">>> ";
@@ -190,7 +190,7 @@ let main = λ_.{
                 let expr = tokenize (slice entered (range [it + 2, len entered])) :: 0;
                 let scope = scope + @{ name: evaluate scope (parse expr) };
             } else {
-                print evaluate scope (parse entered);
+                print evaluate scope (parse entered), "\n";
             }
         }
     }
