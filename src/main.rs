@@ -476,7 +476,6 @@ impl Statement {
 
 #[derive(Debug, Clone)]
 enum Expr {
-    Derefer(Box<Expr>),
     Infix(Box<Operator>),
     List(Vec<Expr>),
     Struct(Vec<(Expr, Expr)>),
@@ -512,10 +511,6 @@ impl Expr {
                 }
             }
             Expr::Value(value) => value.clone(),
-            Expr::Derefer(pointer) => match pointer.clone().eval(engine)? {
-                Type::Refer(to) => Expr::Value(Type::Symbol(to.to_string())).eval(engine)?,
-                _ => return None,
-            },
         })
     }
 
@@ -610,7 +605,7 @@ impl Expr {
             Expr::Value(Type::Refer(token))
         } else if token.starts_with("*") {
             let token = token.replacen("*", "", 1);
-            Expr::Derefer(Box::new(Expr::parse(token)?))
+            Expr::Infix(Box::new(Operator::Derefer(Expr::parse(token)?)))
         } else if token.starts_with("!") {
             let token = token.replacen("!", "", 1);
             Expr::Infix(Box::new(Operator::Not(Expr::parse(token)?)))
@@ -706,7 +701,6 @@ impl Expr {
                     .collect::<Vec<String>>()
                     .join(", ")
             ),
-            Expr::Derefer(to) => format!("*{}", to.format()),
         }
     }
 
@@ -770,6 +764,7 @@ impl Expr {
                 Operator::Access(lhs, rhs) => {
                     Operator::Access(lhs.replace(from, to), rhs.replace(from, to))
                 }
+                Operator::Derefer(val) => Operator::Derefer(val.replace(from, to)),
                 Operator::As(lhs, rhs) => {
                     Operator::As(lhs.replace(from, to), rhs.replace(from, to))
                 }
@@ -862,7 +857,6 @@ impl Expr {
                     self.clone()
                 }
             }
-            Expr::Derefer(to) => Expr::Derefer(Box::new(to.replace(from, to))),
         }
     }
 }
@@ -891,6 +885,7 @@ enum Operator {
     Or(Expr, Expr),
     Not(Expr),
     Access(Expr, Expr),
+    Derefer(Expr),
     As(Expr, Expr),
     Apply(Expr, Expr),
     Assign(Expr, Expr),
@@ -1065,6 +1060,10 @@ impl Operator {
                     return None;
                 }
             }
+            Operator::Derefer(pointer) => match pointer.clone().eval(engine)? {
+                Type::Refer(to) => Expr::Value(Type::Symbol(to.to_string())).eval(engine)?,
+                _ => return None,
+            },
             Operator::As(lhs, rhs) => {
                 let lhs = lhs.eval(engine)?;
                 let rhs = rhs.eval(engine)?;
@@ -1173,6 +1172,7 @@ impl Operator {
             Operator::Or(lhs, rhs) => format!("{} | {}", lhs.format(), rhs.format()),
             Operator::Not(val) => format!("!{}", val.format()),
             Operator::Access(lhs, rhs) => format!("{} :: {}", lhs.format(), rhs.format()),
+            Operator::Derefer(to) => format!("*{}", to.format()),
             Operator::As(lhs, rhs) => format!("{} as {}", lhs.format(), rhs.format()),
             Operator::Assign(lhs, rhs) => format!("{} := {}", lhs.format(), rhs.format()),
             Operator::PipeLine(lhs, rhs) => format!("{} |> {}", lhs.format(), rhs.format()),
