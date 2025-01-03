@@ -1252,7 +1252,12 @@ impl Type {
     fn get_symbol(&self) -> String {
         match self {
             Type::Symbol(s) => s.to_string(),
-            Type::Text(s) => format!("\"{s}\""),
+            Type::Text(text) => format!(
+                "\"{}\"",
+                text.replace("'", "\\'")
+                    .replace("\"", "\\\"")
+                    .replace("`", "\\`")
+            ),
             Type::Number(n) => n.to_string(),
             Type::Null => "null".to_string(),
             Type::Function(Function::BuiltIn(obj)) => format!("λx.{obj:?}"),
