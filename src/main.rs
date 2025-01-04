@@ -1301,7 +1301,7 @@ impl Operator {
 
 #[derive(Debug, Error)]
 enum Fault {
-    #[error("can not do apply function because `{}` is not lambda abstract", _0.format())]
+    #[error("can not apply function because `{}` is not lambda abstract", _0.format())]
     Apply(Type),
 
     #[error("key `{}` is not found in the struct `{}`", _0.format(), _1.format())]
