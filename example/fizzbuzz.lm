@@ -1,11 +1,11 @@
-let fizzbuzz = fn(n -> {
+let fizzbuzz = fn(n ->　
     match [n % 3, n % 5] {
         [0, 0] => "FizzBuzz",
         [0, _] => "Fizz",
         [_, 0] => "Buzz",
         _ => n as text
     }
-});
+);
 
 for i in (1 ~ 101) {
     print fizzbuzz i, "\n"
