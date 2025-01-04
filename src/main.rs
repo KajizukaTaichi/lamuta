@@ -1286,7 +1286,7 @@ enum Fault {
     Cast(Type, Signature),
     #[error("at the IO processing")]
     IO,
-    #[error("the result value `{}` is different to expected type `{}`", _0.format(), _1.format())]
+    #[error("the value `{}` is different to expected type `{}`", _0.format(), _1.format())]
     Type(Type, Signature),
     #[error("missmatching of arguments length when function application")]
     ArgLen,
