@@ -406,28 +406,44 @@ impl Statement {
                             } else if let (Type::List(mut list), Type::List(index)) =
                                 (obj.clone(), index.clone())
                             {
-                                for i in index {
-                                    let i = i.get_number()?;
-                                    if 0.0 <= i && i < list.len() as f64 {
-                                        list[i as usize] = val.clone();
+                                let first_index = ok!(
+                                    index.first(),
+                                    Fault::Index(Type::List(index.clone()), obj.to_owned())
+                                )?
+                                .get_number()?;
+                                for _ in 0..index.len() {
+                                    if 0.0 <= first_index && first_index < list.len() as f64 {
+                                        list.remove(first_index as usize);
                                     } else {
-                                        return Err(Fault::Index(Type::Number(i), obj.to_owned()));
+                                        return Err(Fault::Index(
+                                            Type::Number(first_index),
+                                            obj.to_owned(),
+                                        ));
                                     }
                                 }
+                                list.insert(first_index as usize, val.clone());
                                 Type::List(list)
                             } else if let (Type::Text(text), Type::List(index)) =
                                 (obj.clone(), index.clone())
                             {
                                 let mut text: Vec<String> =
                                     text.chars().map(|i| i.to_string()).collect();
-                                for i in index {
-                                    let i = i.get_number()?;
-                                    if 0.0 <= i && i < text.len() as f64 {
-                                        text[i as usize] = val.get_text()?;
+                                let first_index = ok!(
+                                    index.first(),
+                                    Fault::Index(Type::List(index.clone()), obj.to_owned())
+                                )?
+                                .get_number()?;
+                                for _ in 0..index.len() {
+                                    if 0.0 <= first_index && first_index < text.len() as f64 {
+                                        text.remove(first_index as usize);
                                     } else {
-                                        return Err(Fault::Index(Type::Number(i), obj.to_owned()));
+                                        return Err(Fault::Index(
+                                            Type::Number(first_index),
+                                            obj.to_owned(),
+                                        ));
                                     }
                                 }
+                                text.insert(first_index as usize, val.get_text()?);
                                 Type::Text(text.concat())
                             } else {
                                 return Err(Fault::Infix(infix));
