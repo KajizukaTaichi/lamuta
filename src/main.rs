@@ -348,21 +348,27 @@ impl Statement {
                             engine.protect.push(name.to_owned());
                         }
                     }
-                } else if let Expr::Value(Type::Symbol(name)) = name {
-                    if engine.protect.contains(name) {
-                        return Err(Fault::AccessDenied);
-                    }
+                } else if let Expr::List(list) = name {
                     if let Some(sig) = sig {
                         if val.type_of().format() != sig.format() {
                             return Err(Fault::Type(val, sig.to_owned()));
                         }
                     }
-                    if name != "_" {
-                        engine.env.insert(name.to_owned(), val.clone());
-                        if *protect {
-                            engine.protect.push(name.to_owned());
+                    for (name, val) in list.iter().zip(val.get_list()?) {
+                        if let Expr::Value(Type::Symbol(name)) = name {
+                            if engine.protect.contains(name) {
+                                return Err(Fault::AccessDenied);
+                            }
+                            if name != "_" {
+                                engine.env.insert(name.to_owned(), val.clone());
+                                if *protect {
+                                    engine.protect.push(name.to_owned());
+                                }
+                            }
                         }
                     }
+                } else {
+                    return Err(Fault::Syntax);
                 }
                 val
             }
@@ -429,14 +435,14 @@ impl Statement {
             let (name, code) = ok!(code.split_once("="))?;
             if let Some((name, sig)) = name.split_once(":") {
                 Ok(Statement::Let(
-                    name.trim().to_string(),
+                    Expr::parse(name.trim().to_string())?,
                     false,
                     Some(ok!(Signature::parse(sig.trim().to_string()))?),
                     Expr::parse(code.to_string())?,
                 ))
             } else {
                 Ok(Statement::Let(
-                    name.trim().to_string(),
+                    Expr::parse(name.trim().to_string())?,
                     false,
                     None,
                     Expr::parse(code.to_string())?,
@@ -447,7 +453,7 @@ impl Statement {
             let (name, code) = ok!(code.split_once("="))?;
             let (name, sig) = ok!(name.split_once(":"))?;
             Ok(Statement::Let(
-                name.trim().to_string(),
+                Expr::parse(name.trim().to_string())?,
                 true,
                 Some(ok!(Signature::parse(sig.trim().to_string()))?),
                 Expr::parse(code.to_string())?,
@@ -533,13 +539,22 @@ impl Statement {
                     .join(", ")
             ),
             Statement::Let(name, false, Some(sig), val) => {
-                format!("let {name}: {} = {}", sig.format(), val.format())
+                format!("let {}: {} = {}", name.format(), sig.format(), val.format())
             }
             Statement::Let(name, true, Some(sig), val) => {
-                format!("const {name}: {} = {}", sig.format(), val.format())
+                format!(
+                    "const {}: {} = {}",
+                    name.format(),
+                    sig.format(),
+                    val.format()
+                )
             }
-            Statement::Let(name, false, None, val) => format!("let {name} = {}", val.format()),
-            Statement::Let(name, true, None, val) => format!("const {name} = {}", val.format()),
+            Statement::Let(name, false, None, val) => {
+                format!("let {} = {}", name.format(), val.format())
+            }
+            Statement::Let(name, true, None, val) => {
+                format!("const {} = {}", name.format(), val.format())
+            }
             Statement::If(cond, then, r#else) => {
                 if let Some(r#else) = r#else {
                     format!(
@@ -1200,10 +1215,7 @@ impl Operator {
                 }
             }
             Operator::Assign(lhs, rhs) => {
-                let Expr::Value(Type::Symbol(name)) = lhs else {
-                    return Err(Fault::Infix(self.clone()));
-                };
-                Statement::Let(name.to_owned(), false, None, rhs.to_owned()).eval(engine)?
+                Statement::Let(lhs.to_owned(), false, None, rhs.to_owned()).eval(engine)?
             }
             Operator::PipeLine(lhs, rhs) => {
                 Operator::Apply(rhs.to_owned(), lhs.to_owned()).eval(engine)?
