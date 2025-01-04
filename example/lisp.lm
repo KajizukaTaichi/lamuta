@@ -77,7 +77,7 @@ let tokenize = λsource.{
     let nest = 0;
     let quote = 0;
 
-    for c in source {
+    for c in (source as list) {
         match c {
             "(" | "[" | "{" => {
                 if (quote == 0) {
