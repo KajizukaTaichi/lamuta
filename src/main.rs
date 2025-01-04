@@ -1063,12 +1063,27 @@ impl Operator {
                 } else if let (Type::Struct(mut st), Type::Text(key)) = (lhs.clone(), &rhs) {
                     ok!(st.shift_remove(key), Fault::Key(rhs, lhs))?;
                     Type::Struct(st)
-                } else if let (Type::List(mut lhs), Type::Number(rhs)) = (lhs.clone(), &rhs) {
-                    lhs.remove(rhs.clone() as usize);
-                    Type::List(lhs)
-                } else if let (Type::Text(mut lhs), Type::Number(rhs)) = (lhs, rhs) {
-                    lhs.remove(rhs as usize);
-                    Type::Text(lhs)
+                } else if let (Type::List(mut list), Type::Number(index)) = (lhs.clone(), &rhs) {
+                    if 0.0 <= *index && *index < list.len() as f64 {
+                        list.remove(index.clone() as usize);
+                        Type::List(list)
+                    } else {
+                        return Err(Fault::Index(rhs, lhs));
+                    }
+                } else if let (Type::Text(text), Type::Number(index)) = (&lhs, &rhs) {
+                    if 0.0 <= *index && *index < text.chars().count() as f64 {
+                        let mut chars: Vec<char> = text.chars().collect();
+                        chars.remove(index.clone() as usize);
+                        Type::Text(
+                            chars
+                                .iter()
+                                .map(|i| i.to_string())
+                                .collect::<Vec<String>>()
+                                .concat(),
+                        )
+                    } else {
+                        return Err(Fault::Index(rhs, lhs));
+                    }
                 } else {
                     return Err(Fault::Infix(self.clone()));
                 }
