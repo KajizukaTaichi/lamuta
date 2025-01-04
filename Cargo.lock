@@ -716,6 +716,7 @@ version = "0.4.1"
 dependencies = [
  "clap",
  "colored",
+ "indexmap",
  "reqwest",
  "rustyline",
  "thiserror",
