@@ -1,0 +1,13 @@
+let isPrime = fn(n -> {
+    let errmsg = "not a prime number";
+    if (n < 2) {
+        fault errmsg
+    } else {
+        for i in (2 ~ (n ^ 0.5 + 1)) {
+            if (n % i == 0) {
+                fault errmsg
+            }
+        }
+    };
+    "just a prime number"
+});
