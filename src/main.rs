@@ -494,8 +494,10 @@ impl Statement {
             Ok(Statement::Print(exprs))
         } else if code.starts_with("let") {
             let code = code["let".len()..].to_string();
-            let (name, code) = ok!(code.split_once("="))?;
-            if let Some((name, sig)) = name.split_once(":") {
+            let splited = tokenize(code.to_string(), vec!['='])?;
+            let (name, code) = (ok!(splited.get(0))?, ok!(splited.get(1))?);
+            let splited = tokenize(name.to_string(), vec![':'])?;
+            if let (Some(name), Some(sig)) = (splited.get(0), splited.get(1)) {
                 Ok(Statement::Let(
                     Expr::parse(name.trim().to_string())?,
                     false,
