@@ -1,0 +1,6 @@
+if {
+    let [name]: list = cmdLineArgs
+} it else {
+    let name = "world"
+};
+print "Hello, ", name, "!\n";
