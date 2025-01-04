@@ -12,7 +12,7 @@ let isPrime = fn(n -> {
     "just a prime number"
 });
 
-print "Prime Check";
+print "Prime Check\n";
 let flag = 1;
 while (flag == 1) {
     let num = input(">>> ") as number;
