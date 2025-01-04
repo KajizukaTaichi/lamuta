@@ -1,9 +1,9 @@
 use clap::Parser;
 use colored::*;
+use indexmap::IndexMap;
 use reqwest::blocking;
 use rustyline::{error::ReadlineError, DefaultEditor};
 use std::{
-    collections::HashMap,
     f64::consts::PI,
     fs::{read_to_string, File},
     io::{self, Write},
@@ -107,7 +107,7 @@ fn main() {
     }
 }
 
-type Scope = HashMap<String, Type>;
+type Scope = IndexMap<String, Type>;
 type Program = Vec<Statement>;
 #[derive(Debug, Clone)]
 struct Engine {
@@ -132,7 +132,7 @@ impl Engine {
                 "pi".to_string(),
                 "cmdLineArgs".to_string(),
             ],
-            env: HashMap::from([
+            env: IndexMap::from([
                 (
                     "type".to_string(),
                     Type::Function(Function::BuiltIn(|expr, _| {
@@ -152,7 +152,7 @@ impl Engine {
                         if engine.protect.contains(name) {
                             return Err(Fault::AccessDenied);
                         }
-                        engine.env.remove(name);
+                        ok!(engine.env.shift_remove(name))?;
                         Ok(Type::Null)
                     })),
                 ),
@@ -614,7 +614,7 @@ impl Expr {
                 Type::List(result)
             }
             Expr::Struct(st) => {
-                let mut result = HashMap::new();
+                let mut result = IndexMap::new();
                 for (k, x) in st {
                     result.insert(k.eval(engine)?.get_text()?, x.eval(engine)?);
                 }
@@ -1347,7 +1347,7 @@ enum Type {
     List(Vec<Type>),
     Function(Function),
     Signature(Signature),
-    Struct(HashMap<String, Type>),
+    Struct(IndexMap<String, Type>),
     Null,
 }
 
@@ -1459,7 +1459,7 @@ impl Type {
         }
     }
 
-    fn get_struct(&self) -> Result<HashMap<String, Type>, Fault> {
+    fn get_struct(&self) -> Result<IndexMap<String, Type>, Fault> {
         match self {
             Type::Struct(st) => Ok(st.to_owned()),
             _ => Err(Fault::Type(self.clone(), Signature::Struct)),
