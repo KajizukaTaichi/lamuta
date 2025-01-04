@@ -839,7 +839,7 @@ impl Expr {
             args.reverse();
             let mut func = Expr::Value(Type::Function(Function::UserDefined(
                 ok!(args.first())?.trim().to_string(),
-                Box::new(Expr::parse(body.to_string())?),
+                Box::new(Expr::Block(Engine::parse(body.to_string())?)),
             )));
             // Currying
             for arg in ok!(args.get(1..))? {
