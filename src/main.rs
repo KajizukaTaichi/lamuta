@@ -354,9 +354,14 @@ impl Statement {
                             return Err(Fault::Type(val, sig.to_owned()));
                         }
                     }
-                    for (name, val) in list.iter().zip(val.get_list()?) {
-                        Statement::Let(name.to_owned(), false, None, Expr::Value(val))
-                            .eval(engine)?;
+                    let val = val.get_list()?;
+                    if list.len() == val.len() {
+                        for (name, val) in list.iter().zip(val) {
+                            Statement::Let(name.to_owned(), false, None, Expr::Value(val))
+                                .eval(engine)?;
+                        }
+                    } else {
+                        return Err(Fault::Syntax);
                     }
                 } else {
                     return Err(Fault::Syntax);
