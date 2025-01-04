@@ -1287,7 +1287,7 @@ enum Fault {
     #[error("can not type cast `{}` to {}", _0.format(), _1.format())]
     Cast(Type, Signature),
 
-    #[error("at the IO processing")]
+    #[error("at the IO processing has problem")]
     IO,
 
     #[error("the value `{}` is different to expected type `{}`", _0.format(), _1.format())]
