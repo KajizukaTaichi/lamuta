@@ -820,7 +820,7 @@ impl Expr {
             let (arg, body) = ok!(token.split_once("."))?;
             Expr::Value(Type::Function(Function::UserDefined(
                 arg.to_string(),
-                Box::new(Expr::parse(body.to_string())?),
+                Box::new(Expr::Block(Engine::parse(body.to_string())?)),
             )))
         // Lambda abstract using back-slash instead of lambda mark
         } else if token.starts_with('\\') && token.contains('.') {
