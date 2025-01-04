@@ -776,6 +776,7 @@ impl Expr {
                 "/=" => Operator::AssignDiv(has_lhs(2)?, token),
                 "%=" => Operator::AssignMod(has_lhs(2)?, token),
                 "^=" => Operator::AssignPow(has_lhs(2)?, token),
+                "~" => Operator::To(has_lhs(2)?, token),
                 operator => {
                     if operator.starts_with("`") && operator.ends_with("`") {
                         let operator = operator[1..operator.len() - 1].to_string();
@@ -916,6 +917,9 @@ impl Expr {
                 Operator::AssignPow(lhs, rhs) => {
                     Operator::AssignPow(lhs.replace(from, to), rhs.replace(from, to))
                 }
+                Operator::To(lhs, rhs) => {
+                    Operator::To(lhs.replace(from, to), rhs.replace(from, to))
+                }
             })),
             Expr::Block(block) => Expr::Block(
                 block
@@ -1023,6 +1027,7 @@ enum Operator {
     AssignDiv(Expr, Expr),
     AssignMod(Expr, Expr),
     AssignPow(Expr, Expr),
+    To(Expr, Expr),
 }
 
 impl Operator {
@@ -1316,6 +1321,11 @@ impl Operator {
                 )
                 .eval(engine)?
             }
+            Operator::To(from, to) => Operator::Apply(
+                Expr::Value(Type::Symbol("range".to_string())),
+                Expr::List(vec![from.to_owned(), to.to_owned()]),
+            )
+            .eval(engine)?,
         })
     }
 
@@ -1348,6 +1358,7 @@ impl Operator {
             Operator::AssignDiv(lhs, rhs) => format!("{} /= {}", lhs.format(), rhs.format()),
             Operator::AssignMod(lhs, rhs) => format!("{} %= {}", lhs.format(), rhs.format()),
             Operator::AssignPow(lhs, rhs) => format!("{} ^= {}", lhs.format(), rhs.format()),
+            Operator::To(lhs, rhs) => format!("{} ~ {}", lhs.format(), rhs.format()),
         }
         .to_string()
     }
