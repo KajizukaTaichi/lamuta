@@ -45,7 +45,7 @@ let getList = λx.{
 
 let parse = λsource.{
     if (source :: 0 == "(" & (source :: (len source - 1) == ")")) {
-        let inner = slice source (range [1, len source - 1]);
+        let inner = source :: (1 ~ (len source - 1));
         let result = [];
         for i in (tokenize inner) {
             let result = result + [parse i];
@@ -53,7 +53,7 @@ let parse = λsource.{
         @{ "type": "expr", "value": result }
     } else {
         if (source :: 0 == "\'") {
-            let inner = slice source (range [2, len source - 1]);
+            let inner = source :: (2 ~ (len source - 1));
             let result = [];
             for i in (tokenize inner) {
                 let result = result + [parse i];
@@ -61,7 +61,7 @@ let parse = λsource.{
             @{ "type": "list", "value": result }
         } else {
             if (source :: 0 == doubleQuote & (source :: (len source - 1) == doubleQuote)) {
-                let inner = slice source (range [1, len source - 1]);
+                let inner = source :: (1 ~ (len source - 1));
                 @{ "type": "text", "value": inner }
             } else {
                 if (source as number) @{ "type": "number", "value": it }
@@ -186,8 +186,8 @@ let main = λ_.{
             let flag = 0;
         } else {
             if (find entered ":=") {
-                let name = tokenize (slice entered (range [0, it])) :: 0;
-                let expr = tokenize (slice entered (range [it + 2, len entered])) :: 0;
+                let name = tokenize (entered :: (0 ~ it)) :: 0;
+                let expr = tokenize (entered :: (it + 2 ~ (len entered))) :: 0;
                 scope += @{ name: evaluate scope (parse expr) };
             } else {
                 print evaluate scope (parse entered), "\n";
