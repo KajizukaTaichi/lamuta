@@ -1046,15 +1046,20 @@ impl Operator {
                     Type::Number(lhs - rhs)
                 } else if let (Type::Text(lhs), Type::Text(rhs)) = (&lhs, &rhs) {
                     Type::Text(lhs.replacen(rhs, "", 1))
-                } else if let (Type::List(mut lhs), Type::List(rhs)) = (lhs.clone(), &rhs) {
-                    let first_index = ok!(lhs.windows(rhs.len()).position(|i| {
-                        i.iter().map(|j| j.format()).collect::<Vec<_>>()
-                            == rhs.iter().map(|j| j.format()).collect::<Vec<_>>()
-                    }))?;
-                    for _ in 0..rhs.len() {
-                        lhs.remove(first_index);
+                } else if let (Type::List(mut list1), Type::List(list2)) =
+                    (lhs.clone(), &rhs.clone())
+                {
+                    let first_index = ok!(
+                        list1.windows(list2.len()).position(|i| {
+                            i.iter().map(|j| j.format()).collect::<Vec<_>>()
+                                == list2.iter().map(|j| j.format()).collect::<Vec<_>>()
+                        }),
+                        Fault::Index(rhs, lhs)
+                    )?;
+                    for _ in 0..list2.len() {
+                        list1.remove(first_index);
                     }
-                    Type::List(lhs)
+                    Type::List(list1)
                 } else if let (Type::Struct(mut st), Type::Text(key)) = (lhs.clone(), &rhs) {
                     ok!(st.shift_remove(key), Fault::Key(rhs, lhs))?;
                     Type::Struct(st)
