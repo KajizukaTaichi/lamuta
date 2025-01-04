@@ -1,6 +1,2 @@
-if {
-    let [name]: list = cmdLineArgs
-} it else {
-    let name = "world"
-};
+let name = { if cmdLineArgs (it :: 0) else "world" };
 print "Hello, ", name, "!\n";
