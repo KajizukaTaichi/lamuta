@@ -1,21 +1,36 @@
 load "docs/lib/std.lm";
+const specialForms: list = ["define"];
 
 let evaluate = λe.λp.{
+    let scope = e;
     match (p :: "type") {
         "expr" => {
             let code = [];
             for i in (p :: "value") {
-                let code = code + [evaluate e i];
+                let [scope, value] = evaluate scope i;
+                code += [value];
             };
             if (code :: 0 :: "type" == "function") {
                 let func: function = code :: 0 :: "value";
-                func (code :: (1 ~ (len code)))
+                [scope, func (code :: (1 ~ (len code)))]
             } else {
                 fault
             }
         },
-        "symbol" => { if (e :: (p :: "value")) it else p },
-        _ => p
+        "specialForm" => {
+            let code: list = p :: "value";
+            match (code :: 0 :: "value") {
+                "define" => {
+                    let name = code :: 1 :: "value";
+                    let expr = code :: 2;
+                    let [scope, value] = evaluate scope expr;
+                    scope += @{ name: value };
+                    [scope, value]
+                }
+            }
+        },
+        "symbol" => [scope, { if (scope :: (p :: "value")) it else p }],
+        _ => [scope, p]
     }
 };
 
@@ -50,7 +65,13 @@ let parse = λsource.{
         for i in (tokenize inner) {
             let result = result + [parse i];
         };
-        @{ "type": "expr", "value": result }
+        if (specialForms `find` [result :: 0 :: "value"]) @{
+            "type": "specialForm",
+            "value": result
+        } else @{
+            "type": "expr",
+            "value": result
+        }
     } else {
         if (source :: 0 == "\'") {
             let inner = source :: (2 ~ (len source - 1));
@@ -185,13 +206,8 @@ let main = λ_.{
         if (entered == "") {
             let flag = 0;
         } else {
-            if (find entered ":=") {
-                let name = tokenize (entered :: (0 ~ it)) :: 0;
-                let expr = tokenize (entered :: (it + 2 ~ (len entered))) :: 0;
-                scope += @{ name: evaluate(scope, parse expr) };
-            } else {
-                print evaluate(scope, parse entered), "\n";
-            }
+            let [scope, value] =  evaluate(scope, parse entered);
+            print value, "\n";
         }
     }
 };
