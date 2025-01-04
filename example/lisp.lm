@@ -212,4 +212,4 @@ let main = λ_.{
     }
 };
 
-main run
+main _
