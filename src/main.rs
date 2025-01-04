@@ -1055,6 +1055,9 @@ impl Operator {
                         lhs.remove(first_index);
                     }
                     Type::List(lhs)
+                } else if let (Type::Struct(mut st), Type::Text(key)) = (lhs.clone(), &rhs) {
+                    ok!(st.shift_remove(key), Fault::Key(rhs, lhs))?;
+                    Type::Struct(st)
                 } else if let (Type::List(mut lhs), Type::Number(rhs)) = (lhs.clone(), &rhs) {
                     lhs.remove(rhs.clone() as usize);
                     Type::List(lhs)
