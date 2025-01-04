@@ -65,12 +65,10 @@ let parse = λsource.{
         for i in (tokenize inner) {
             let result = result + [parse i];
         };
-        if (specialForms `find` [result :: 0 :: "value"]) @{
-            "type": "specialForm",
-            "value": result
-        } else @{
-            "type": "expr",
-            "value": result
+        if (specialForms `find` [result :: 0 :: "value"]) {
+            @{ "type": "specialForm", "value": result }
+        } else {
+            @{ "type": "expr", "value": result }
         }
     } else {
         if (source :: 0 == "\'") {
