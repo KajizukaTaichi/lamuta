@@ -1,5 +1,5 @@
 let isPrime = fn(n -> {
-    let errmsg = "not a prime number";
+    const errmsg: text = "not a prime number";
     if (n < 2) {
         fault errmsg
     } else {
@@ -11,3 +11,10 @@ let isPrime = fn(n -> {
     };
     "just a prime number"
 });
+
+print "Prime Check";
+let flag = 1;
+while (flag == 1) {
+    let num = input(">>> ") as number;
+    print num, " is ", { if isPrime(num) it else err }, "\n";
+}
