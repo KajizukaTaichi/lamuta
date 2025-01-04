@@ -449,6 +449,8 @@ impl Statement {
                                 return Err(Fault::Infix(infix));
                             },
                         );
+                    } else {
+                        return Err(Fault::Syntax);
                     }
                 } else {
                     return Err(Fault::Syntax);
