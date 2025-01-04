@@ -363,6 +363,74 @@ impl Statement {
                     } else {
                         return Err(Fault::Syntax);
                     }
+                } else if let Expr::Infix(infix) = name {
+                    let infix = *infix.clone();
+                    if let Operator::Access(Expr::Value(Type::Symbol(name)), index) = infix.clone()
+                    {
+                        if engine.protect.contains(&name) {
+                            return Err(Fault::AccessDenied);
+                        }
+                        let index = index.eval(engine)?;
+                        let obj = ok!(engine.env.get(&name), Fault::Refer(name.clone()))?;
+
+                        engine.env.insert(
+                            name,
+                            if let (Type::List(mut list), Type::Number(index)) =
+                                (obj.clone(), index.clone())
+                            {
+                                if 0.0 <= index && index < list.len() as f64 {
+                                    list[index as usize] = val.clone();
+                                    Type::List(list)
+                                } else {
+                                    return Err(Fault::Index(Type::Number(index), obj.to_owned()));
+                                }
+                            } else if let (Type::Text(text), Type::Number(index)) =
+                                (obj.clone(), index.clone())
+                            {
+                                let mut text: Vec<String> =
+                                    text.chars().map(|i| i.to_string()).collect();
+                                if 0.0 <= index && index < text.len() as f64 {
+                                    text[index as usize] = val.get_text()?;
+                                    Type::Text(text.concat())
+                                } else {
+                                    return Err(Fault::Index(Type::Number(index), obj.to_owned()));
+                                }
+                            } else if let (Type::Struct(mut st), Type::Text(index)) =
+                                (obj.clone(), index.clone())
+                            {
+                                st.insert(index, val.clone());
+                                Type::Struct(st)
+                            } else if let (Type::List(mut list), Type::List(index)) =
+                                (obj.clone(), index.clone())
+                            {
+                                for i in index {
+                                    let i = i.get_number()?;
+                                    if 0.0 <= i && i < list.len() as f64 {
+                                        list[i as usize] = val.clone();
+                                    } else {
+                                        return Err(Fault::Index(Type::Number(i), obj.to_owned()));
+                                    }
+                                }
+                                Type::List(list)
+                            } else if let (Type::Text(text), Type::List(index)) =
+                                (obj.clone(), index.clone())
+                            {
+                                let mut text: Vec<String> =
+                                    text.chars().map(|i| i.to_string()).collect();
+                                for i in index {
+                                    let i = i.get_number()?;
+                                    if 0.0 <= i && i < text.len() as f64 {
+                                        text[i as usize] = val.get_text()?;
+                                    } else {
+                                        return Err(Fault::Index(Type::Number(i), obj.to_owned()));
+                                    }
+                                }
+                                Type::Text(text.concat())
+                            } else {
+                                return Err(Fault::Infix(infix));
+                            },
+                        );
+                    }
                 } else {
                     return Err(Fault::Syntax);
                 }
@@ -625,12 +693,11 @@ impl Expr {
                 }
                 Type::Struct(result)
             }
-            Expr::Value(Type::Signature(sig)) => Type::Signature(sig.clone()),
             Expr::Value(Type::Symbol(name)) => {
                 if let Some(refer) = engine.env.get(name.as_str()) {
                     refer.clone()
                 } else {
-                    Type::Symbol(name.to_owned())
+                    return Err(Fault::Refer(name.to_string()));
                 }
             }
             Expr::Value(value) => value.clone(),
@@ -1204,7 +1271,11 @@ impl Operator {
                     ok!(list.get(index as usize), Fault::Index(rhs, lhs))?.clone()
                 } else if let (Type::Text(text), Type::Number(index)) = (lhs.clone(), rhs.clone()) {
                     Type::Text(
-                        ok!(text.chars().collect::<Vec<char>>().get(index as usize))?.to_string(),
+                        ok!(
+                            text.chars().collect::<Vec<char>>().get(index as usize),
+                            Fault::Index(rhs.clone(), lhs.clone())
+                        )?
+                        .to_string(),
                     )
                 } else if let (Type::Struct(st), Type::Text(index)) = (lhs.clone(), rhs.clone()) {
                     ok!(st.get(&index), Fault::Key(rhs, lhs))?.clone()
@@ -1238,10 +1309,10 @@ impl Operator {
                     return Err(Fault::Infix(self.clone()));
                 }
             }
-            Operator::Derefer(pointer) => match pointer.clone().eval(engine)? {
-                Type::Refer(to) => Expr::Value(Type::Symbol(to.to_string())).eval(engine)?,
-                _ => return Err(Fault::Infix(self.clone())),
-            },
+            Operator::Derefer(pointer) => {
+                let to = pointer.clone().eval(engine)?.get_refer()?;
+                Expr::Value(Type::Symbol(to.to_string())).eval(engine)?
+            }
             Operator::As(lhs, rhs) => {
                 let lhs = lhs.eval(engine)?;
                 let rhs = rhs.eval(engine)?;
@@ -1377,6 +1448,9 @@ enum Fault {
 
     #[error("access is denied because it's protected memory area")]
     AccessDenied,
+
+    #[error("can not access undefined variable `{0}`")]
+    Refer(String),
 
     #[error("can not type cast `{}` to {}", _0.format(), _1.format())]
     Cast(Type, Signature),
