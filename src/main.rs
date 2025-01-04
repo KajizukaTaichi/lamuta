@@ -91,7 +91,7 @@ fn main() {
                     match Engine::parse(code) {
                         Ok(ast) => match engine.eval(ast) {
                             Ok(result) => {
-                                println!("{navi} {}", result.get_symbol(), navi = "=>".green())
+                                println!("{navi} {}", result.format(), navi = "=>".green())
                             }
                             Err(e) => println!("{navi} Fault: {e}", navi = "=>".red()),
                         },
@@ -136,7 +136,7 @@ impl Engine {
                 (
                     "type".to_string(),
                     Type::Function(Function::BuiltIn(|expr, _| {
-                        Ok(Type::Signature(expr.get_type()))
+                        Ok(Type::Signature(expr.type_of()))
                     })),
                 ),
                 (
@@ -159,7 +159,7 @@ impl Engine {
                 (
                     "eval".to_string(),
                     Type::Function(Function::BuiltIn(|args, engine| {
-                        let args = args.get_list();
+                        let args = args.get_list()?;
                         let code = ok!(args.get(0))?.get_text()?;
                         if let Some(env) = args.get(1) {
                             let mut engine = engine.clone();
@@ -173,14 +173,11 @@ impl Engine {
                 (
                     "alphaConvert".to_string(),
                     Type::Function(Function::BuiltIn(|args, _| {
-                        let args = args.get_list();
+                        let args = args.get_list()?;
                         let func = ok!(args.get(0), Fault::ArgLen)?;
                         let new_name = ok!(args.get(1), Fault::ArgLen)?.get_text()?;
                         let Type::Function(Function::UserDefined(arg, body)) = func else {
-                            return Err(Fault::Type {
-                                value: func.to_owned(),
-                                annotate: Signature::Function,
-                            });
+                            return Err(Fault::Type(func.to_owned(), Signature::Function));
                         };
                         Ok(Type::Function(Function::UserDefined(
                             new_name.clone(),
@@ -208,7 +205,7 @@ impl Engine {
                 (
                     "range".to_string(),
                     Type::Function(Function::BuiltIn(|params, _| {
-                        let params = params.get_list();
+                        let params = params.get_list()?;
                         if params.len() == 1 {
                             let mut range: Vec<Type> = vec![];
                             let mut current: f64 = 0.0;
@@ -265,7 +262,7 @@ impl Engine {
                         let mut render = String::new();
                         for (k, v) in &engine.env {
                             if !engine.protect.contains(k) {
-                                render += &format!("let {k} = {};\n", v.get_symbol());
+                                render += &format!("let {k} = {};\n", v.format());
                             }
                         }
                         if let Ok(mut file) = File::create(arg.get_text()?) {
@@ -327,7 +324,7 @@ impl Statement {
                         "{}",
                         match i.eval(engine)? {
                             Type::Text(text) => text,
-                            other => other.get_symbol(),
+                            other => other.format(),
                         }
                     );
                 }
@@ -340,11 +337,8 @@ impl Statement {
                     return Err(Fault::AccessDenied);
                 }
                 if let Some(sig) = sig {
-                    if val.get_type().format() != sig.format() {
-                        return Err(Fault::Type {
-                            value: val,
-                            annotate: sig.to_owned(),
-                        });
+                    if val.type_of().format() != sig.format() {
+                        return Err(Fault::Type(val, sig.to_owned()));
                     }
                 }
                 if name != "_" {
@@ -381,7 +375,7 @@ impl Statement {
             }
             Statement::For(counter, expr, code) => {
                 let mut result = Type::Null;
-                for i in expr.eval(engine)?.get_list() {
+                for i in expr.eval(engine)?.get_list()? {
                     if counter != "_" {
                         engine.env.insert(counter.clone(), i);
                     }
@@ -781,7 +775,7 @@ impl Expr {
                     .join(", "),
             ),
             Expr::Infix(infix) => format!("({})", infix.format()),
-            Expr::Value(val) => val.get_symbol(),
+            Expr::Value(val) => val.format(),
             Expr::Block(block) => format!(
                 "{{ {} }}",
                 block
@@ -1028,8 +1022,8 @@ impl Operator {
                     Type::Text(lhs.replacen(rhs, "", 1))
                 } else if let (Type::List(mut lhs), Type::List(rhs)) = (lhs.clone(), &rhs) {
                     let first_index = ok!(lhs.windows(rhs.len()).position(|i| {
-                        i.iter().map(|j| j.get_symbol()).collect::<Vec<_>>()
-                            == rhs.iter().map(|j| j.get_symbol()).collect::<Vec<_>>()
+                        i.iter().map(|j| j.format()).collect::<Vec<_>>()
+                            == rhs.iter().map(|j| j.format()).collect::<Vec<_>>()
                     }))?;
                     for _ in 0..rhs.len() {
                         lhs.remove(first_index);
@@ -1166,18 +1160,7 @@ impl Operator {
             Operator::As(lhs, rhs) => {
                 let lhs = lhs.eval(engine)?;
                 let rhs = rhs.eval(engine)?;
-                match rhs.get_signature()? {
-                    Signature::Number => Type::Number(lhs.get_number()?),
-                    Signature::Symbol => Type::Symbol(lhs.get_symbol()),
-                    Signature::Text => Type::Text(lhs.get_text()?),
-                    Signature::List => Type::List(lhs.get_list()),
-                    Signature::Function => Type::Function(lhs.get_function()?),
-                    Signature::Refer => Type::Refer(lhs.get_symbol()),
-                    Signature::Struct => Type::Struct(lhs.get_struct()?),
-                    Signature::Signature => {
-                        Type::Signature(ok!(Signature::parse(lhs.get_text()?))?)
-                    }
-                }
+                lhs.cast(rhs.get_signature()?)?
             }
             Operator::Apply(lhs, rhs) => {
                 let lhs = lhs.eval(engine)?;
@@ -1196,7 +1179,7 @@ impl Operator {
                         }
                     }
                 } else {
-                    return Err(Fault::Apply(self.clone()));
+                    return Err(Fault::Apply(lhs));
                 }
             }
             Operator::Assign(lhs, rhs) => {
@@ -1295,16 +1278,16 @@ impl Operator {
 
 #[derive(Debug, Error)]
 enum Fault {
-    #[error("can not do function application because it's not function `{}`", _0.format())]
-    Apply(Operator),
+    #[error("can not do function application because `{}` is not function", _0.format())]
+    Apply(Type),
     #[error("access is denied because it's protected memory area")]
     AccessDenied,
-    #[error("can not type cast `{}` to {}", value.get_symbol(), to.format())]
-    Cast { value: Type, to: Signature },
+    #[error("can not type cast `{}` to {}", _0.format(), _1.format())]
+    Cast(Type, Signature),
     #[error("at the IO processing")]
     IO,
-    #[error("the result value `{}` is different to expected type `{}`", value.get_symbol(), annotate.format())]
-    Type { value: Type, annotate: Signature },
+    #[error("the result value `{}` is different to expected type `{}`", _0.format(), _1.format())]
+    Type(Type, Signature),
     #[error("missmatching of arguments length when function application")]
     ArgLen,
     #[error("the program is not able to parse. check out is the syntax correct")]
@@ -1331,7 +1314,44 @@ enum Type {
 }
 
 impl Type {
-    fn get_symbol(&self) -> String {
+    fn cast(&self, sig: Signature) -> Result<Type, Fault> {
+        let err = Err(Fault::Cast(self.clone(), sig.clone()));
+        Ok(match sig {
+            Signature::Number => Type::Number(match self {
+                Type::Number(n) => n.to_owned(),
+                Type::Symbol(s) | Type::Text(s) => {
+                    if let Ok(n) = s.trim().parse::<f64>() {
+                        n
+                    } else {
+                        return err;
+                    }
+                }
+                Type::Null => 0.0,
+                _ => return err,
+            }),
+            Signature::Symbol => Type::Symbol(self.format()),
+            Signature::Text => Type::Text(match self {
+                Type::Symbol(s) | Type::Text(s) => s.to_string(),
+                Type::Number(n) => n.to_string(),
+                Type::Signature(s) => s.format(),
+                Type::Null => String::new(),
+                _ => return err,
+            }),
+            Signature::List => Type::List(match self {
+                Type::List(list) => list.to_owned(),
+                Type::Text(text) => text.chars().map(|i| Type::Text(i.to_string())).collect(),
+                Type::Struct(strct) => strct
+                    .iter()
+                    .map(|(k, y)| Type::List(vec![Type::Text(k.to_owned()), y.to_owned()]))
+                    .collect(),
+                Type::Null => Vec::new(),
+                _ => return err,
+            }),
+            _ => return err,
+        })
+    }
+
+    fn format(&self) -> String {
         match self {
             Type::Symbol(s) => s.to_string(),
             Type::Text(text) => format!(
@@ -1352,17 +1372,14 @@ impl Type {
             }
             Type::List(l) => format!(
                 "[{}]",
-                l.iter()
-                    .map(|i| i.get_symbol())
-                    .collect::<Vec<_>>()
-                    .join(", ")
+                l.iter().map(|i| i.format()).collect::<Vec<_>>().join(", ")
             ),
             Type::Signature(sig) => sig.format(),
             Type::Refer(to) => format!("&{to}"),
             Type::Struct(val) => format!(
                 "@{{ {} }}",
                 val.iter()
-                    .map(|(k, v)| format!("\"{k}\": {}", v.get_symbol()))
+                    .map(|(k, v)| format!("\"{k}\": {}", v.format()))
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
@@ -1370,58 +1387,48 @@ impl Type {
     }
 
     fn get_number(&self) -> Result<f64, Fault> {
-        let err = Err(Fault::Cast {
-            value: self.clone(),
-            to: Signature::Number,
-        });
         match self {
             Type::Number(n) => Ok(n.to_owned()),
-            Type::Symbol(s) | Type::Text(s) => {
-                if let Ok(n) = s.trim().parse::<f64>() {
-                    Ok(n)
-                } else {
-                    err
-                }
-            }
-            Type::Null => Ok(0.0),
-            _ => err,
+            _ => Err(Fault::Type(self.clone(), Signature::Number)),
+        }
+    }
+
+    fn get_refer(&self) -> Result<String, Fault> {
+        match self {
+            Type::Refer(r) => Ok(r.to_owned()),
+            _ => Err(Fault::Type(self.clone(), Signature::Refer)),
         }
     }
 
     fn get_text(&self) -> Result<String, Fault> {
         match self {
-            Type::Symbol(s) | Type::Text(s) => Ok(s.to_string()),
-            Type::Number(n) => Ok(n.to_string()),
-            Type::Signature(s) => Ok(s.format()),
-            Type::Null => Ok(String::new()),
-            _ => Err(Fault::Cast {
-                value: self.clone(),
-                to: Signature::Text,
-            }),
+            Type::Text(s) => Ok(s.to_string()),
+            _ => Err(Fault::Type(self.clone(), Signature::Text)),
         }
     }
 
-    fn get_list(&self) -> Vec<Type> {
+    fn get_list(&self) -> Result<Vec<Type>, Fault> {
         match self {
-            Type::List(list) => list.to_owned(),
-            Type::Text(text) => text.chars().map(|i| Type::Text(i.to_string())).collect(),
-            Type::Null => Vec::new(),
-            other => vec![other.to_owned()],
+            Type::List(list) => Ok(list.to_owned()),
+            _ => Err(Fault::Type(self.clone(), Signature::List)),
         }
     }
 
-    fn get_function(&self) -> Result<Function, Fault> {
-        if let Type::Function(func) = self {
-            Ok(func.to_owned())
-        } else {
-            Err(Fault::Cast {
-                value: self.clone(),
-                to: Signature::Function,
-            })
+    fn get_signature(&self) -> Result<Signature, Fault> {
+        match self {
+            Type::Signature(sig) => Ok(sig.to_owned()),
+            _ => Err(Fault::Type(self.clone(), Signature::Signature)),
         }
     }
 
-    fn get_type(&self) -> Signature {
+    fn get_struct(&self) -> Result<HashMap<String, Type>, Fault> {
+        match self {
+            Type::Struct(st) => Ok(st.to_owned()),
+            _ => Err(Fault::Type(self.clone(), Signature::Struct)),
+        }
+    }
+
+    fn type_of(&self) -> Signature {
         match self {
             Type::Number(_) => Signature::Number,
             Type::Text(_) => Signature::Text,
@@ -1432,39 +1439,6 @@ impl Type {
             Type::Function(_) => Signature::Function,
             Type::Struct(_) => Signature::Struct,
             Type::Null => Signature::Symbol,
-        }
-    }
-
-    fn get_signature(&self) -> Result<Signature, Fault> {
-        if let Type::Signature(sig) = self {
-            Ok(sig.clone())
-        } else {
-            Err(Fault::Cast {
-                value: self.clone(),
-                to: Signature::Signature,
-            })
-        }
-    }
-
-    fn get_struct(&self) -> Result<HashMap<String, Type>, Fault> {
-        if let Type::Struct(val) = self {
-            Ok(val.clone())
-        } else {
-            Err(Fault::Cast {
-                value: self.clone(),
-                to: Signature::Struct,
-            })
-        }
-    }
-
-    fn get_refer(&self) -> Result<String, Fault> {
-        if let Type::Refer(val) = self {
-            Ok(val.clone())
-        } else {
-            Err(Fault::Cast {
-                value: self.clone(),
-                to: Signature::Refer,
-            })
         }
     }
 
@@ -1490,10 +1464,10 @@ impl Type {
             }
             true
         } else {
-            if pattern.get_symbol() == "_" {
+            if pattern.format() == "_" {
                 true
             } else {
-                self.get_symbol() == pattern.get_symbol()
+                self.format() == pattern.format()
             }
         }
     }
