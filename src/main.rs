@@ -80,7 +80,7 @@ fn main() {
         )
         .eval(&mut engine)
         {
-            eprintln!("Fault {e}")
+            eprintln!("{}: {e}", "Fault".red())
         }
     } else {
         println!("{title} {VERSION}", title = "Lamuta".blue().bold());
