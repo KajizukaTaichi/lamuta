@@ -152,7 +152,10 @@ impl Engine {
                         if engine.protect.contains(name) {
                             return Err(Fault::AccessDenied);
                         }
-                        ok!(engine.env.shift_remove(name))?;
+                        ok!(
+                            engine.env.shift_remove(name),
+                            Fault::Refer(name.to_string())
+                        )?;
                         Ok(Type::Null)
                     })),
                 ),
