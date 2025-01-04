@@ -1069,7 +1069,7 @@ impl Operator {
                 if rhs.is_match(&lhs) {
                     rhs
                 } else {
-                    return Err(Fault::Logic);
+                    return Err(Fault::Logic(self.clone()));
                 }
             }
             Operator::NotEq(lhs, rhs) => {
@@ -1078,7 +1078,7 @@ impl Operator {
                 if !rhs.is_match(&lhs) {
                     rhs
                 } else {
-                    return Err(Fault::Logic);
+                    return Err(Fault::Logic(self.clone()));
                 }
             }
             Operator::LessThan(lhs, rhs) => {
@@ -1086,7 +1086,7 @@ impl Operator {
                 if lhs.eval(engine)?.get_number()? < rhs.get_number()? {
                     rhs
                 } else {
-                    return Err(Fault::Logic);
+                    return Err(Fault::Logic(self.clone()));
                 }
             }
             Operator::LessThanEq(lhs, rhs) => {
@@ -1094,7 +1094,7 @@ impl Operator {
                 if lhs.eval(engine)?.get_number()? <= rhs.get_number()? {
                     rhs
                 } else {
-                    return Err(Fault::Logic);
+                    return Err(Fault::Logic(self.clone()));
                 }
             }
             Operator::GreaterThan(lhs, rhs) => {
@@ -1102,7 +1102,7 @@ impl Operator {
                 if lhs.eval(engine)?.get_number()? > rhs.get_number()? {
                     rhs
                 } else {
-                    return Err(Fault::Logic);
+                    return Err(Fault::Logic(self.clone()));
                 }
             }
             Operator::GreaterThanEq(lhs, rhs) => {
@@ -1110,7 +1110,7 @@ impl Operator {
                 if lhs.eval(engine)?.get_number()? >= rhs.get_number()? {
                     rhs
                 } else {
-                    return Err(Fault::Logic);
+                    return Err(Fault::Logic(self.clone()));
                 }
             }
             Operator::And(lhs, rhs) => {
@@ -1118,7 +1118,7 @@ impl Operator {
                 if lhs.eval(engine).is_ok() && rhs.is_ok() {
                     rhs?
                 } else {
-                    return Err(Fault::Logic);
+                    return Err(Fault::Logic(self.clone()));
                 }
             }
             Operator::Or(lhs, rhs) => {
@@ -1127,13 +1127,13 @@ impl Operator {
                 if lhs.is_ok() || rhs.is_ok() {
                     rhs.unwrap_or(lhs?)
                 } else {
-                    return Err(Fault::Logic);
+                    return Err(Fault::Logic(self.clone()));
                 }
             }
             Operator::Not(val) => {
                 let val = val.eval(engine);
                 if val.is_ok() {
-                    return Err(Fault::Logic);
+                    return Err(Fault::Logic(self.clone()));
                 } else {
                     Type::Null
                 }
@@ -1142,13 +1142,13 @@ impl Operator {
                 let lhs = lhs.eval(engine)?;
                 let rhs = rhs.eval(engine)?;
                 if let (Type::List(list), Type::Number(index)) = (lhs.clone(), rhs.clone()) {
-                    ok!(list.get(index as usize))?.clone()
+                    ok!(list.get(index as usize), Fault::Index(rhs, lhs))?.clone()
                 } else if let (Type::Text(text), Type::Number(index)) = (lhs.clone(), rhs.clone()) {
                     Type::Text(
                         ok!(text.chars().collect::<Vec<char>>().get(index as usize))?.to_string(),
                     )
                 } else if let (Type::Struct(st), Type::Text(index)) = (lhs.clone(), rhs.clone()) {
-                    ok!(st.get(&index))?.clone()
+                    ok!(st.get(&index), Fault::Key(rhs, lhs))?.clone()
                 } else {
                     return Err(Fault::Infix(self.clone()));
                 }
@@ -1281,8 +1281,11 @@ enum Fault {
     #[error("can not do apply function because `{}` is not lambda abstract", _0.format())]
     Apply(Type),
 
-    #[error("")]
-    NotFound,
+    #[error("key `{}` is not found in the struct `{}`", _0.format(), _1.format())]
+    Key(Type, Type),
+
+    #[error("index `{}` is out of the list `{}`", _0.format(), _1.format())]
+    Index(Type, Type),
 
     #[error("access is denied because it's protected memory area")]
     AccessDenied,
@@ -1305,8 +1308,8 @@ enum Fault {
     #[error("can not evaluate expression `{}`", _0.format())]
     Infix(Operator),
 
-    #[error("the logical operation has bankruptcy")]
-    Logic,
+    #[error("the logical operation `{}` has bankruptcy", _0.format())]
+    Logic(Operator),
 
     #[error("{}", if let Some(msg) = _0 { msg } else { "throwed by user-defined program" })]
     General(Option<String>),
