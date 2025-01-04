@@ -355,17 +355,8 @@ impl Statement {
                         }
                     }
                     for (name, val) in list.iter().zip(val.get_list()?) {
-                        if let Expr::Value(Type::Symbol(name)) = name {
-                            if engine.protect.contains(name) {
-                                return Err(Fault::AccessDenied);
-                            }
-                            if name != "_" {
-                                engine.env.insert(name.to_owned(), val.clone());
-                                if *protect {
-                                    engine.protect.push(name.to_owned());
-                                }
-                            }
-                        }
+                        Statement::Let(name.to_owned(), false, None, Expr::Value(val))
+                            .eval(engine)?;
                     }
                 } else {
                     return Err(Fault::Syntax);
