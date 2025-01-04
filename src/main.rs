@@ -309,7 +309,7 @@ enum Statement {
     Let(Expr, bool, Option<Signature>, Expr),
     If(Expr, Expr, Option<Expr>),
     Match(Expr, Vec<(Vec<Expr>, Expr)>),
-    For(String, Expr, Expr),
+    For(Expr, Expr, Expr),
     While(Expr, Expr),
     Fault(Option<Expr>),
     Return(Expr),
@@ -399,9 +399,7 @@ impl Statement {
             Statement::For(counter, expr, code) => {
                 let mut result = Type::Null;
                 for i in expr.eval(engine)?.get_list()? {
-                    if counter != "_" {
-                        engine.env.insert(counter.clone(), i);
-                    }
+                    Statement::Let(counter.clone(), false, None, Expr::Value(i)).eval(engine)?;
                     result = code.eval(engine)?;
                 }
                 result
@@ -506,7 +504,7 @@ impl Statement {
             let code = tokenize(code, SPACE.to_vec())?;
             if code.get(1).and_then(|x| Some(x == "in")).unwrap_or(false) {
                 Ok(Statement::For(
-                    ok!(code.get(0))?.to_string(),
+                    Expr::parse(ok!(code.get(0))?.to_string())?,
                     Expr::parse(ok!(code.get(2))?.to_string())?,
                     Expr::parse(ok!(code.get(3))?.to_string())?,
                 ))
@@ -586,7 +584,12 @@ impl Statement {
                 })
             }
             Statement::For(counter, iterator, code) => {
-                format!("for {counter} in {} {}", iterator.format(), code.format())
+                format!(
+                    "for {} in {} {}",
+                    counter.format(),
+                    iterator.format(),
+                    code.format()
+                )
             }
             Statement::While(cond, code) => {
                 format!("while {} {}", cond.format(), code.format())
