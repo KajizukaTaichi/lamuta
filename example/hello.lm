@@ -1,2 +1,8 @@
 let name = { if cmdLineArgs (it :: 0) else "world" };
-print "Hello, ", name, "!\n";
+let msg = "Hello, " +  name + "!";
+let spaceLen = 50;
+for i in (1 ~ spaceLen) {
+    print "\r", " " * (spaceLen - i), msg;
+    sleep 0.1
+};
+print "\n";
