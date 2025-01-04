@@ -8,8 +8,8 @@ let evaluate = λe.λp.{
                 let code = code + [evaluate e i];
             };
             if (code :: 0 :: "type" == "function") {
-                let func = code :: 0 :: "value";
-                func (slice code (range [1, len code]))
+                let func: function = code :: 0 :: "value";
+                func (code :: (1 ~ (len code)))
             } else {
                 fault
             }
@@ -188,9 +188,9 @@ let main = λ_.{
             if (find entered ":=") {
                 let name = tokenize (entered :: (0 ~ it)) :: 0;
                 let expr = tokenize (entered :: (it + 2 ~ (len entered))) :: 0;
-                scope += @{ name: evaluate scope (parse expr) };
+                scope += @{ name: evaluate(scope, parse expr) };
             } else {
-                print evaluate scope (parse entered), "\n";
+                print evaluate(scope, parse entered), "\n";
             }
         }
     }
