@@ -95,7 +95,7 @@ fn main() {
                             }
                             Err(e) => println!("{navi} Fault: {e}", navi = "=>".red()),
                         },
-                        Err(e) => println!("{navi} Syntax Error: {e}", navi = "=>".red()),
+                        Err(e) => println!("{navi} Fault: {e}", navi = "=>".red()),
                     }
                     session += 1;
                 }
@@ -306,7 +306,7 @@ impl Engine {
 #[derive(Debug, Clone)]
 enum Statement {
     Print(Vec<Expr>),
-    Let(String, bool, Option<Signature>, Expr),
+    Let(Expr, bool, Option<Signature>, Expr),
     If(Expr, Expr, Option<Expr>),
     Match(Expr, Vec<(Vec<Expr>, Expr)>),
     For(String, Expr, Expr),
@@ -333,18 +333,35 @@ impl Statement {
             }
             Statement::Let(name, protect, sig, expr) => {
                 let val = expr.eval(engine)?;
-                if engine.protect.contains(name) {
-                    return Err(Fault::AccessDenied);
-                }
-                if let Some(sig) = sig {
-                    if val.type_of().format() != sig.format() {
-                        return Err(Fault::Type(val, sig.to_owned()));
+                if let Expr::Value(Type::Symbol(name)) = name {
+                    if engine.protect.contains(name) {
+                        return Err(Fault::AccessDenied);
                     }
-                }
-                if name != "_" {
-                    engine.env.insert(name.to_owned(), val.clone());
-                    if *protect {
-                        engine.protect.push(name.to_owned());
+                    if let Some(sig) = sig {
+                        if val.type_of().format() != sig.format() {
+                            return Err(Fault::Type(val, sig.to_owned()));
+                        }
+                    }
+                    if name != "_" {
+                        engine.env.insert(name.to_owned(), val.clone());
+                        if *protect {
+                            engine.protect.push(name.to_owned());
+                        }
+                    }
+                } else if let Expr::Value(Type::Symbol(name)) = name {
+                    if engine.protect.contains(name) {
+                        return Err(Fault::AccessDenied);
+                    }
+                    if let Some(sig) = sig {
+                        if val.type_of().format() != sig.format() {
+                            return Err(Fault::Type(val, sig.to_owned()));
+                        }
+                    }
+                    if name != "_" {
+                        engine.env.insert(name.to_owned(), val.clone());
+                        if *protect {
+                            engine.protect.push(name.to_owned());
+                        }
                     }
                 }
                 val
