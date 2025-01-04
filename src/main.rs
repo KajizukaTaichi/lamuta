@@ -8,6 +8,8 @@ use std::{
     fs::{read_to_string, File},
     io::{self, Write},
     process::exit,
+    thread::sleep,
+    time::Duration,
 };
 use thiserror::Error;
 
@@ -126,10 +128,11 @@ impl Engine {
                 "alphaConvert".to_string(),
                 "input".to_string(),
                 "range".to_string(),
-                "exit".to_string(),
                 "load".to_string(),
                 "save".to_string(),
                 "pi".to_string(),
+                "sleep".to_string(),
+                "exit".to_string(),
                 "cmdLineArgs".to_string(),
             ],
             env: IndexMap::from([
@@ -239,10 +242,6 @@ impl Engine {
                     })),
                 ),
                 (
-                    "exit".to_string(),
-                    Type::Function(Function::BuiltIn(|arg, _| exit(arg.get_number()? as i32))),
-                ),
-                (
                     "load".to_string(),
                     Type::Function(Function::BuiltIn(|expr, engine| {
                         let name = expr.get_text()?;
@@ -280,6 +279,17 @@ impl Engine {
                     })),
                 ),
                 ("pi".to_string(), Type::Number(PI)),
+                (
+                    "sleep".to_string(),
+                    Type::Function(Function::BuiltIn(|i, _| {
+                        sleep(Duration::from_secs_f64(i.get_number()?));
+                        Ok(Type::Null)
+                    })),
+                ),
+                (
+                    "exit".to_string(),
+                    Type::Function(Function::BuiltIn(|arg, _| exit(arg.get_number()? as i32))),
+                ),
             ]),
         }
     }
