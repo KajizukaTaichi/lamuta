@@ -287,6 +287,15 @@ impl Engine {
                     })),
                 ),
                 (
+                    "readFile".to_string(),
+                    Type::Function(Function::BuiltIn(|i, _| {
+                        Ok(Type::Text(ok!(
+                            some!(read_to_string(i.get_text()?)),
+                            Fault::IO
+                        )?))
+                    })),
+                ),
+                (
                     "exit".to_string(),
                     Type::Function(Function::BuiltIn(|arg, _| exit(arg.get_number()? as i32))),
                 ),
