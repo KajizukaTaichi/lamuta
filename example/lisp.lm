@@ -1,4 +1,4 @@
-load https://kajizukataichi.github.io/lamuta/lib/std.lm;
+load "docs/lib/std.lm";
 
 let evaluate = λe.λp.{
     match (p :: "type") {
@@ -64,7 +64,7 @@ let parse = λsource.{
                 let inner = slice source (range [1, len source - 1]);
                 @{ "type": "text", "value": inner }
             } else {
-                if (source as number) @{ "type": "number", value: it }
+                if (source as number) @{ "type": "number", "value": it }
                 else @{ "type": "symbol", "value": source }
             }
         }
