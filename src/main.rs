@@ -457,18 +457,32 @@ impl Statement {
                 }
                 val
             }
-            Statement::If(expr, then, r#else) => {
-                if let Ok(it) = expr.eval(engine) {
-                    engine.env.insert("it".to_string(), it);
+            Statement::If(expr, then, r#else) => match expr.eval(engine) {
+                Ok(it) => {
+                    Statement::Let(
+                        Expr::Value(Type::Symbol("it".to_string())),
+                        false,
+                        None,
+                        Expr::Value(it),
+                    )
+                    .eval(engine)?;
                     then.eval(engine)?
-                } else {
+                }
+                Err(err) => {
                     if let Some(r#else) = r#else {
+                        Statement::Let(
+                            Expr::Value(Type::Symbol("err".to_string())),
+                            false,
+                            None,
+                            Expr::Value(Type::Text(format!("{err}"))),
+                        )
+                        .eval(engine)?;
                         r#else.eval(engine)?
                     } else {
                         Type::Null
                     }
                 }
-            }
+            },
             Statement::Match(expr, conds) => {
                 let expr = expr.eval(engine)?;
                 for (conds, value) in conds {
