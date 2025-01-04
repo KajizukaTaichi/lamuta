@@ -699,10 +699,14 @@ impl Expr {
                 Type::Struct(result)
             }
             Expr::Value(Type::Symbol(name)) => {
-                if let Some(refer) = engine.env.get(name.as_str()) {
-                    refer.clone()
+                if name != "_" {
+                    if let Some(refer) = engine.env.get(name.as_str()) {
+                        refer.clone()
+                    } else {
+                        return Err(Fault::Refer(name.to_string()));
+                    }
                 } else {
-                    return Err(Fault::Refer(name.to_string()));
+                    Type::Symbol(name.to_string())
                 }
             }
             Expr::Value(value) => value.clone(),
