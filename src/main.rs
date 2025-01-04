@@ -1281,6 +1281,9 @@ enum Fault {
     #[error("can not do apply function because `{}` is not lambda abstract", _0.format())]
     Apply(Type),
 
+    #[error("")]
+    NotFound,
+
     #[error("access is denied because it's protected memory area")]
     AccessDenied,
 
@@ -1299,7 +1302,7 @@ enum Fault {
     #[error("the program is not able to parse. check out is the syntax correct")]
     Syntax,
 
-    #[error("can not evaluate infix `{}`", _0.format())]
+    #[error("can not evaluate expression `{}`", _0.format())]
     Infix(Operator),
 
     #[error("the logical operation has bankruptcy")]
