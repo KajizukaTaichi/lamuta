@@ -1203,6 +1203,32 @@ impl Operator {
                     )
                 } else if let (Type::Struct(st), Type::Text(index)) = (lhs.clone(), rhs.clone()) {
                     ok!(st.get(&index), Fault::Key(rhs, lhs))?.clone()
+                } else if let (Type::List(list), Type::List(index)) = (lhs.clone(), rhs.clone()) {
+                    let mut result = vec![];
+                    for i in index {
+                        result.push(
+                            ok!(
+                                list.get(i.get_number()? as usize),
+                                Fault::Index(rhs.clone(), lhs.clone())
+                            )?
+                            .clone(),
+                        );
+                    }
+                    Type::List(result)
+                } else if let (Type::Text(text), Type::List(index)) = (lhs.clone(), rhs.clone()) {
+                    let mut result = String::new();
+                    for i in index {
+                        result.push(
+                            ok!(
+                                text.chars()
+                                    .collect::<Vec<char>>()
+                                    .get(i.get_number()? as usize),
+                                Fault::Index(rhs.clone(), lhs.clone())
+                            )?
+                            .clone(),
+                        );
+                    }
+                    Type::Text(result)
                 } else {
                     return Err(Fault::Infix(self.clone()));
                 }
