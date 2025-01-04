@@ -1280,22 +1280,31 @@ impl Operator {
 enum Fault {
     #[error("can not do apply function because `{}` is not lambda abstract", _0.format())]
     Apply(Type),
+
     #[error("access is denied because it's protected memory area")]
     AccessDenied,
+
     #[error("can not type cast `{}` to {}", _0.format(), _1.format())]
     Cast(Type, Signature),
+
     #[error("at the IO processing")]
     IO,
+
     #[error("the value `{}` is different to expected type `{}`", _0.format(), _1.format())]
     Type(Type, Signature),
+
     #[error("missmatching of arguments length when function application")]
     ArgLen,
+
     #[error("the program is not able to parse. check out is the syntax correct")]
     Syntax,
+
     #[error("can not evaluate infix `{}`", _0.format())]
     Infix(Operator),
+
     #[error("the logical operation has bankruptcy")]
     Logic,
+
     #[error("{}", if let Some(msg) = _0 { msg } else { "throwed by user-defined program" })]
     General(Option<String>),
 }
