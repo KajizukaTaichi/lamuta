@@ -54,7 +54,7 @@ struct Cli {
     file: Option<String>,
 
     /// Command-line arguments to pass the script
-    #[arg(index = 2, value_name="ARGS", num_args = 0..)]
+    #[arg(index = 2, value_name = "ARGS", num_args = 0..)]
     args_position: Option<Vec<String>>,
 
     /// Optional command-line arguments
