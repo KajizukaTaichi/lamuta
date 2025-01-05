@@ -1,19 +1,24 @@
 let isPrime = fn(n -> {
-    const errmsg: text = "not a prime number";
+    const errorMsg: text = "not a prime number";
+    const correctMsg: text = "just a prime number";
     if (n < 2) {
-        fault errmsg
+        fault errorMsg
     };
-    for i in (2 ~ (n ^ 0.5 + 1)) {
-        if (n % i == 0) {
-            fault errmsg
-        }
-    };
-    "just a prime number"
+    if (n < 4) {
+        correctMsg
+    } else {
+        for i in (2 ~ (n ^ 0.5 + 1)) {
+            if (n % i == 0) {
+                fault errorMsg
+            }
+        };
+        correctMsg
+    }
 });
 
 print "Prime Check\n";
 let flag = 1;
 while (flag == 1) {
-    let num = input(">>> ") as number;
+    let num = input ">>> " as number;
     print num, " is ", { if isPrime(num) it else err }, "\n";
 }
