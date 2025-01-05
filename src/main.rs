@@ -58,7 +58,7 @@ struct Cli {
     args_position: Option<Vec<String>>,
 
     /// Optional command-line arguments
-    #[arg(short='a', long="args", value_name="ARGS", num_args = 0..)]
+    #[arg(short = 'a', long = "args", value_name = "ARGS", num_args = 0..)]
     args_option: Option<Vec<String>>,
 }
 
