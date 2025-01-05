@@ -4,7 +4,6 @@ use indexmap::IndexMap;
 use reqwest::blocking;
 use rustyline::{error::ReadlineError, DefaultEditor};
 use std::{
-    f64::consts::PI,
     fs::{read_to_string, File},
     io::{self, Write},
     process::exit,
@@ -22,10 +21,10 @@ const STDFUNC: [&str; 13] = [
     "eval",
     "alphaConvert",
     "input",
+    "readFile",
     "range",
     "load",
     "save",
-    "pi",
     "sleep",
     "exit",
     "cmdLineArgs",
@@ -210,6 +209,15 @@ impl Engine {
                     })),
                 ),
                 (
+                    "readFile".to_string(),
+                    Type::Function(Function::BuiltIn(|i, _| {
+                        Ok(Type::Text(ok!(
+                            some!(read_to_string(i.get_text()?)),
+                            Fault::IO
+                        )?))
+                    })),
+                ),
+                (
                     "range".to_string(),
                     Type::Function(Function::BuiltIn(|params, _| {
                         let params = params.get_list()?;
@@ -279,21 +287,11 @@ impl Engine {
                         }
                     })),
                 ),
-                ("pi".to_string(), Type::Number(PI)),
                 (
                     "sleep".to_string(),
                     Type::Function(Function::BuiltIn(|i, _| {
                         sleep(Duration::from_secs_f64(i.get_number()?));
                         Ok(Type::Null)
-                    })),
-                ),
-                (
-                    "readFile".to_string(),
-                    Type::Function(Function::BuiltIn(|i, _| {
-                        Ok(Type::Text(ok!(
-                            some!(read_to_string(i.get_text()?)),
-                            Fault::IO
-                        )?))
                     })),
                 ),
                 (
