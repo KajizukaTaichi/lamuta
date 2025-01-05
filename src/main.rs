@@ -865,6 +865,12 @@ impl Expr {
                 )));
             }
             call
+        } else if token.contains(".") {
+            let args = tokenize(token, vec!['.'])?;
+            Expr::Infix(Box::new(Operator::Access(
+                Expr::parse(ok!(args.get(0))?.to_string())?,
+                Expr::parse(ok!(args.get(1))?.to_string())?,
+            )))
         } else if token == "null" {
             Expr::Value(Type::Null)
         } else {
