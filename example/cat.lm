@@ -1,0 +1,2 @@
+let [path] = cmdLineArgs;
+print readFile path
