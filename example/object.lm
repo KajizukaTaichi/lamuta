@@ -10,4 +10,4 @@ const Fraction: struct = @{
 };
 
 let hoge = Fraction + @{ "numerator": 2, "denominator": 5 };
-print hoge.asText hoge, hoge.asNum hoge;
+print hoge.asText hoge, " = ", hoge.asNum hoge;
