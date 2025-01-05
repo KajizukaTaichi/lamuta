@@ -395,79 +395,9 @@ impl Statement {
                         let index = index.eval(engine)?;
                         let obj = ok!(engine.env.get(&name), Fault::Refer(name.clone()))?;
 
-                        engine.env.insert(
-                            name,
-                            if let (Type::List(mut list), Type::Number(index)) =
-                                (obj.clone(), index.clone())
-                            {
-                                if 0.0 <= index && index < list.len() as f64 {
-                                    list[index as usize] = val.clone();
-                                    Type::List(list)
-                                } else {
-                                    return Err(Fault::Index(Type::Number(index), obj.to_owned()));
-                                }
-                            } else if let (Type::Text(text), Type::Number(index)) =
-                                (obj.clone(), index.clone())
-                            {
-                                let mut text: Vec<String> =
-                                    text.chars().map(|i| i.to_string()).collect();
-                                if 0.0 <= index && index < text.len() as f64 {
-                                    text[index as usize] = val.get_text()?;
-                                    Type::Text(text.concat())
-                                } else {
-                                    return Err(Fault::Index(Type::Number(index), obj.to_owned()));
-                                }
-                            } else if let (Type::Struct(mut st), Type::Text(index)) =
-                                (obj.clone(), index.clone())
-                            {
-                                st.insert(index, val.clone());
-                                Type::Struct(st)
-                            } else if let (Type::List(mut list), Type::List(index)) =
-                                (obj.clone(), index.clone())
-                            {
-                                let first_index = ok!(
-                                    index.first(),
-                                    Fault::Index(Type::List(index.clone()), obj.to_owned())
-                                )?
-                                .get_number()?;
-                                for _ in 0..index.len() {
-                                    if 0.0 <= first_index && first_index < list.len() as f64 {
-                                        list.remove(first_index as usize);
-                                    } else {
-                                        return Err(Fault::Index(
-                                            Type::Number(first_index),
-                                            obj.to_owned(),
-                                        ));
-                                    }
-                                }
-                                list.insert(first_index as usize, val.clone());
-                                Type::List(list)
-                            } else if let (Type::Text(text), Type::List(index)) =
-                                (obj.clone(), index.clone())
-                            {
-                                let mut text: Vec<String> =
-                                    text.chars().map(|i| i.to_string()).collect();
-                                let first_index = ok!(
-                                    index.first(),
-                                    Fault::Index(Type::List(index.clone()), obj.to_owned())
-                                )?
-                                .get_number()?;
-                                for _ in 0..index.len() {
-                                    if 0.0 <= first_index && first_index < text.len() as f64 {
-                                        text.remove(first_index as usize);
-                                    } else {
-                                        return Err(Fault::Index(
-                                            Type::Number(first_index),
-                                            obj.to_owned(),
-                                        ));
-                                    }
-                                }
-                                text.insert(first_index as usize, val.get_text()?);
-                                Type::Text(text.concat())
-                            } else {
-                                return Err(Fault::Infix(infix));
-                            },
-                        );
+                        engine
+                            .env
+                            .insert(name, obj.assign_inside_struct(index, val));
                     } else {
                         return Err(Fault::Syntax);
                     }
@@ -1724,7 +1654,7 @@ impl Type {
         }
     }
 
-    fn assign_inside_struct(&self, index: Type, val: Type) -> Result<Type, Fault> {
+    fn assign_inside(&self, index: Type, val: Type) -> Result<Type, Fault> {
         Ok(
             if let (Type::List(mut list), Type::Number(index)) = (self.clone(), index.clone()) {
                 if 0.0 <= index && index < list.len() as f64 {
