@@ -166,7 +166,7 @@ impl Engine {
                     "eval".to_string(),
                     Type::Function(Function::BuiltIn(|args, engine| {
                         let args = args.get_list()?;
-                        let code = ok!(args.get(0))?.get_text()?;
+                        let code = ok!(args.get(0), Fault::ArgLen)?.get_text()?;
                         if let Some(env) = args.get(1) {
                             let mut engine = engine.clone();
                             engine.env = env.get_struct()?;
