@@ -1,11 +1,11 @@
 const Fraction: struct = @{
     "numerator": 1,
     "denominator": 1,
-    "asText": fn(self ->
-        (self.numerator as text) + "/" + (self.denominator as text)
+    "asText": fn(this ->
+        (this.numerator as text) + "/" + (this.denominator as text)
     ),
-    "asNum": fn(self ->
-        self.numerator / self.denominator
+    "asNum": fn(this ->
+        this.numerator / this.denominator
     )
 };
 
