@@ -1,4 +1,4 @@
-let isPrime = fn(n -> {
+let isPrime = fn(n ->
     const errorMsg: text = "not a prime number";
     const correctMsg: text = "just a prime number";
     if (n < 2) {
@@ -14,7 +14,7 @@ let isPrime = fn(n -> {
         };
         correctMsg
     }
-});
+);
 
 print "Prime Check\n";
 let flag = 1;
