@@ -849,7 +849,7 @@ impl Expr {
                 )));
             }
             func
-        // Method style syntactic sugar of access operator
+        // Object-oriented style syntactic sugar of access operator
         } else if tokenize(token.clone(), vec!['.'])?.len() == 2 {
             let args = tokenize(token, vec!['.'])?;
             Expr::Infix(Box::new(Operator::Access(
