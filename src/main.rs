@@ -45,7 +45,7 @@ macro_rules! some {
 
 #[derive(Parser)]
 #[command(
-    name = "Lamuta",version = VERSION,
+    name = "Lamuta", version = VERSION,
     about = "A functional programming language that can write lambda calculus formula as they are"
 )]
 struct Cli {
