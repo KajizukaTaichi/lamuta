@@ -182,13 +182,13 @@ impl Engine {
                         let args = args.get_list()?;
                         let func = ok!(args.get(0), Fault::ArgLen)?;
                         let new_name = ok!(args.get(1), Fault::ArgLen)?.get_text()?;
-                        let Type::Function(Function::UserDefined(arg, body)) = func else {
+                        let Type::Function(Function::UserDefined(old_name, body)) = func else {
                             return Err(Fault::Type(func.to_owned(), Signature::Function));
                         };
                         Ok(Type::Function(Function::UserDefined(
                             new_name.clone(),
                             Box::new(body.replace(
-                                &Expr::Value(Type::Symbol(arg.to_owned())),
+                                &Expr::Value(Type::Symbol(old_name.to_owned())),
                                 &Expr::Value(Type::Symbol(new_name)),
                             )),
                         )))
