@@ -850,11 +850,19 @@ impl Expr {
             }
             func
         // Object-oriented style syntactic sugar of access operator
-        } else if tokenize(token.clone(), vec!['.'])?.len() == 2 {
+        } else if tokenize(token.clone(), vec!['.'])?.len() >= 2 {
             let args = tokenize(token, vec!['.'])?;
             Expr::Infix(Box::new(Operator::Access(
-                Expr::parse(ok!(args.get(0))?.to_string())?,
-                Expr::parse(ok!(args.get(1))?.to_string())?,
+                Expr::parse(ok!(args.get(0..args.len() - 1))?.join("."))?,
+                Expr::Value(Type::Text(ok!(args.last())?.trim().to_string())),
+            )))
+        // Imperative style syntactic sugar of list access by index
+        } else if token.contains('[') && token.ends_with(']') {
+            let token = ok!(token.get(..token.len() - 1))?.to_string();
+            let (name, args) = ok!(token.split_once("["))?;
+            Expr::Infix(Box::new(Operator::Access(
+                Expr::parse(name.to_string())?,
+                Expr::parse(args.to_string())?,
             )))
         // Imperative style syntactic sugar of function application
         } else if token.contains('(') && token.ends_with(')') {
