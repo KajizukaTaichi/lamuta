@@ -1,10 +1,10 @@
 use clap::Parser;
 use colored::*;
 use indexmap::IndexMap;
+use num_bigfloat::{BigFloat, PI};
 use reqwest::blocking;
 use rustyline::{error::ReadlineError, DefaultEditor};
 use std::{
-    f64::consts::PI,
     fs::{read_to_string, File},
     io::{self, Write},
     process::exit,
@@ -214,23 +214,23 @@ impl Engine {
                         let params = params.get_list()?;
                         if params.len() == 1 {
                             let mut range: Vec<Type> = vec![];
-                            let mut current: f64 = 0.0;
+                            let mut current = BigFloat::new();
                             while current < params[0].get_number()? {
                                 range.push(Type::Number(current));
-                                current += 1.0;
+                                current += BigFloat::from_i8(1);
                             }
                             Ok(Type::List(range))
                         } else if params.len() == 2 {
                             let mut range: Vec<Type> = vec![];
-                            let mut current: f64 = params[0].get_number()?;
+                            let mut current: BigFloat = params[0].get_number()?;
                             while current < params[1].get_number()? {
                                 range.push(Type::Number(current));
-                                current += 1.0;
+                                current += BigFloat::from_i8(1);
                             }
                             Ok(Type::List(range))
                         } else if params.len() == 3 {
                             let mut range: Vec<Type> = vec![];
-                            let mut current: f64 = params[0].get_number()?;
+                            let mut current = params[0].get_number()?;
                             while current < params[1].get_number()? {
                                 range.push(Type::Number(current));
                                 current += params[2].get_number()?;
@@ -282,7 +282,7 @@ impl Engine {
                 (
                     "sleep".to_string(),
                     Type::Function(Function::BuiltIn(|i, _| {
-                        sleep(Duration::from_secs_f64(i.get_number()?));
+                        sleep(Duration::from_secs_f64(i.get_number()?.to_f64()));
                         Ok(Type::Null)
                     })),
                 ),
@@ -297,7 +297,9 @@ impl Engine {
                 ),
                 (
                     "exit".to_string(),
-                    Type::Function(Function::BuiltIn(|arg, _| exit(arg.get_number()? as i32))),
+                    Type::Function(Function::BuiltIn(|arg, _| {
+                        exit(ok!(arg.get_number()?.to_i64())? as i32)
+                    })),
                 ),
             ]),
         }
@@ -400,8 +402,10 @@ impl Statement {
                             if let (Type::List(mut list), Type::Number(index)) =
                                 (obj.clone(), index.clone())
                             {
-                                if 0.0 <= index && index < list.len() as f64 {
-                                    list[index as usize] = val.clone();
+                                if BigFloat::new() <= index
+                                    && index < BigFloat::from_u64(list.len() as u64)
+                                {
+                                    list[index.to_f64() as usize] = val.clone();
                                     Type::List(list)
                                 } else {
                                     return Err(Fault::Index(Type::Number(index), obj.to_owned()));
@@ -411,8 +415,10 @@ impl Statement {
                             {
                                 let mut text: Vec<String> =
                                     text.chars().map(|i| i.to_string()).collect();
-                                if 0.0 <= index && index < text.len() as f64 {
-                                    text[index as usize] = val.get_text()?;
+                                if BigFloat::new() <= index
+                                    && index < BigFloat::from_u64(text.len() as u64)
+                                {
+                                    text[index.to_f64() as usize] = val.get_text()?;
                                     Type::Text(text.concat())
                                 } else {
                                     return Err(Fault::Index(Type::Number(index), obj.to_owned()));
@@ -431,8 +437,10 @@ impl Statement {
                                 )?
                                 .get_number()?;
                                 for _ in 0..index.len() {
-                                    if 0.0 <= first_index && first_index < list.len() as f64 {
-                                        list.remove(first_index as usize);
+                                    if BigFloat::new() <= first_index
+                                        && first_index < BigFloat::from_u64(list.len() as u64)
+                                    {
+                                        list.remove(first_index.to_f64() as usize);
                                     } else {
                                         return Err(Fault::Index(
                                             Type::Number(first_index),
@@ -440,7 +448,7 @@ impl Statement {
                                         ));
                                     }
                                 }
-                                list.insert(first_index as usize, val.clone());
+                                list.insert(first_index.to_f64() as usize, val.clone());
                                 Type::List(list)
                             } else if let (Type::Text(text), Type::List(index)) =
                                 (obj.clone(), index.clone())
@@ -453,8 +461,10 @@ impl Statement {
                                 )?
                                 .get_number()?;
                                 for _ in 0..index.len() {
-                                    if 0.0 <= first_index && first_index < text.len() as f64 {
-                                        text.remove(first_index as usize);
+                                    if BigFloat::new() <= first_index
+                                        && first_index < BigFloat::from_u64(text.len() as u64)
+                                    {
+                                        text.remove(first_index.to_f64() as usize);
                                     } else {
                                         return Err(Fault::Index(
                                             Type::Number(first_index),
@@ -462,7 +472,7 @@ impl Statement {
                                         ));
                                     }
                                 }
-                                text.insert(first_index as usize, val.get_text()?);
+                                text.insert(first_index.to_f64() as usize, val.get_text()?);
                                 Type::Text(text.concat())
                             } else {
                                 return Err(Fault::Infix(infix));
@@ -767,7 +777,7 @@ impl Expr {
     fn parse(source: String) -> Result<Expr, Fault> {
         let token_list: Vec<String> = tokenize(source, SPACE.to_vec())?;
         let token = ok!(token_list.last())?.trim().to_string();
-        let token = if let Ok(n) = token.parse::<f64>() {
+        let token = if let Some(n) = BigFloat::parse(&token) {
             Expr::Value(Type::Number(n))
         } else if let Some(sig) = Signature::parse(token.clone()) {
             Expr::Value(Type::Signature(sig))
@@ -784,7 +794,7 @@ impl Expr {
         } else if token.starts_with("-") {
             let token = token.replacen("-", "", 1);
             Expr::Infix(Box::new(Operator::Sub(
-                Expr::Value(Type::Number(0.0)),
+                Expr::Value(Type::Number(BigFloat::new())),
                 Expr::parse(token)?,
             )))
         } else if token.starts_with('(') && token.ends_with(')') {
@@ -1171,7 +1181,7 @@ impl Operator {
                 let lhs = lhs.eval(engine)?;
                 let rhs = rhs.eval(engine)?;
                 if let (Type::Number(lhs), Type::Number(rhs)) = (&lhs, &rhs) {
-                    Type::Number(lhs + rhs)
+                    Type::Number(*lhs + *rhs)
                 } else if let (Type::Text(lhs), Type::Text(rhs)) = (&lhs, &rhs) {
                     Type::Text(lhs.clone() + &rhs)
                 } else if let (Type::List(lhs), Type::List(rhs)) = (&lhs, &rhs) {
@@ -1187,7 +1197,7 @@ impl Operator {
                 let lhs = lhs.eval(engine)?;
                 let rhs = rhs.eval(engine)?;
                 if let (Type::Number(lhs), Type::Number(rhs)) = (&lhs, &rhs) {
-                    Type::Number(lhs - rhs)
+                    Type::Number(*lhs - *rhs)
                 } else if let (Type::Text(lhs), Type::Text(rhs)) = (&lhs, &rhs) {
                     Type::Text(lhs.replacen(rhs, "", 1))
                 } else if let (Type::List(mut list1), Type::List(list2)) =
@@ -1208,16 +1218,19 @@ impl Operator {
                     ok!(st.shift_remove(key), Fault::Key(rhs, lhs))?;
                     Type::Struct(st)
                 } else if let (Type::List(mut list), Type::Number(index)) = (lhs.clone(), &rhs) {
-                    if 0.0 <= *index && *index < list.len() as f64 {
-                        list.remove(index.clone() as usize);
+                    if BigFloat::new() <= *index && *index < BigFloat::from_u128(list.len() as u128)
+                    {
+                        list.remove(index.clone().to_f64() as usize);
                         Type::List(list)
                     } else {
                         return Err(Fault::Index(rhs, lhs));
                     }
                 } else if let (Type::Text(text), Type::Number(index)) = (&lhs, &rhs) {
-                    if 0.0 <= *index && *index < text.chars().count() as f64 {
+                    if BigFloat::new() <= *index
+                        && *index < BigFloat::from_u128(text.chars().count() as u128)
+                    {
                         let mut chars: Vec<char> = text.chars().collect();
-                        chars.remove(index.clone() as usize);
+                        chars.remove(index.clone().to_f64() as usize);
                         Type::Text(
                             chars
                                 .iter()
@@ -1236,11 +1249,15 @@ impl Operator {
                 let lhs = lhs.eval(engine)?;
                 let rhs = rhs.eval(engine)?;
                 if let (Type::Number(lhs), Type::Number(rhs)) = (&lhs, &rhs) {
-                    Type::Number(lhs * rhs)
+                    Type::Number(*lhs * *rhs)
                 } else if let (Type::Text(lhs), Type::Number(rhs)) = (&lhs, &rhs) {
-                    Type::Text(lhs.repeat(*rhs as usize))
+                    Type::Text(lhs.repeat(ok!(rhs.to_i128())? as usize))
                 } else if let (Type::List(lhs), Type::Number(rhs)) = (lhs, rhs) {
-                    Type::List((0..rhs as usize).flat_map(|_| lhs.clone()).collect())
+                    Type::List(
+                        (0..rhs.to_f64() as usize)
+                            .flat_map(|_| lhs.clone())
+                            .collect(),
+                    )
                 } else {
                     return Err(Fault::Infix(self.clone()));
                 }
@@ -1254,7 +1271,7 @@ impl Operator {
             Operator::Pow(lhs, rhs) => Type::Number(
                 lhs.eval(engine)?
                     .get_number()?
-                    .powf(rhs.eval(engine)?.get_number()?),
+                    .pow(&rhs.eval(engine)?.get_number()?),
             ),
             Operator::Equal(lhs, rhs) => {
                 let lhs = lhs.eval(engine)?;
@@ -1335,11 +1352,13 @@ impl Operator {
                 let lhs = lhs.eval(engine)?;
                 let rhs = rhs.eval(engine)?;
                 if let (Type::List(list), Type::Number(index)) = (lhs.clone(), rhs.clone()) {
-                    ok!(list.get(index as usize), Fault::Index(rhs, lhs))?.clone()
+                    ok!(list.get(index.to_f64() as usize), Fault::Index(rhs, lhs))?.clone()
                 } else if let (Type::Text(text), Type::Number(index)) = (lhs.clone(), rhs.clone()) {
                     Type::Text(
                         ok!(
-                            text.chars().collect::<Vec<char>>().get(index as usize),
+                            text.chars()
+                                .collect::<Vec<char>>()
+                                .get(index.to_f64() as usize),
                             Fault::Index(rhs.clone(), lhs.clone())
                         )?
                         .to_string(),
@@ -1351,7 +1370,7 @@ impl Operator {
                     for i in index {
                         result.push(
                             ok!(
-                                list.get(i.get_number()? as usize),
+                                list.get(i.get_number()?.to_f64() as usize),
                                 Fault::Index(rhs.clone(), lhs.clone())
                             )?
                             .clone(),
@@ -1365,7 +1384,7 @@ impl Operator {
                             ok!(
                                 text.chars()
                                     .collect::<Vec<char>>()
-                                    .get(i.get_number()? as usize),
+                                    .get(i.get_number()?.to_f64() as usize),
                                 Fault::Index(rhs.clone(), lhs.clone())
                             )?
                             .clone(),
@@ -1546,7 +1565,7 @@ enum Fault {
 
 #[derive(Debug, Clone)]
 enum Type {
-    Number(f64),
+    Number(BigFloat),
     Symbol(String),
     Refer(String),
     Text(String),
@@ -1564,13 +1583,13 @@ impl Type {
             Signature::Number => Type::Number(match self {
                 Type::Number(n) => n.to_owned(),
                 Type::Symbol(s) | Type::Text(s) => {
-                    if let Ok(n) = s.trim().parse::<f64>() {
+                    if let Some(n) = BigFloat::parse(s.trim()) {
                         n
                     } else {
                         return err;
                     }
                 }
-                Type::Null => 0.0,
+                Type::Null => BigFloat::new(),
                 _ => return err,
             }),
             Signature::Symbol => Type::Symbol(self.format()),
@@ -1630,7 +1649,7 @@ impl Type {
         }
     }
 
-    fn get_number(&self) -> Result<f64, Fault> {
+    fn get_number(&self) -> Result<BigFloat, Fault> {
         match self {
             Type::Number(n) => Ok(n.to_owned()),
             _ => Err(Fault::Type(self.clone(), Signature::Number)),
