@@ -31,7 +31,7 @@ let evaluate = fn(e, p ->
         },
         "specialForm" => {
             let code: list = p.value;
-            match ((code :: 0)."value") {
+            match ((code :: 0).value) {
                 "define" => {
                     let name = code :: 1 :: "value";
                     let expr = code :: 2;
