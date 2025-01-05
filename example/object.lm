@@ -1,0 +1,13 @@
+const Fraction: struct = @{
+    "numerator": 1,
+    "denominator": 1,
+    "asText": fn(self ->
+        (self.numerator as text) + "/" + (self.denominator as text)
+    ),
+    "asNum": fn(self ->
+        self.numerator / self.denominator
+    )
+};
+
+let hoge = Fraction + @{ "numerator": 2, "denominator": 5 };
+print hoge.asText hoge, hoge.asNum hoge;
