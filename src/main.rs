@@ -849,6 +849,13 @@ impl Expr {
                 )));
             }
             func
+        // Method style syntactic sugar of access operator
+        } else if tokenize(token.clone(), vec!['.'])?.len() == 2 {
+            let args = tokenize(token, vec!['.'])?;
+            Expr::Infix(Box::new(Operator::Access(
+                Expr::parse(ok!(args.get(0))?.to_string())?,
+                Expr::parse(ok!(args.get(1))?.to_string())?,
+            )))
         // Imperative style syntactic sugar of function application
         } else if token.contains('(') && token.ends_with(')') {
             let token = ok!(token.get(..token.len() - 1))?.to_string();
@@ -865,12 +872,6 @@ impl Expr {
                 )));
             }
             call
-        } else if token.contains(".") {
-            let args = tokenize(token, vec!['.'])?;
-            Expr::Infix(Box::new(Operator::Access(
-                Expr::parse(ok!(args.get(0))?.to_string())?,
-                Expr::parse(ok!(args.get(1))?.to_string())?,
-            )))
         } else if token == "null" {
             Expr::Value(Type::Null)
         } else {
