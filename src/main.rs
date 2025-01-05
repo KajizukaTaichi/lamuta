@@ -15,6 +15,21 @@ use thiserror::Error;
 
 const VERSION: &str = "0.4.1";
 const SPACE: [char; 5] = [' ', '　', '\n', '\t', '\r'];
+const STDFUNC: [&str; 13] = [
+    "type",
+    "env",
+    "free",
+    "eval",
+    "alphaConvert",
+    "input",
+    "range",
+    "load",
+    "save",
+    "pi",
+    "sleep",
+    "exit",
+    "cmdLineArgs",
+];
 
 macro_rules! ok {
     ($option_value: expr, $fault_kind: expr) => {
@@ -120,21 +135,7 @@ struct Engine {
 impl Engine {
     fn new() -> Engine {
         Engine {
-            protect: vec![
-                "type".to_string(),
-                "env".to_string(),
-                "free".to_string(),
-                "eval".to_string(),
-                "alphaConvert".to_string(),
-                "input".to_string(),
-                "range".to_string(),
-                "load".to_string(),
-                "save".to_string(),
-                "pi".to_string(),
-                "sleep".to_string(),
-                "exit".to_string(),
-                "cmdLineArgs".to_string(),
-            ],
+            protect: STDFUNC.to_vec().iter().map(|i| i.to_string()).collect(),
             env: IndexMap::from([
                 (
                     "type".to_string(),
@@ -263,7 +264,7 @@ impl Engine {
                     Type::Function(Function::BuiltIn(|arg, engine| {
                         let mut render = String::new();
                         for (k, v) in &engine.env {
-                            if !engine.protect.contains(k) {
+                            if !STDFUNC.contains(&k.as_str()) {
                                 render += &format!("let {k} = {};\n", v.format());
                             }
                         }
