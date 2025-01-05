@@ -9,7 +9,6 @@ license = "MIT"
 clap = { version = "4.5.23", features = ["derive"] }
 colored = "2.0"
 indexmap = "2.7.0"
-num-bigfloat = "1.7.1"
 reqwest = { version = "0.12.10", features = ["blocking"] }
 rustyline = "15.0.0"
 thiserror = "2.0.9"
