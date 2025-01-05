@@ -387,19 +387,19 @@ impl Statement {
                     }
                 } else if let Expr::Infix(infix) = name {
                     let infix = *infix.clone();
-                    if let Operator::Access(Expr::Value(Type::Symbol(name)), index) = infix.clone()
-                    {
-                        if engine.protect.contains(&name) {
-                            return Err(Fault::AccessDenied);
-                        }
-                        let index = index.eval(engine)?;
-                        let obj = ok!(engine.env.get(&name), Fault::Refer(name.clone()))?;
-
-                        engine
-                            .env
-                            .insert(name, obj.assign_inside_struct(index, val));
-                    } else {
-                        return Err(Fault::Syntax);
+                    if let Operator::Access(accessor, key) = infix {
+                        Statement::Let(accessor, false, None, Expr::Value(val.clone()))
+                            .eval(engine)?;
+                        let env = engine.env.clone();
+                        let assigned_name =
+                            ok!(env.get_index(engine.env.len() - 1).map(|(key, _)| key))?;
+                        let obj = ok!(env.get(assigned_name), Fault::Refer(assigned_name.clone()))?;
+                        let key = key.eval(engine)?;
+                        dbg!(&key);
+                        engine.env.insert(
+                            assigned_name.to_owned(),
+                            obj.modify_inside(key, val.clone())?,
+                        );
                     }
                 } else {
                     return Err(Fault::Syntax);
@@ -1654,7 +1654,7 @@ impl Type {
         }
     }
 
-    fn assign_inside(&self, index: Type, val: Type) -> Result<Type, Fault> {
+    fn modify_inside(&self, index: Type, val: Type) -> Result<Type, Fault> {
         Ok(
             if let (Type::List(mut list), Type::Number(index)) = (self.clone(), index.clone()) {
                 if 0.0 <= index && index < list.len() as f64 {
