@@ -388,18 +388,11 @@ impl Statement {
                 } else if let Expr::Infix(infix) = name {
                     let infix = *infix.clone();
                     if let Operator::Access(accessor, key) = infix {
-                        Statement::Let(accessor, false, None, Expr::Value(val.clone()))
-                            .eval(engine)?;
-                        let env = engine.env.clone();
-                        let assigned_name =
-                            ok!(env.get_index(engine.env.len() - 1).map(|(key, _)| key))?;
-                        let obj = ok!(env.get(assigned_name), Fault::Refer(assigned_name.clone()))?;
+                        let obj = accessor.eval(engine)?;
                         let key = key.eval(engine)?;
-                        dbg!(&key);
-                        engine.env.insert(
-                            assigned_name.to_owned(),
-                            obj.modify_inside(key, val.clone())?,
-                        );
+                        let updated_obj = obj.modify_inside(key, val.clone())?;
+                        Statement::Let(accessor, false, None, Expr::Value(updated_obj.clone()))
+                            .eval(engine)?;
                     }
                 } else {
                     return Err(Fault::Syntax);
