@@ -1,16 +1,28 @@
 load "docs/lib/std.lm";
-const specialForms: list = ["define"];
 
-let evaluate = λe.λp.{
+const specialForms: list = ["define"];
+const AST: struct = @{
+    "type": null,
+    "value": null,
+    "get": fn(sig, self ->
+        if (self.type == (sig as text)) {
+            self.value as sig
+        } else {
+            fault
+        }
+    )
+};
+
+let evaluate = fn(e, p ->
     let scope = e;
-    match (p :: "type") {
+    match p.type {
         "expr" => {
             let code = [];
-            for i in (p :: "value") {
+            for i in p.value {
                 let [scope, value] = evaluate scope i;
                 code += [value];
             };
-            if (code :: 0 :: "type" == "function") {
+            if ((code :: 0).type == "function") {
                 let func: function = code :: 0 :: "value";
                 [scope, func (code :: (1 ~ (len code)))]
             } else {
@@ -18,8 +30,8 @@ let evaluate = λe.λp.{
             }
         },
         "specialForm" => {
-            let code: list = p :: "value";
-            match (code :: 0 :: "value") {
+            let code: list = p.value;
+            match ((code :: 0)."value") {
                 "define" => {
                     let name = code :: 1 :: "value";
                     let expr = code :: 2;
@@ -32,33 +44,9 @@ let evaluate = λe.λp.{
         "symbol" => [scope, { if (scope :: (p :: "value")) it else p }],
         _ => [scope, p]
     }
-};
+);
 
-let getNumber = λx.{
-    if (x :: "type" == "number") {
-        x :: "value" as number
-    } else {
-        fault
-    }
-};
-
-let getText = λx.{
-    if (x :: "type" == "text") {
-        x :: "value" as text
-    } else {
-        fault
-    }
-};
-
-let getList = λx.{
-    if (x :: "type" == "list") {
-        x :: "value" as list
-    } else {
-        fault
-    }
-};
-
-let parse = λsource.{
+let parse = fn(source ->
     if (source :: 0 == "(" & (source :: (len source - 1) == ")")) {
         let inner = source :: (1 ~ (len source - 1));
         let result = [];
@@ -66,9 +54,9 @@ let parse = λsource.{
             let result = result + [parse i];
         };
         if (specialForms `find` [result :: 0 :: "value"]) {
-            @{ "type": "specialForm", "value": result }
+            AST + @{ "type": "specialForm", "value": result }
         } else {
-            @{ "type": "expr", "value": result }
+            AST + @{ "type": "expr", "value": result }
         }
     } else {
         if (source :: 0 == "\'") {
@@ -77,20 +65,20 @@ let parse = λsource.{
             for i in (tokenize inner) {
                 let result = result + [parse i];
             };
-            @{ "type": "list", "value": result }
+            AST + @{ "type": "list", "value": result }
         } else {
             if (source :: 0 == doubleQuote & (source :: (len source - 1) == doubleQuote)) {
                 let inner = source :: (1 ~ (len source - 1));
-                @{ "type": "text", "value": inner }
+                AST + @{ "type": "text", "value": inner }
             } else {
-                if (source as number) @{ "type": "number", "value": it }
-                else @{ "type": "symbol", "value": source }
+                if (source as number) AST + @{ "type": "number", "value": it }
+                else AST + @{ "type": "symbol", "value": source }
             }
         }
     }
-};
+);
 
-let tokenize = λsource.{
+let tokenize = fn(source ->
     let tokens = [];
     let current = "";
     let nest = 0;
@@ -135,63 +123,63 @@ let tokenize = λsource.{
     };
 
     tokens
-};
+);
 
 let scope = @{
     "+": @{
         "type": "function",
-        "value": λl.@{
+        "value": λl.(AST + @{
             "type": "number",
-            "value": reduce λa.λb.(a + b) (map getNumber l)
-        }
+            "value": reduce λa.λb.(a + b) (map (AST.get number) l)
+        })
     },
     "-": @{
         "type": "function",
-        "value": λl.@{
+        "value": λl.(AST + @{
             "type": "number",
-            "value": reduce λa.λb.(a - b) (map getNumber l)
-        }
+            "value": reduce λa.λb.(a - b) (map (AST.get number) l)
+        })
     },
     "*": @{
         "type": "function",
-        "value": λl.@{
+        "value": λl.(AST + @{
             "type": "number",
-            "value": reduce λa.λb.(a * b) (map getNumber l)
-        }
+            "value": reduce λa.λb.(a * b) (map (AST.get number) l)
+        })
     },
     "/": @{
         "type": "function",
-        "value": λl.@{
+        "value": λl.(AST + @{
             "type": "number",
-            "value": reduce λa.λb.(a / b) (map getNumber l)
-        }
+            "value": reduce λa.λb.(a / b) (map (AST.get number) l)
+        })
     },
     "%": @{
         "type": "function",
-        "value": λl.@{
+        "value": λl.(AST + @{
             "type": "number",
-            "value": reduce λa.λb.(a % b) (map getNumber l)
-        }
+            "value": reduce λa.λb.(a % b) (map (AST.get number) l)
+        })
     },
     "^": @{
         "type": "function",
-        "value": λl.@{
+        "value": λl.(AST + @{
             "type": "number",
-            "value": reduce λa.λb.(a ^ b) (map getNumber l)
-        }
+            "value": reduce λa.λb.(a ^ b) (map (AST.get number) l)
+        })
     },
     "concat": @{
         "type": "function",
-        "value": λl.@{
+        "value": λl.(AST + @{
             "type": "text",
-            "value": (reduce λa.λb.(a + b) (map getText l))
-        }
+            "value": reduce λa.λb.(a + b) (map (AST.get text) l)
+        })
     },
     "eval": @{
         "type": "function",
         "value": λl.{
-            let expr = getList (l :: 0);
-            evaluate scope @{ "type": "expr", "value": expr }
+            let expr = getList l[0];
+            evaluate scope (AST + @{ "type": "expr", "value": expr })
         }
     }
 };
