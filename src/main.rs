@@ -1644,22 +1644,42 @@ impl Type {
     }
 
     fn modify_inside(&self, index: Type, val: Type, engine: &mut Engine) -> Result<Type, Fault> {
+        macro_rules! assign {
+            ($list: expr, $index: expr, $proc: block) => {
+                if 0.0 <= $index && $index < $list.len() as f64 {
+                    $proc
+                } else {
+                    return Err(Fault::Index(Type::Number($index), self.to_owned()));
+                }
+            };
+        }
+        macro_rules! range_check {
+            ($first_index: expr, $index: expr) => {
+                if Type::List($index.clone()).format()
+                    != Operator::To(
+                        Expr::Value(Type::Number($first_index)),
+                        Expr::Value(Type::Number($first_index + $index.len() as f64)),
+                    )
+                    .eval(engine)?
+                    .format()
+                {
+                    return Err(Fault::Index(Type::List($index.clone()), self.clone()));
+                }
+            };
+        }
+
         Ok(
             if let (Type::List(mut list), Type::Number(index)) = (self.clone(), index.clone()) {
-                if 0.0 <= index && index < list.len() as f64 {
+                assign!(list, index, {
                     list[index as usize] = val.clone();
                     Type::List(list)
-                } else {
-                    return Err(Fault::Index(Type::Number(index), self.to_owned()));
-                }
+                })
             } else if let (Type::Text(text), Type::Number(index)) = (self.clone(), index.clone()) {
                 let mut text: Vec<String> = text.chars().map(|i| i.to_string()).collect();
-                if 0.0 <= index && index < text.len() as f64 {
+                assign!(text, index, {
                     text[index as usize] = val.get_text()?;
                     Type::Text(text.concat())
-                } else {
-                    return Err(Fault::Index(Type::Number(index), self.to_owned()));
-                }
+                })
             } else if let (Type::Struct(mut st), Type::Text(index)) = (self.clone(), index.clone())
             {
                 st.insert(index, val.clone());
@@ -1672,24 +1692,11 @@ impl Type {
                 )?
                 .get_number()?;
 
-                // Range correctness check
-                if Type::List(index.clone()).format()
-                    != Operator::To(
-                        Expr::Value(Type::Number(first_index)),
-                        Expr::Value(Type::Number(first_index + index.len() as f64)),
-                    )
-                    .eval(engine)?
-                    .format()
-                {
-                    return Err(Fault::Index(Type::List(index.clone()), self.clone()));
-                }
-
+                range_check!(first_index, index);
                 for _ in 0..index.len() {
-                    if 0.0 <= first_index && first_index < list.len() as f64 {
+                    assign!(list, first_index, {
                         list.remove(first_index as usize);
-                    } else {
-                        return Err(Fault::Index(Type::Number(first_index), self.to_owned()));
-                    }
+                    });
                 }
                 list.insert(first_index as usize, val.clone());
                 Type::List(list)
@@ -1701,24 +1708,11 @@ impl Type {
                 )?
                 .get_number()?;
 
-                // Range correctness check
-                if Type::List(index.clone()).format()
-                    != Operator::To(
-                        Expr::Value(Type::Number(first_index)),
-                        Expr::Value(Type::Number(first_index + index.len() as f64)),
-                    )
-                    .eval(engine)?
-                    .format()
-                {
-                    return Err(Fault::Index(Type::List(index.clone()), self.clone()));
-                }
-
+                range_check!(first_index, index);
                 for _ in 0..index.len() {
-                    if 0.0 <= first_index && first_index < text.len() as f64 {
+                    assign!(text, first_index, {
                         text.remove(first_index as usize);
-                    } else {
-                        return Err(Fault::Index(Type::Number(first_index), self.to_owned()));
-                    }
+                    });
                 }
                 text.insert(first_index as usize, val.get_text()?);
                 Type::Text(text.concat())
