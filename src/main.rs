@@ -14,7 +14,7 @@ use thiserror::Error;
 
 const VERSION: &str = "0.4.1";
 const SPACE: [char; 5] = [' ', '　', '\n', '\t', '\r'];
-const DEFAULT: [&str; 13] = [
+const BUILTIN: [&str; 13] = [
     "type",
     "env",
     "free",
@@ -134,7 +134,7 @@ struct Engine {
 impl Engine {
     fn new() -> Engine {
         Engine {
-            protect: DEFAULT.to_vec().iter().map(|i| i.to_string()).collect(),
+            protect: BUILTIN.to_vec().iter().map(|i| i.to_string()).collect(),
             env: IndexMap::from([
                 (
                     "type".to_string(),
@@ -290,7 +290,7 @@ impl Engine {
                     Type::Function(Function::BuiltIn(|arg, engine| {
                         let mut render = String::new();
                         for (k, v) in &engine.env {
-                            if !DEFAULT.contains(&k.as_str()) {
+                            if !BUILTIN.contains(&k.as_str()) {
                                 render += &format!("let {k} = {};\n", v.format());
                             }
                         }
