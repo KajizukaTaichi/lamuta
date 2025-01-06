@@ -1667,6 +1667,24 @@ impl Type {
                 }
             };
         }
+        macro_rules! delete_iter {
+            ($list: expr, $first_index: expr, $index: expr) => {
+                for _ in 0..$index.len() {
+                    assign!($list, $first_index, {
+                        $list.remove($first_index as usize);
+                    });
+                }
+            };
+        }
+        macro_rules! first_index {
+            ($index: expr) => {
+                ok!(
+                    $index.first(),
+                    Fault::Index(Type::List($index.clone()), self.to_owned())
+                )?
+                .get_number()?
+            };
+        }
 
         Ok(
             if let (Type::List(mut list), Type::Number(index)) = (self.clone(), index.clone()) {
@@ -1686,34 +1704,16 @@ impl Type {
                 Type::Struct(st)
             } else if let (Type::List(mut list), Type::List(index)) = (self.clone(), index.clone())
             {
-                let first_index = ok!(
-                    index.first(),
-                    Fault::Index(Type::List(index.clone()), self.to_owned())
-                )?
-                .get_number()?;
-
+                let first_index = first_index!(index);
                 range_check!(first_index, index);
-                for _ in 0..index.len() {
-                    assign!(list, first_index, {
-                        list.remove(first_index as usize);
-                    });
-                }
+                delete_iter!(list, first_index, index);
                 list.insert(first_index as usize, val.clone());
                 Type::List(list)
             } else if let (Type::Text(text), Type::List(index)) = (self.clone(), index.clone()) {
                 let mut text: Vec<String> = text.chars().map(|i| i.to_string()).collect();
-                let first_index = ok!(
-                    index.first(),
-                    Fault::Index(Type::List(index.clone()), self.to_owned())
-                )?
-                .get_number()?;
-
+                let first_index = first_index!(index);
                 range_check!(first_index, index);
-                for _ in 0..index.len() {
-                    assign!(text, first_index, {
-                        text.remove(first_index as usize);
-                    });
-                }
+                delete_iter!(text, first_index, index);
                 text.insert(first_index as usize, val.get_text()?);
                 Type::Text(text.concat())
             } else {
