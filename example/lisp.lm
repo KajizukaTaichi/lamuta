@@ -1,6 +1,6 @@
 load "docs/lib/std.lm";
 
-const specialForms: list = ["define", "if"];
+const specialForms: list = ["define", "if", "eval"];
 const AST: struct = @{
     "type": null,
     "value": null,
@@ -8,7 +8,7 @@ const AST: struct = @{
         if (this.type == (sig as text)) {
             this.value as sig
         } else {
-            fault
+            fault sig as text + ", " + this.type
         }
     ),
     "asText": fn(this ->
@@ -57,6 +57,18 @@ let evaluate = fn(e, p ->
                         else
                             elseCode
                     }
+                },
+                "eval" => {
+                    let expr = AST.get list code[1];
+                    evaluate scope (AST + @{
+                        "type": {
+                            if (specialForms `find` [expr[0].value])
+                                "specialForm"
+                            else
+                                "expr"
+                        },
+                        "value": expr
+                    })
                 }
             }
         },
@@ -201,21 +213,6 @@ let scope = @{
             "type": "text",
             "value": reduce λa.λb.(a + b) (map (AST.get text) l)
         })
-    },
-    "eval": @{
-        "type": "function",
-        "value": λl.{
-            let expr = AST.get list l[0];
-            evaluate scope (AST + @{
-                "type": {
-                    if (specialForms `find` expr[0])
-                        "specialForm"
-                    else
-                        "expr"
-                },
-                "value": expr
-            })
-        }
     }
 };
 
@@ -228,7 +225,7 @@ let main = λ_.{
             let flag = 0;
         } else {
             let [scope, value] =  evaluate(scope, parse entered);
-            print value, "\n";
+            print value.asText value, "\n";
         }
     }
 };
