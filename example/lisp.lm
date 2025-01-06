@@ -22,26 +22,26 @@ let evaluate = fn(e, p ->
                 let [scope, value] = evaluate scope i;
                 code += [value];
             };
-            if ((code :: 0).type == "function") {
+            if (code[0].type == "function") {
                 let func: function = code :: 0 :: "value";
-                [scope, func (code :: (1 ~ (len code)))]
+                [scope, func code[1 ~ (len code)]]
             } else {
                 fault
             }
         },
         "specialForm" => {
             let code: list = p.value;
-            match ((code :: 0).value) {
+            match (code[0].value) {
                 "define" => {
-                    let name = code :: 1 :: "value";
-                    let expr = code :: 2;
+                    let name = code[1].value;
+                    let expr = code[2];
                     let [scope, value] = evaluate scope expr;
                     scope += @{ name: value };
                     [scope, value]
                 }
             }
         },
-        "symbol" => [scope, { if (scope :: (p :: "value")) it else p }],
+        "symbol" => [scope, { if (scope :: p.value) it else p }],
         _ => [scope, p]
     }
 );
