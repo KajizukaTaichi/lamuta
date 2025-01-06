@@ -755,6 +755,7 @@ impl Expr {
         } else if token.starts_with('"') && token.ends_with('"') {
             let token = ok!(token.get(1..token.len() - 1))?.to_string();
             Expr::Value(Type::Text(text_escape(token)))
+        // Functionize operator
         } else if token.starts_with("'") && token.ends_with("'") {
             let token = ok!(token.get(1..token.len() - 1))?.trim().to_string();
             Expr::parse(format!("λx.λy.(x {token} y)"))?
