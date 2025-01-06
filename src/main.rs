@@ -1685,6 +1685,14 @@ impl Type {
                 .get_number()?
             };
         }
+        macro_rules! char_vec {
+            ($text: expr) => {
+                $text
+                    .chars()
+                    .map(|i| i.to_string())
+                    .collect::<Vec<String>>()
+            };
+        }
 
         Ok(
             if let (Type::List(mut list), Type::Number(index)) = (self.clone(), index.clone()) {
@@ -1693,7 +1701,7 @@ impl Type {
                     Type::List(list)
                 })
             } else if let (Type::Text(text), Type::Number(index)) = (self.clone(), index.clone()) {
-                let mut text: Vec<String> = text.chars().map(|i| i.to_string()).collect();
+                let mut text = char_vec!(text);
                 assign!(text, index, {
                     text[index as usize] = val.get_text()?;
                     Type::Text(text.concat())
@@ -1710,7 +1718,7 @@ impl Type {
                 list.insert(first_index as usize, val.clone());
                 Type::List(list)
             } else if let (Type::Text(text), Type::List(index)) = (self.clone(), index.clone()) {
-                let mut text: Vec<String> = text.chars().map(|i| i.to_string()).collect();
+                let mut text = char_vec!(text);
                 let first_index = first_index!(index);
                 range_check!(first_index, index);
                 delete_iter!(text, first_index, index);
