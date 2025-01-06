@@ -59,7 +59,8 @@ let evaluate = fn(e, p ->
                     }
                 },
                 "eval" => {
-                    let expr = AST.get list code[1];
+                    let [scope, expr] = evaluate(scope, code[1]);
+                    let expr = AST.get list expr;
                     evaluate scope (AST + @{
                         "type": {
                             if (specialForms `find` [expr[0].value])
@@ -89,23 +90,19 @@ let parse = fn(source ->
         } else {
             AST + @{ "type": "expr", "value": result }
         }
+    } else if (source[0 ~ 2] == "\'(" & (source[len source - 1] == ")")) {
+        let inner = source[2 ~ (len source - 1)];
+        let result = [];
+        for i in (tokenize inner) {
+            let result = result + [parse i];
+        };
+        AST + @{ "type": "list", "value": result }
+    } else  if (source[0] == "\"" & (source[len source - 1] == "\"")) {
+        let inner = source[1 ~ (len source - 1)];
+        AST + @{ "type": "text", "value": inner }
     } else {
-        if (source[0 ~ 2] == "\'(" & (source[len source - 1] == ")")) {
-            let inner = source[2 ~ (len source - 1)];
-            let result = [];
-            for i in (tokenize inner) {
-                let result = result + [parse i];
-            };
-            AST + @{ "type": "list", "value": result }
-        } else {
-            if (source[0] == "\"" & (source[len source - 1] == "\"")) {
-                let inner = source[1 ~ (len source - 1)];
-                AST + @{ "type": "text", "value": inner }
-            } else {
-                if (source as number) AST + @{ "type": "number", "value": it }
-                else AST + @{ "type": "symbol", "value": source }
-            }
-        }
+        if (source as number) AST + @{ "type": "number", "value": it }
+        else AST + @{ "type": "symbol", "value": source }
     }
 );
 
