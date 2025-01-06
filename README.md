@@ -14,8 +14,10 @@
 
 ---
 
-コミュニティ：
-[議論](https://github.com/KajizukaTaichi/lamuta/discussions/)　
-[Discordサーバーに参加](https://discord.gg/qWnHhjpzm4) 
-
+リンク：
+　[仕様](SPEC.md)
+  [Rustによる実装](src/main.rs)
+　[議論](https://github.com/KajizukaTaichi/lamuta/discussions/)
+　[Discordサーバー](https://discord.gg/qWnHhjpzm4)
+ 
 &copy; 2024-2025 梶塚太智. All rights reserved
