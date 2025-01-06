@@ -389,7 +389,7 @@ impl Statement {
                     if let Operator::Access(accessor, key) = infix {
                         let obj = accessor.eval(engine)?;
                         let key = key.eval(engine)?;
-                        let updated_obj = obj.modify_inside(key, val.clone())?;
+                        let updated_obj = obj.modify_inside(key, val.clone(), engine)?;
                         Statement::Let(accessor, false, None, Expr::Value(updated_obj.clone()))
                             .eval(engine)?;
                     }
@@ -1646,7 +1646,7 @@ impl Type {
         }
     }
 
-    fn modify_inside(&self, index: Type, val: Type) -> Result<Type, Fault> {
+    fn modify_inside(&self, index: Type, val: Type, engine: &mut Engine) -> Result<Type, Fault> {
         Ok(
             if let (Type::List(mut list), Type::Number(index)) = (self.clone(), index.clone()) {
                 if 0.0 <= index && index < list.len() as f64 {
@@ -1674,6 +1674,22 @@ impl Type {
                     Fault::Index(Type::List(index.clone()), self.to_owned())
                 )?
                 .get_number()?;
+
+                // Range correctness check
+                if Type::List(index.clone()).format()
+                    != Operator::To(
+                        Expr::Value(Type::Number(first_index)),
+                        Expr::Value(Type::Number(first_index + index.len() as f64)),
+                    )
+                    .eval(engine)?
+                    .format()
+                {
+                    return Err(Fault::Index(
+                        Type::List(index.clone()),
+                        Type::List(list.clone()),
+                    ));
+                }
+
                 for _ in 0..index.len() {
                     if 0.0 <= first_index && first_index < list.len() as f64 {
                         list.remove(first_index as usize);
@@ -1690,6 +1706,22 @@ impl Type {
                     Fault::Index(Type::List(index.clone()), self.to_owned())
                 )?
                 .get_number()?;
+
+                // Range correctness check
+                if Type::List(index.clone()).format()
+                    != Operator::To(
+                        Expr::Value(Type::Number(first_index)),
+                        Expr::Value(Type::Number(first_index + index.len() as f64)),
+                    )
+                    .eval(engine)?
+                    .format()
+                {
+                    return Err(Fault::Index(
+                        Type::List(index.clone()),
+                        Type::Text(text.concat()),
+                    ));
+                }
+
                 for _ in 0..index.len() {
                     if 0.0 <= first_index && first_index < text.len() as f64 {
                         text.remove(first_index as usize);
