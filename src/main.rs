@@ -232,17 +232,35 @@ impl Engine {
                         } else if params.len() == 2 {
                             let mut range: Vec<Type> = vec![];
                             let mut current: f64 = params[0].get_number()?;
-                            while current < params[1].get_number()? {
+                            let start = params[0].get_number()?;
+                            let end = params[1].get_number()?;
+                            let is_positive = (end - start).is_sign_positive();
+                            while if is_positive {
+                                current < params[1].get_number()?
+                            } else {
+                                current > params[1].get_number()?
+                            } {
                                 range.push(Type::Number(current));
-                                current += 1.0;
+                                current += if is_positive { 1.0 } else { -1.0 };
                             }
                             Ok(Type::List(range))
                         } else if params.len() == 3 {
                             let mut range: Vec<Type> = vec![];
                             let mut current: f64 = params[0].get_number()?;
-                            while current < params[1].get_number()? {
+                            let step = params[2].get_number()?;
+                            if step == 0.0 {
+                                return Err(Fault::Logic(Operator::Apply(
+                                    Expr::Value(Type::Symbol("range".to_string())),
+                                    Expr::Value(Type::List(params)),
+                                )));
+                            }
+                            while if step.is_sign_positive() {
+                                current < params[1].get_number()?
+                            } else {
+                                current > params[1].get_number()?
+                            } {
                                 range.push(Type::Number(current));
-                                current += params[2].get_number()?;
+                                current += step;
                             }
                             Ok(Type::List(range))
                         } else {
