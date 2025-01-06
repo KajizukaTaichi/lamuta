@@ -4,11 +4,15 @@
  # **Lamuta**
 </div>
 
-
-
 ラムダ計算の数式がそのまま書ける関数型プログラミング言語
 
 <img width="778" alt="image" src="docs/static/lambda.png" />
 
 未踏事業にエントリーしました。
 採択されるように頑張ります！
+
+---
+
+[Discordサーバーに参加](https://discord.gg/qWnHhjpzm4) 
+
+&copy; 2024-2025 梶塚太智. All rights reserved
