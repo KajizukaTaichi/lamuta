@@ -851,8 +851,8 @@ impl Expr {
                 "|" => Operator::Or(has_lhs(2)?, token),
                 "::" => Operator::Access(has_lhs(2)?, token),
                 "as" => Operator::As(has_lhs(2)?, token),
-                ":=" => Operator::Assign(has_lhs(2)?, token),
                 "|>" => Operator::PipeLine(has_lhs(2)?, token),
+                ":=" => Operator::Assign(has_lhs(2)?, token),
                 "+=" => Operator::AssignAdd(has_lhs(2)?, token),
                 "-=" => Operator::AssignSub(has_lhs(2)?, token),
                 "*=" => Operator::AssignMul(has_lhs(2)?, token),
@@ -1102,8 +1102,8 @@ enum Operator {
     Derefer(Expr),
     As(Expr, Expr),
     Apply(Expr, Expr),
-    Assign(Expr, Expr),
     PipeLine(Expr, Expr),
+    Assign(Expr, Expr),
     AssignAdd(Expr, Expr),
     AssignSub(Expr, Expr),
     AssignMul(Expr, Expr),
@@ -1354,11 +1354,11 @@ impl Operator {
                     return Err(Fault::Apply(lhs));
                 }
             }
-            Operator::Assign(lhs, rhs) => {
-                Statement::Let(lhs.to_owned(), false, None, rhs.to_owned()).eval(engine)?
-            }
             Operator::PipeLine(lhs, rhs) => {
                 Operator::Apply(rhs.to_owned(), lhs.to_owned()).eval(engine)?
+            }
+            Operator::Assign(lhs, rhs) => {
+                Statement::Let(lhs.to_owned(), false, None, rhs.to_owned()).eval(engine)?
             }
             Operator::AssignAdd(name, rhs) => {
                 let lhs = name.eval(engine)?;
