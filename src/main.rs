@@ -733,7 +733,7 @@ impl Expr {
             Expr::parse(token)?
         } else if token.starts_with('{') && token.ends_with('}') {
             let token = ok!(token.get(1..token.len() - 1))?.to_string();
-            Expr::Block(Engine::parse(token.clone())?)
+            Expr::Block(Engine::parse(token)?)
         } else if token.starts_with("@{") && token.ends_with('}') {
             let token = ok!(token.get(2..token.len() - 1))?.to_string();
             let mut result = Vec::new();
@@ -755,6 +755,9 @@ impl Expr {
         } else if token.starts_with('"') && token.ends_with('"') {
             let token = ok!(token.get(1..token.len() - 1))?.to_string();
             Expr::Value(Type::Text(text_escape(token)))
+        } else if token.starts_with("'") && token.ends_with("'") {
+            let token = ok!(token.get(1..token.len() - 1))?.trim().to_string();
+            Expr::parse(format!("λx.λy.(x {token} y)"))?
         // Lambda abstract that original formula in the theory
         } else if token.starts_with('λ') && token.contains('.') {
             let token = token.replacen("λ", "", 1);
