@@ -101,17 +101,21 @@ fn main() {
         let mut rl = DefaultEditor::new().unwrap();
         let mut session = 1;
 
+        macro_rules! repl_print {
+            ($color: ident, $value: expr) => {
+                println!("{navi} {}", $value, navi = "=>".$color())
+            };
+        }
+
         loop {
             match rl.readline(&format!("[{session:0>3}]> ")) {
                 Ok(code) => {
                     match Engine::parse(code) {
                         Ok(ast) => match engine.eval(ast) {
-                            Ok(result) => {
-                                println!("{navi} {}", result.format(), navi = "=>".green())
-                            }
-                            Err(e) => println!("{navi} Fault: {e}", navi = "=>".red()),
+                            Ok(result) => repl_print!(red, result.format()),
+                            Err(e) => repl_print!(red, e),
                         },
-                        Err(e) => println!("{navi} Fault: {e}", navi = "=>".red()),
+                        Err(e) => repl_print!(red, e),
                     }
                     session += 1;
                 }
