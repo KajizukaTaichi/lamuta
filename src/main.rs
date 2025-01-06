@@ -112,7 +112,7 @@ fn main() {
                 Ok(code) => {
                     match Engine::parse(code) {
                         Ok(ast) => match engine.eval(ast) {
-                            Ok(result) => repl_print!(red, result.format()),
+                            Ok(result) => repl_print!(green, result.format()),
                             Err(e) => repl_print!(red, e),
                         },
                         Err(e) => repl_print!(red, e),
