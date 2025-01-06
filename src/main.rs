@@ -409,6 +409,15 @@ impl Statement {
                         let updated_obj = obj.modify_inside(key, val.clone(), engine)?;
                         Statement::Let(accessor, false, None, Expr::Value(updated_obj.clone()))
                             .eval(engine)?;
+                    } else if let Operator::Derefer(pointer) = infix {
+                        let pointer = pointer.eval(engine)?.get_refer()?;
+                        Statement::Let(
+                            Expr::Value(Type::Symbol(pointer)),
+                            false,
+                            None,
+                            Expr::Value(val.clone()),
+                        )
+                        .eval(engine)?;
                     } else {
                         return Err(Fault::Syntax);
                     }
