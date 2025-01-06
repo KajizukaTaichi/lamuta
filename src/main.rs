@@ -520,9 +520,9 @@ impl Statement {
                 Ok(Statement::If(
                     Expr::parse(ok!(code.get(0))?.to_string())?,
                     Expr::parse(ok!(code.get(1..pos))?.join(&SPACE[0].to_string()))?,
-                    Some(Expr::parse(
+                    Some(Expr::Block(Engine::parse(
                         ok!(code.get(pos + 1..))?.join(&SPACE[0].to_string()),
-                    )?),
+                    )?)),
                 ))
             } else {
                 Ok(Statement::If(
