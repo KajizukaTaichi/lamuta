@@ -16,7 +16,7 @@
 
 リンク：
 　[仕様](SPEC.md)
-  [Rustによる実装](src/main.rs)
+　[Rustによる実装](src/main.rs)
 　[議論](https://github.com/KajizukaTaichi/lamuta/discussions/)
 　[Discordサーバー](https://discord.gg/qWnHhjpzm4)
  
