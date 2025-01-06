@@ -354,14 +354,14 @@ impl Statement {
             }
             Statement::Let(name, protect, sig, expr) => {
                 let val = expr.eval(engine)?;
+                if let Some(sig) = sig {
+                    if val.type_of().format() != sig.format() {
+                        return Err(Fault::Type(val, sig.to_owned()));
+                    }
+                }
                 if let Expr::Value(Type::Symbol(name)) = name {
                     if engine.protect.contains(name) {
                         return Err(Fault::AccessDenied);
-                    }
-                    if let Some(sig) = sig {
-                        if val.type_of().format() != sig.format() {
-                            return Err(Fault::Type(val, sig.to_owned()));
-                        }
                     }
                     if name != "_" {
                         engine.env.insert(name.to_owned(), val.clone());
@@ -370,11 +370,6 @@ impl Statement {
                         }
                     }
                 } else if let Expr::List(list) = name {
-                    if let Some(sig) = sig {
-                        if val.type_of().format() != sig.format() {
-                            return Err(Fault::Type(val, sig.to_owned()));
-                        }
-                    }
                     let val = val.get_list()?;
                     if list.len() == val.len() {
                         for (name, val) in list.iter().zip(val) {
@@ -392,6 +387,8 @@ impl Statement {
                         let updated_obj = obj.modify_inside(key, val.clone(), engine)?;
                         Statement::Let(accessor, false, None, Expr::Value(updated_obj.clone()))
                             .eval(engine)?;
+                    } else {
+                        return Err(Fault::Syntax);
                     }
                 } else {
                     return Err(Fault::Syntax);
