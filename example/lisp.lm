@@ -158,49 +158,49 @@ let scope = @{
         "type": "function",
         "value": λl.(AST + @{
             "type": "number",
-            "value": reduce λa.λb.(a + b) (map (AST.get number) l)
+            "value": reduce '+' (map (AST.get number) l)
         })
     },
     "-": @{
         "type": "function",
         "value": λl.(AST + @{
             "type": "number",
-            "value": reduce λa.λb.(a - b) (map (AST.get number) l)
+            "value": reduce '-' (map (AST.get number) l)
         })
     },
     "*": @{
         "type": "function",
         "value": λl.(AST + @{
             "type": "number",
-            "value": reduce λa.λb.(a * b) (map (AST.get number) l)
+            "value": reduce '*' (map (AST.get number) l)
         })
     },
     "/": @{
         "type": "function",
         "value": λl.(AST + @{
             "type": "number",
-            "value": reduce λa.λb.(a / b) (map (AST.get number) l)
+            "value": reduce '/' (map (AST.get number) l)
         })
     },
     "%": @{
         "type": "function",
         "value": λl.(AST + @{
             "type": "number",
-            "value": reduce λa.λb.(a % b) (map (AST.get number) l)
+            "value": reduce '%' (map (AST.get number) l)
         })
     },
     "^": @{
         "type": "function",
         "value": λl.(AST + @{
             "type": "number",
-            "value": reduce λa.λb.(a ^ b) (map (AST.get number) l)
+            "value": reduce '^' (map (AST.get number) l)
         })
     },
     "=": @{
         "type": "function",
         "value": λl.{
             let result = AST + @{ "type": "bool" };
-            result.value := { if (reduce λa.λb.(a == b) l) 1 else 0 };
+            result.value := { if (reduce '==' l) 1 else 0 };
             result
         }
     },
@@ -208,7 +208,7 @@ let scope = @{
         "type": "function",
         "value": λl.(AST + @{
             "type": "text",
-            "value": reduce λa.λb.(a + b) (map (AST.get text) l)
+            "value": reduce '+' (map (AST.get text) l)
         })
     }
 };
