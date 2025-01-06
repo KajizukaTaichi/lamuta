@@ -1684,10 +1684,7 @@ impl Type {
                     .eval(engine)?
                     .format()
                 {
-                    return Err(Fault::Index(
-                        Type::List(index.clone()),
-                        Type::List(list.clone()),
-                    ));
+                    return Err(Fault::Index(Type::List(index.clone()), self.clone()));
                 }
 
                 for _ in 0..index.len() {
@@ -1716,10 +1713,7 @@ impl Type {
                     .eval(engine)?
                     .format()
                 {
-                    return Err(Fault::Index(
-                        Type::List(index.clone()),
-                        Type::Text(text.concat()),
-                    ));
+                    return Err(Fault::Index(Type::List(index.clone()), self.clone()));
                 }
 
                 for _ in 0..index.len() {
