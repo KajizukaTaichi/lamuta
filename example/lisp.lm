@@ -1,14 +1,23 @@
 load "docs/lib/std.lm";
 
-const specialForms: list = ["define"];
+const specialForms: list = ["define", "if"];
 const AST: struct = @{
     "type": null,
     "value": null,
-    "get": fn(sig, self ->
-        if (self.type == (sig as text)) {
-            self.value as sig
+    "get": fn(sig, this ->
+        if (this.type == (sig as text)) {
+            this.value as sig
         } else {
             fault
+        }
+    ),
+    "asText": fn(this ->
+        match this.type {
+            "number" => this.value as text,
+            "text" => "\"" + this.value + "\"",
+            "symbol" => this.value,
+            "bool" => { if (this.value == 1) "true" else "false" },
+            "list" => "\'(" + (join (map fn(x -> x.asText x) this.value) " ") + ")"
         }
     )
 };
@@ -23,7 +32,7 @@ let evaluate = fn(e, p ->
                 code += [value];
             };
             if (code[0].type == "function") {
-                let func: function = code :: 0 :: "value";
+                let func: function = code[0].value;
                 [scope, func code[1 ~ (len code)]]
             } else {
                 fault
@@ -38,6 +47,16 @@ let evaluate = fn(e, p ->
                     let [scope, value] = evaluate scope expr;
                     scope += @{ name: value };
                     [scope, value]
+                },
+                "if" => {
+                    let [_, expr, thenCode, elseCode] = code;
+                    let [scope, value] = evaluate scope expr;
+                    evaluate scope {
+                        if (0 != value.value != "")
+                            thenCode
+                        else
+                            elseCode
+                    }
                 }
             }
         },
@@ -47,28 +66,28 @@ let evaluate = fn(e, p ->
 );
 
 let parse = fn(source ->
-    if (source :: 0 == "(" & (source :: (len source - 1) == ")")) {
-        let inner = source :: (1 ~ (len source - 1));
+    if (source[0] == "(" & (source[len source - 1] == ")")) {
+        let inner = source[1 ~ (len source - 1)];
         let result = [];
         for i in (tokenize inner) {
             let result = result + [parse i];
         };
-        if (specialForms `find` [result :: 0 :: "value"]) {
+        if (specialForms `find` [result[0].value]) {
             AST + @{ "type": "specialForm", "value": result }
         } else {
             AST + @{ "type": "expr", "value": result }
         }
     } else {
-        if (source :: 0 == "\'") {
-            let inner = source :: (2 ~ (len source - 1));
+        if (source[0 ~ 2] == "\'(" & (source[len source - 1] == ")")) {
+            let inner = source[2 ~ (len source - 1)];
             let result = [];
             for i in (tokenize inner) {
                 let result = result + [parse i];
             };
             AST + @{ "type": "list", "value": result }
         } else {
-            if (source :: 0 == doubleQuote & (source :: (len source - 1) == doubleQuote)) {
-                let inner = source :: (1 ~ (len source - 1));
+            if (source[0] == "\"" & (source[len source - 1] == "\"")) {
+                let inner = source[1 ~ (len source - 1)];
                 AST + @{ "type": "text", "value": inner }
             } else {
                 if (source as number) AST + @{ "type": "number", "value": it }
@@ -168,6 +187,14 @@ let scope = @{
             "value": reduce λa.λb.(a ^ b) (map (AST.get number) l)
         })
     },
+    "=": @{
+        "type": "function",
+        "value": λl.{
+            let result = AST + @{ "type": "bool" };
+            result.value := { if (reduce λa.λb.(a == b) l) 1 else 0 };
+            result
+        }
+    },
     "concat": @{
         "type": "function",
         "value": λl.(AST + @{
@@ -178,8 +205,16 @@ let scope = @{
     "eval": @{
         "type": "function",
         "value": λl.{
-            let expr = getList l[0];
-            evaluate scope (AST + @{ "type": "expr", "value": expr })
+            let expr = AST.get list l[0];
+            evaluate scope (AST + @{
+                "type": {
+                    if (specialForms `find` expr[0])
+                        "specialForm"
+                    else
+                        "expr"
+                },
+                "value": expr
+            })
         }
     }
 };
