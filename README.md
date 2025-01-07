@@ -1,5 +1,5 @@
 <div align="center">
-  <img width="150" alt="image" src="https://github.com/user-attachments/assets/8795161c-2c15-4c7c-9174-29d52c56df00" />
+  <img width="150" alt="image" src="docs/static/logo.png" />
 
  # **Lamuta**
 </div>
@@ -13,7 +13,7 @@
 > 採択されるように提案頑張ります！
 
 ## ビジョン：「ラムダ計算の一般化」
-- 学術的要素の強いラムダ計算を、人々の身近な存在にする 
+- 学術的要素の強いラムダ計算を、人々の身近な存在にする
 - どの層の誰からも広く使える汎用プログラミング言語にする
 
 
@@ -24,5 +24,5 @@
 　[サンプルコード](/example)
 　[議論](https://github.com/KajizukaTaichi/lamuta/discussions/)
 　[Discord](https://discord.gg/qWnHhjpzm4)
- 
+
 &copy; 2024-2025 梶塚太智. All rights reserved
