@@ -1332,9 +1332,10 @@ impl Operator {
                 if let (Type::List(list), Type::Number(index)) = (lhs.clone(), rhs.clone()) {
                     ok!(list.get(index as usize), Fault::Index(rhs, lhs))?.clone()
                 } else if let (Type::Text(text), Type::Number(index)) = (lhs.clone(), rhs.clone()) {
+                    let text: Vec<char> = text.chars().collect();
                     Type::Text(
                         ok!(
-                            text.chars().collect::<Vec<char>>().get(index as usize),
+                            text.get(index as usize).cloned(),
                             Fault::Index(rhs.clone(), lhs.clone())
                         )?
                         .to_string(),
