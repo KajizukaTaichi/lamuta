@@ -1344,27 +1344,22 @@ impl Operator {
                 } else if let (Type::List(list), Type::List(index)) = (lhs.clone(), rhs.clone()) {
                     let mut result = vec![];
                     for i in index {
-                        result.push(
-                            ok!(
-                                list.get(i.get_number()? as usize),
-                                Fault::Index(rhs.clone(), lhs.clone())
-                            )?
-                            .clone(),
-                        );
+                        result.push(ok!(
+                            list.get(i.get_number()? as usize).cloned(),
+                            Fault::Index(rhs.clone(), lhs.clone())
+                        )?);
                     }
                     Type::List(result)
                 } else if let (Type::Text(text), Type::List(index)) = (lhs.clone(), rhs.clone()) {
                     let mut result = String::new();
                     for i in index {
-                        result.push(
-                            ok!(
-                                text.chars()
-                                    .collect::<Vec<char>>()
-                                    .get(i.get_number()? as usize),
-                                Fault::Index(rhs.clone(), lhs.clone())
-                            )?
-                            .clone(),
-                        );
+                        result.push(ok!(
+                            text.chars()
+                                .collect::<Vec<char>>()
+                                .get(i.get_number()? as usize)
+                                .cloned(),
+                            Fault::Index(rhs.clone(), lhs.clone())
+                        )?);
                     }
                     Type::Text(result)
                 } else {
