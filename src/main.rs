@@ -829,7 +829,7 @@ impl Expr {
             let token = ok!(token.get(..token.len() - 1))?.to_string();
             let (name, args) = ok!(token.split_once("["))?;
             Expr::Infix(Box::new(Operator::Access(
-                Expr::parse(name.to_string())?,
+                Expr::Value(Type::Symbol(name.to_string())),
                 Expr::parse(args.to_string())?,
             )))
         // Imperative style syntactic sugar of function application
