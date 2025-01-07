@@ -12,7 +12,7 @@ use std::{
 };
 use thiserror::Error;
 
-const VERSION: &str = "0.4.1";
+const VERSION: &str = "0.4.2";
 const SPACE: [char; 5] = [' ', '　', '\n', '\t', '\r'];
 const BUILTIN: [&str; 14] = [
     "type",
