@@ -21,6 +21,7 @@
 
 リンク：
 　[実装](src/main.rs)
+　[サンプルコード](/example)
 　[議論](https://github.com/KajizukaTaichi/lamuta/discussions/)
 　[Discord](https://discord.gg/qWnHhjpzm4)
  
