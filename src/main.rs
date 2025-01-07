@@ -1403,54 +1403,36 @@ impl Operator {
             Operator::Assign(lhs, rhs) => {
                 Statement::Let(lhs.to_owned(), false, None, rhs.to_owned()).eval(engine)?
             }
-            Operator::AssignAdd(name, rhs) => {
-                let lhs = name.eval(engine)?;
-                Operator::Assign(
-                    name.to_owned(),
-                    Expr::Infix(Box::new(Operator::Add(Expr::Value(lhs), rhs.clone()))),
-                )
-                .eval(engine)?
-            }
-            Operator::AssignSub(name, rhs) => {
-                let lhs = name.eval(engine)?;
-                Operator::Assign(
-                    name.to_owned(),
-                    Expr::Infix(Box::new(Operator::Sub(Expr::Value(lhs), rhs.clone()))),
-                )
-                .eval(engine)?
-            }
-            Operator::AssignMul(name, rhs) => {
-                let lhs = name.eval(engine)?;
-                Operator::Assign(
-                    name.to_owned(),
-                    Expr::Infix(Box::new(Operator::Mul(Expr::Value(lhs), rhs.clone()))),
-                )
-                .eval(engine)?
-            }
-            Operator::AssignDiv(name, rhs) => {
-                let lhs = name.eval(engine)?;
-                Operator::Assign(
-                    name.to_owned(),
-                    Expr::Infix(Box::new(Operator::Div(Expr::Value(lhs), rhs.clone()))),
-                )
-                .eval(engine)?
-            }
-            Operator::AssignMod(name, rhs) => {
-                let lhs = name.eval(engine)?;
-                Operator::Assign(
-                    name.to_owned(),
-                    Expr::Infix(Box::new(Operator::Mod(Expr::Value(lhs), rhs.clone()))),
-                )
-                .eval(engine)?
-            }
-            Operator::AssignPow(name, rhs) => {
-                let lhs = name.eval(engine)?;
-                Operator::Assign(
-                    name.to_owned(),
-                    Expr::Infix(Box::new(Operator::Pow(Expr::Value(lhs), rhs.clone()))),
-                )
-                .eval(engine)?
-            }
+            Operator::AssignAdd(name, rhs) => Operator::Assign(
+                name.to_owned(),
+                Expr::Infix(Box::new(Operator::Add(name.to_owned(), rhs.clone()))),
+            )
+            .eval(engine)?,
+            Operator::AssignSub(name, rhs) => Operator::Assign(
+                name.to_owned(),
+                Expr::Infix(Box::new(Operator::Sub(name.to_owned(), rhs.clone()))),
+            )
+            .eval(engine)?,
+            Operator::AssignMul(name, rhs) => Operator::Assign(
+                name.to_owned(),
+                Expr::Infix(Box::new(Operator::Mul(name.to_owned(), rhs.clone()))),
+            )
+            .eval(engine)?,
+            Operator::AssignDiv(name, rhs) => Operator::Assign(
+                name.to_owned(),
+                Expr::Infix(Box::new(Operator::Div(name.to_owned(), rhs.clone()))),
+            )
+            .eval(engine)?,
+            Operator::AssignMod(name, rhs) => Operator::Assign(
+                name.to_owned(),
+                Expr::Infix(Box::new(Operator::Mod(name.to_owned(), rhs.clone()))),
+            )
+            .eval(engine)?,
+            Operator::AssignPow(name, rhs) => Operator::Assign(
+                name.to_owned(),
+                Expr::Infix(Box::new(Operator::Pow(name.to_owned(), rhs.clone()))),
+            )
+            .eval(engine)?,
             Operator::To(from, to) => Operator::Apply(
                 Expr::Value(Type::Symbol("range".to_string())),
                 false,
