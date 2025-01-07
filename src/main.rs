@@ -110,7 +110,7 @@ fn main() {
         }
         macro_rules! fault {
             ($e: expr) => {
-                format!("Fault {}", $e)
+                repl_print!(red, format!("Fault: {}", $e))
             };
         }
 
@@ -120,9 +120,9 @@ fn main() {
                     match Engine::parse(code) {
                         Ok(ast) => match engine.eval(ast) {
                             Ok(result) => repl_print!(green, result.format()),
-                            Err(e) => repl_print!(red, fault!(e)),
+                            Err(e) => fault!(e),
                         },
-                        Err(e) => repl_print!(red, fault!(e)),
+                        Err(e) => fault!(e),
                     }
                     session += 1;
                 }
