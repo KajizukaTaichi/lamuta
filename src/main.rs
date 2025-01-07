@@ -108,6 +108,11 @@ fn main() {
                 println!("{navi} {}", $value, navi = "=>".$color())
             };
         }
+        macro_rules! fault {
+            ($e: expr) => {
+                format!("Fault {}", $e)
+            };
+        }
 
         loop {
             match rl.readline(&format!("[{session:0>3}]> ")) {
@@ -115,9 +120,9 @@ fn main() {
                     match Engine::parse(code) {
                         Ok(ast) => match engine.eval(ast) {
                             Ok(result) => repl_print!(green, result.format()),
-                            Err(e) => repl_print!(red, e),
+                            Err(e) => repl_print!(red, fault!(e)),
                         },
-                        Err(e) => repl_print!(red, e),
+                        Err(e) => repl_print!(red, fault!(e)),
                     }
                     session += 1;
                 }
