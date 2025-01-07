@@ -1,178 +1,63 @@
 <!doctype html>
 <html lang="ja">
     <head>
-        <title>Lamuta (ラミュータ)</title>
-        <link
-            rel="stylesheet"
-            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
-        />
-        <link
-            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-            rel="stylesheet"
-            integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM"
-            crossorigin="anonymous"
-        />
-        <script
-            src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
-            integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
-            crossorigin="anonymous"
-        ></script>
+        <title>Lamuta</title>
     </head>
 
     <body>
-        <div id="title">
-            <h1 id="nameShow"></h1>
-            <p id="about"></p>
+        <header></header>
+        <div id="top">
+            <img style="" src="./static/logo.png" />
+            <h1>Lamuta</h1>
         </div>
-
-        <div class="main">
-            <h1><span class="highlight">Lamuta</span>ってなんだい？</h1>
+        <hr />
+        <p>ラムダ計算の数式がそのまま書ける関数型プログラミング言語</p>
+        <img src="./static/lambda.png" />
+        <div id="alert-important">
+            <p id="tip">Important</p>
             <p>
-                Lamutaは、ラムダ計算を基盤とした強い動的型付けでインタプリタ式の関数型プログラミング言語です。
-                下の画像の通り、ラムダ計算の数式がほぼそのままの形で書けます。
-                もちろん関数の引数は必ず一つで評価されたら必ず値を返し、複数引数はカリー化という技術やリストを用いて実現できます。
-                match文など現代的な言語機能も実装されているほか、評価戦略はゴール指向評価を採用しており、柔軟かつ堅牢なプログラムを構築できます。
-            </p>
-            <div style="text-align: left">
-                <img id="image" /><br />
-                <button id="prev" class="btn btn-secondary">←</button>
-                <button id="next" class="btn btn-secondary">→</button>
-            </div>
-        </div>
-        <div class="main">
-            <h1><span class="highlight">開</span>発について</h1>
-            <p>
-                Lamutaは基本的に、私<a href="https://github.com/KajizukaTaichi"
-                    >梶塚太智</a
-                >の個人開発のプロジェクトです。
-                以前作っていた別の自作言語で関数オブジェクトの扱いが引数の長さを合わせなければならず難点と感じていました。
-                ラムダ計算を基盤とすればカリー化にこの類の問題はよって解決できると思い、このLamutaを開発しました。
-                関数型言語ってHaskellとかScalaみたいに複雑なのが多いですが、Lamutaは極力シンプルで使いやすくすることを目指しています。
+                未踏事業にエントリーしました。 採択されるように提案頑張ります！
             </p>
         </div>
+        <div>
+            <h2>ビジョン「ラムダ計算の一般化」</h2>
+            <ul>
+                <li>学術的要素の強いラムダ計算を、人々の身近な存在にする</li>
+                <li>どの層の誰からも広く使える汎用プログラミング言語にする</li>
+            </ul>
+        </div>
+        <hr />
+        <p>
+            リンク：　<a href="https://github.com/KajizukaTaichi/lamuta"
+                >GitHubリポジトリ</a
+            >　<a href="https://discord.gg/qWnHhjpzm4">Discordサーバー</a>
+        </p>
+        <p>&copy; 2024-2025 梶塚太智. All rights reserved</p>
     </body>
-
-    <script>
-        function sleep(ms) {
-            return new Promise((resolve) => setTimeout(resolve, ms));
-        }
-
-        const name = "Lamuta";
-        const about =
-            "ラムダ計算の数式がそのまま書ける関数型プログラミング言語";
-        document.addEventListener("DOMContentLoaded", async function () {
-            let nameShow = document.getElementById("nameShow");
-            for (let i of name) {
-                nameShow.textContent =
-                    nameShow.textContent.replace("|", "") + `${i}|`;
-                await sleep(400);
-            }
-            nameShow.textContent = nameShow.textContent.replace("|", "");
-
-            let aboutShow = document.getElementById("about");
-            for (let i of about) {
-                aboutShow.innerHTML =
-                    aboutShow.innerHTML.replace("|", "") +
-                    (i == "数" ? `<span class="highlight">${i}</span>` : i) +
-                    "|";
-                await sleep(100);
-            }
-            aboutShow.innerHTML = aboutShow.innerHTML.replace("|", "");
-
-            let githubLink = document.createElement("a");
-            githubLink.href = "https://github.com/KajizukaTaichi/lamuta";
-            githubLink.innerHTML = `<i class="fab fa-github"></i>　Repository`;
-            githubLink.className = "btn btn-secondary";
-            document.getElementById("title").appendChild(githubLink);
-
-            for (let i of document.querySelectorAll(".main")) {
-                i.style.display = "block";
-            }
-        });
-    </script>
-
-    <script>
-        function imageManager() {
-            this.imageLinks = ["static/lambda.png", "static/repl.png"];
-            this.index = 0;
-            this.view = function () {
-                let imageFrame = document.getElementById("image");
-                imageFrame.src = this.imageLinks[this.index];
-            };
-            this.prev = function () {
-                this.index -= 1;
-                this.index =
-                    this.index == -1 ? this.imageLinks.length - 1 : this.index;
-                this.view();
-            };
-
-            this.next = function () {
-                this.index += 1;
-                this.index =
-                    this.index == this.imageLinks.length ? 0 : this.index;
-                this.view();
-            };
-        }
-
-        document.addEventListener("DOMContentLoaded", function () {
-            let images = new imageManager();
-            document
-                .getElementById("prev")
-                .addEventListener("click", images.prev.bind(images));
-            document
-                .getElementById("next")
-                .addEventListener("click", images.next.bind(images));
-            images.view();
-        });
-    </script>
 
     <style>
         body {
-            margin: 0;
-            font-size: 24px;
-            font-family: "Times New Roman", Times, serif;
+            font-size: 25px;
+            margin: 5%;
         }
-
+        #top {
+            text-align: center;
+        }
+        #top img {
+            width: 15vw;
+        }
         img {
             max-width: 100%;
-            max-height: 50vh;
+            height: fit-content;
         }
-
-        .main {
-            padding: 10vw;
-            display: none;
+        #alert-important {
+            border-left: 5px solid blueviolet;
+            padding-left: 15px;
+            padding-bottom: 0.1px;
         }
-
-        #title {
-            padding-top: 30vh;
-            background: linear-gradient(
-                to bottom,
-                rgba(173, 216, 230, 0.7),
-                white
-            );
-            font-size: 30px;
-            font-family: "Times New Roman", Times, serif;
-            text-align: center;
-            height: 100vh;
-        }
-        #nameShow {
-            letter-spacing: 10px;
-            font-size: 80px;
-            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
-        }
-
-        .btn {
-            font-family: monospace;
-        }
-
-        #about {
-            letter-spacing: 5px;
-        }
-
-        .highlight {
-            font-size: 1.3em;
-            text-decoration: underline;
-            text-decoration-color: blue;
+        #alert-important #tip {
+            color: blueviolet;
+            font-size: medium;
         }
     </style>
 </html>
