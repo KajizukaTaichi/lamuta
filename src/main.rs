@@ -312,7 +312,7 @@ impl Engine {
                 ),
                 (
                     "std".to_string(),
-                    Type::Text("http://kajizukataichi.github.io/lamuta/lib/std.lm".to_string()),
+                    Type::Text("https://kajizukataichi.github.io/lamuta/lib/std.lm".to_string()),
                 ),
                 (
                     "sleep".to_string(),
