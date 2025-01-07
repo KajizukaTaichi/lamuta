@@ -1352,12 +1352,10 @@ impl Operator {
                     Type::List(result)
                 } else if let (Type::Text(text), Type::List(index)) = (lhs.clone(), rhs.clone()) {
                     let mut result = String::new();
+                    let text: Vec<char> = text.chars().collect();
                     for i in index {
                         result.push(ok!(
-                            text.chars()
-                                .collect::<Vec<char>>()
-                                .get(i.get_number()? as usize)
-                                .cloned(),
+                            text.get(i.get_number()? as usize).cloned(),
                             Fault::Index(rhs.clone(), lhs.clone())
                         )?);
                     }
