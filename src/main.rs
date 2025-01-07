@@ -841,7 +841,7 @@ impl Expr {
             let mut call = Expr::Infix(Box::new(Operator::Apply(
                 Expr::Value(Type::Symbol(
                     if is_lazy {
-                        ok!(name.get(..token.len() - 1))?
+                        ok!(name.get(..name.len() - 1))?
                     } else {
                         name
                     }
