@@ -14,7 +14,7 @@ use thiserror::Error;
 
 const VERSION: &str = "0.4.1";
 const SPACE: [char; 5] = [' ', '　', '\n', '\t', '\r'];
-const BUILTIN: [&str; 13] = [
+const BUILTIN: [&str; 14] = [
     "type",
     "env",
     "free",
@@ -25,6 +25,7 @@ const BUILTIN: [&str; 13] = [
     "range",
     "load",
     "save",
+    "std",
     "sleep",
     "exit",
     "cmdLineArgs",
@@ -308,6 +309,10 @@ impl Engine {
                             Err(Fault::IO)
                         }
                     })),
+                ),
+                (
+                    "std".to_string(),
+                    Type::Text("http://kajizukataichi.github.io/lamuta/lib/std.lm".to_string()),
                 ),
                 (
                     "sleep".to_string(),
