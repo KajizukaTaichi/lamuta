@@ -761,13 +761,20 @@ impl Expr {
                 list.push(Expr::parse(elm.trim().to_string())?);
             }
             Expr::List(list)
-        } else if token.starts_with('"') && token.ends_with('"') {
-            let token = ok!(token.get(1..token.len() - 1))?.to_string();
-            Expr::Value(Type::Text(text_escape(token)))
+        } else if (token.starts_with('"') && token.ends_with('"'))
+            || (token.starts_with("'") && token.ends_with("'"))
+        {
+            let text = ok!(token.get(1..token.len() - 1))?.to_string();
+            Expr::Value(Type::Text(text_escape(text)))
         // Functionize operator
-        } else if token.starts_with("'") && token.ends_with("'") {
+        } else if token.starts_with("`") && token.ends_with("`") {
             let token = ok!(token.get(1..token.len() - 1))?.trim().to_string();
-            Expr::parse(format!("λx.λy.(x {token} y)"))?
+            let source = format!("λx.λy.(x {token} y)");
+            let expr = Expr::parse(source.clone())?;
+            if expr.format() != source {
+                return Err(Fault::Syntax);
+            }
+            expr
         // Lambda abstract that original formula in the theory
         } else if token.starts_with('λ') && token.contains('.') {
             let token = token.replacen("λ", "", 1);
