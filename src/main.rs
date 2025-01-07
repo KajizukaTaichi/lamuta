@@ -1381,13 +1381,15 @@ impl Operator {
                     match func {
                         Function::BuiltIn(func) => func(rhs.eval(engine)?, engine)?,
                         Function::UserDefined(parameter, code) => {
-                            let rhs = if *is_lazy {
-                                rhs.clone()
-                            } else {
-                                Expr::Value(rhs.eval(engine)?)
-                            };
                             let code = code
-                                .replace(&Expr::Value(Type::Symbol(parameter)), &rhs)
+                                .replace(
+                                    &Expr::Value(Type::Symbol(parameter)),
+                                    &if *is_lazy {
+                                        rhs.clone()
+                                    } else {
+                                        Expr::Value(rhs.eval(engine)?)
+                                    },
+                                )
                                 .replace(
                                     &Expr::Value(Type::Symbol("self".to_string())),
                                     &Expr::Value(lhs),
