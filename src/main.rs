@@ -91,6 +91,7 @@ fn main() {
     if let Some(file) = cli.file {
         if let Err(e) = Operator::Apply(
             Expr::Value(Type::Symbol("load".to_string())),
+            false,
             Expr::Value(Type::Text(file)),
         )
         .eval(&mut engine)
@@ -256,6 +257,7 @@ impl Engine {
                             if step == 0.0 {
                                 return Err(Fault::Logic(Operator::Apply(
                                     Expr::Value(Type::Symbol("range".to_string())),
+                                    false,
                                     Expr::Value(Type::List(params)),
                                 )));
                             }
@@ -834,14 +836,24 @@ impl Expr {
         } else if token.contains('(') && token.ends_with(')') {
             let token = ok!(token.get(..token.len() - 1))?.to_string();
             let (name, args) = ok!(token.split_once("("))?;
+            let is_lazy = name.ends_with("!");
             let args = tokenize(args.to_string(), vec![','])?;
             let mut call = Expr::Infix(Box::new(Operator::Apply(
-                Expr::parse(name.to_string())?,
+                Expr::parse(
+                    if is_lazy {
+                        ok!(name.get(..token.len() - 1))?
+                    } else {
+                        name
+                    }
+                    .to_string(),
+                )?,
+                is_lazy,
                 Expr::parse(ok!(args.first())?.to_string())?,
             )));
             for arg in ok!(args.get(1..))? {
                 call = Expr::Infix(Box::new(Operator::Apply(
                     call,
+                    is_lazy,
                     Expr::parse(arg.to_string())?,
                 )));
             }
@@ -891,12 +903,14 @@ impl Expr {
                         Operator::Apply(
                             Expr::Infix(Box::new(Operator::Apply(
                                 Expr::parse(operator)?,
+                                false,
                                 has_lhs(2)?,
                             ))),
+                            false,
                             token,
                         )
                     } else {
-                        Operator::Apply(has_lhs(1)?, token)
+                        Operator::Apply(has_lhs(1)?, false, token)
                     }
                 }
             })))
@@ -998,8 +1012,8 @@ impl Expr {
                 Operator::As(lhs, rhs) => {
                     Operator::As(lhs.replace(from, to), rhs.replace(from, to))
                 }
-                Operator::Apply(lhs, rhs) => {
-                    Operator::Apply(lhs.replace(from, to), rhs.replace(from, to))
+                Operator::Apply(lhs, is_lazy, rhs) => {
+                    Operator::Apply(lhs.replace(from, to), is_lazy, rhs.replace(from, to))
                 }
                 Operator::Assign(lhs, rhs) => {
                     Operator::Assign(lhs.replace(from, to), rhs.replace(from, to))
@@ -1126,7 +1140,7 @@ enum Operator {
     Access(Expr, Expr),
     Derefer(Expr),
     As(Expr, Expr),
-    Apply(Expr, Expr),
+    Apply(Expr, bool, Expr),
     PipeLine(Expr, Expr),
     Assign(Expr, Expr),
     AssignAdd(Expr, Expr),
@@ -1359,15 +1373,19 @@ impl Operator {
                 let rhs = rhs.eval(engine)?;
                 lhs.cast(rhs.get_signature()?)?
             }
-            Operator::Apply(lhs, rhs) => {
+            Operator::Apply(lhs, is_lazy, rhs) => {
                 let lhs = lhs.eval(engine)?;
-                let rhs = rhs.eval(engine)?;
                 if let Type::Function(func) = lhs.clone() {
                     match func {
-                        Function::BuiltIn(func) => func(rhs, engine)?,
+                        Function::BuiltIn(func) => func(rhs.eval(engine)?, engine)?,
                         Function::UserDefined(parameter, code) => {
+                            let rhs = if *is_lazy {
+                                rhs.clone()
+                            } else {
+                                Expr::Value(rhs.eval(engine)?)
+                            };
                             let code = code
-                                .replace(&Expr::Value(Type::Symbol(parameter)), &Expr::Value(rhs))
+                                .replace(&Expr::Value(Type::Symbol(parameter)), &rhs)
                                 .replace(
                                     &Expr::Value(Type::Symbol("self".to_string())),
                                     &Expr::Value(lhs),
@@ -1380,7 +1398,7 @@ impl Operator {
                 }
             }
             Operator::PipeLine(lhs, rhs) => {
-                Operator::Apply(rhs.to_owned(), lhs.to_owned()).eval(engine)?
+                Operator::Apply(rhs.to_owned(), false, lhs.to_owned()).eval(engine)?
             }
             Operator::Assign(lhs, rhs) => {
                 Statement::Let(lhs.to_owned(), false, None, rhs.to_owned()).eval(engine)?
@@ -1435,6 +1453,7 @@ impl Operator {
             }
             Operator::To(from, to) => Operator::Apply(
                 Expr::Value(Type::Symbol("range".to_string())),
+                false,
                 Expr::List(vec![from.to_owned(), to.to_owned()]),
             )
             .eval(engine)?,
@@ -1463,7 +1482,8 @@ impl Operator {
             Operator::As(lhs, rhs) => format!("{} as {}", lhs.format(), rhs.format()),
             Operator::Assign(lhs, rhs) => format!("{} := {}", lhs.format(), rhs.format()),
             Operator::PipeLine(lhs, rhs) => format!("{} |> {}", lhs.format(), rhs.format()),
-            Operator::Apply(lhs, rhs) => format!("{} {}", lhs.format(), rhs.format()),
+            Operator::Apply(lhs, true, rhs) => format!("{}! {}", lhs.format(), rhs.format()),
+            Operator::Apply(lhs, false, rhs) => format!("{} {}", lhs.format(), rhs.format()),
             Operator::AssignAdd(lhs, rhs) => format!("{} += {}", lhs.format(), rhs.format()),
             Operator::AssignSub(lhs, rhs) => format!("{} -= {}", lhs.format(), rhs.format()),
             Operator::AssignMul(lhs, rhs) => format!("{} *= {}", lhs.format(), rhs.format()),
