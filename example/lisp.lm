@@ -224,9 +224,11 @@ let main = λ_.{
         let entered = input ">>> ";
         if (entered == "") {
             let flag = 0;
-        } else {
-            let [scope, value] =  evaluate(scope, parse entered);
+        } else if evaluate(scope, parse entered) {
+            let [scope, value] = it;
             print value.asText value, "\n";
+        } else {
+            print "Error!\n";
         }
     }
 };
