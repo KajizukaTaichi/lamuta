@@ -836,17 +836,18 @@ impl Expr {
         } else if token.contains('(') && token.ends_with(')') {
             let token = ok!(token.get(..token.len() - 1))?.to_string();
             let (name, args) = ok!(token.split_once("("))?;
-            let is_lazy = name.ends_with("!");
+            let is_lazy = name.ends_with("?");
             let args = tokenize(args.to_string(), vec![','])?;
             let mut call = Expr::Infix(Box::new(Operator::Apply(
-                Expr::parse(
+                Expr::Value(Type::Symbol(
                     if is_lazy {
                         ok!(name.get(..token.len() - 1))?
                     } else {
                         name
                     }
+                    .trim()
                     .to_string(),
-                )?,
+                )),
                 is_lazy,
                 Expr::parse(ok!(args.first())?.to_string())?,
             )));
@@ -886,6 +887,7 @@ impl Expr {
                 ">=" => Operator::GreaterThanEq(has_lhs(2)?, token),
                 "&" => Operator::And(has_lhs(2)?, token),
                 "|" => Operator::Or(has_lhs(2)?, token),
+                "?" => Operator::Apply(has_lhs(2)?, true, token),
                 "::" => Operator::Access(has_lhs(2)?, token),
                 "as" => Operator::As(has_lhs(2)?, token),
                 "|>" => Operator::PipeLine(has_lhs(2)?, token),
@@ -1482,7 +1484,7 @@ impl Operator {
             Operator::As(lhs, rhs) => format!("{} as {}", lhs.format(), rhs.format()),
             Operator::Assign(lhs, rhs) => format!("{} := {}", lhs.format(), rhs.format()),
             Operator::PipeLine(lhs, rhs) => format!("{} |> {}", lhs.format(), rhs.format()),
-            Operator::Apply(lhs, true, rhs) => format!("{}! {}", lhs.format(), rhs.format()),
+            Operator::Apply(lhs, true, rhs) => format!("{} ? {}", lhs.format(), rhs.format()),
             Operator::Apply(lhs, false, rhs) => format!("{} {}", lhs.format(), rhs.format()),
             Operator::AssignAdd(lhs, rhs) => format!("{} += {}", lhs.format(), rhs.format()),
             Operator::AssignSub(lhs, rhs) => format!("{} -= {}", lhs.format(), rhs.format()),
