@@ -701,209 +701,158 @@ impl Expr {
 
     fn parse(source: &str) -> Result<Expr, Fault> {
         let token_list: Vec<String> = tokenize(source, &SPACE.to_vec())?;
-        let token = ok!(token_list.last())?.trim().to_string();
-        let token = if let Ok(n) = token.parse::<f64>() {
-            Expr::Value(Type::Number(n))
-        } else if let Ok(sig) = Signature::parse(&token) {
-            Expr::Value(Type::Signature(sig))
-        // Prefix operators
-        } else if token.starts_with("&") {
-            let token = remove!(token, "&");
-            Expr::Value(Type::Refer(token))
-        } else if token.starts_with("*") {
-            let token = remove!(token, "*");
-            Expr::Infix(Box::new(Operator::Derefer(Expr::parse(&token)?)))
-        } else if token.starts_with("!") {
-            let token = remove!(token, "!");
-            Expr::Infix(Box::new(Operator::Not(Expr::parse(&token)?)))
-        } else if token.starts_with("-") {
-            let token = remove!(token, "-");
-            Expr::Infix(Box::new(Operator::Sub(
-                Expr::Value(Type::Number(0.0)),
-                Expr::parse(&token)?,
-            )))
-        } else if token.starts_with("(") && token.ends_with(")") {
-            let token = trim!(token, "(", ")");
-            Expr::parse(&token)?
-        } else if token.starts_with("{") && token.ends_with("}") {
-            let token = trim!(token, "{", "}");
-            Expr::Block(Engine::parse(&token)?)
-        } else if token.starts_with("@{") && token.ends_with("}") {
-            let token = trim!(token, "@{", "}");
-            let mut result = Vec::new();
-            for i in tokenize(&token, &vec![','])? {
-                let splited = tokenize(&i, &vec![':'])?;
-                result.push((
-                    Expr::parse(ok!(splited.get(0))?)?,
-                    Expr::parse(ok!(splited.get(1))?)?,
-                ));
-            }
-            Expr::Struct(result)
-        } else if token.starts_with("[") && token.ends_with("]") {
-            let token = trim!(token, "[", "]");
-            let mut list = vec![];
-            for elm in tokenize(&token, &vec![','])? {
-                list.push(Expr::parse(&elm)?);
-            }
-            Expr::List(list)
-        } else if token.starts_with("\"") && token.ends_with("\"") {
-            let text = trim!(token, "\"", "\"");
-            Expr::Value(Type::Text(text_escape(text)))
-        // Text formating
-        } else if token.starts_with("f\"") && token.ends_with('"') {
-            let text = trim!(token, "f\"", "\"");
-            let splited = text_format(&text)?;
-            let mut result = Expr::Value(Type::Text(String::new()));
-            for i in splited {
-                if i.starts_with("{") && i.ends_with("}") {
-                    let i = trim!(i, "{", "}");
-                    result = Expr::Infix(Box::new(Operator::Add(
-                        result,
-                        Expr::Infix(Box::new(Operator::As(
-                            Expr::Block(Engine::parse(&i)?),
-                            Expr::Value(Type::Signature(Signature::Text)),
-                        ))),
-                    )));
-                } else {
-                    result = Expr::Infix(Box::new(Operator::Add(
-                        result,
-                        Expr::Value(Type::Text(text_escape(&i))),
-                    )));
-                }
-            }
-            result
-        // Functionize operator
-        } else if token.starts_with("`") && token.ends_with("`") {
-            let token = trim!(token, "`", "`");
-            let source = format!("λx.λy.(x {token} y)");
-            let expr = Expr::parse(&source)?;
-            if expr.format() != source {
-                return Err(Fault::Syntax);
-            }
-            expr
-        // Lambda abstract that original formula in the theory
-        } else if token.starts_with("λ") && token.contains(".") {
-            let token = remove!(token, "λ");
-            let (arg, body) = ok!(token.split_once("."))?;
-            Expr::Value(Type::Function(Function::UserDefined(
-                arg.to_string(),
-                Box::new(Expr::parse(body)?),
-            )))
-        // Lambda abstract using back-slash instead of lambda mark
-        } else if token.starts_with("\\") && token.contains(".") {
-            let token = remove!(token, "\\");
-            let (arg, body) = ok!(token.split_once("."))?;
-            Expr::Value(Type::Function(Function::UserDefined(
-                arg.to_string(),
-                Box::new(Expr::parse(body)?),
-            )))
-        // Imperative style syntactic sugar of lambda abstract
-        } else if token.starts_with("fn(") && token.contains("->") && token.ends_with(")") {
-            let token = trim!(token, "fn(", ")");
-            let (args, body) = ok!(token.split_once("->"))?;
-            let mut args: Vec<&str> = args.split(",").collect();
-            args.reverse();
-            let mut func = Expr::Value(Type::Function(Function::UserDefined(
-                ok!(args.first())?.trim().to_string(),
-                Box::new(Expr::Block(Engine::parse(&body.to_string())?)),
-            )));
-            // Currying
-            for arg in ok!(args.get(1..))? {
-                func = Expr::Value(Type::Function(Function::UserDefined(
-                    arg.trim().to_string(),
-                    Box::new(func),
-                )));
-            }
-            func
-        // Imperative style syntactic sugar of list access by index
-        } else if token.contains('[') && token.ends_with(']') {
-            let token = trim!(token, "", "]");
-            let (name, args) = ok!(token.split_once("["))?;
-            Expr::Infix(Box::new(Operator::Access(
-                Expr::parse(name.trim())?,
-                Expr::parse(args)?,
-            )))
-        // Imperative style syntactic sugar of function application
-        } else if token.contains('(') && token.ends_with(')') {
-            let token = trim!(token, "", ")");
-            let (name, args) = ok!(token.split_once("("))?;
-            let is_lazy = name.ends_with("?");
-            let args = tokenize(args, &vec![','])?;
-            let mut call = Expr::Infix(Box::new(Operator::Apply(
-                Expr::parse(if is_lazy { trim!(token, "", "?") } else { name })?,
-                is_lazy,
-                Expr::parse(ok!(args.first())?)?,
-            )));
-            for arg in ok!(args.get(1..))? {
-                call = Expr::Infix(Box::new(Operator::Apply(call, is_lazy, Expr::parse(arg)?)));
-            }
-            call
-        // Object-oriented style syntactic sugar of access operator
-        } else if token.matches(".").count() >= 1 {
-            let (obj, key) = ok!(token.rsplit_once("."))?;
-            Expr::Infix(Box::new(Operator::Access(
-                Expr::parse(obj)?,
-                Expr::Value(Type::Text(key.trim().to_string())),
-            )))
-        } else if token == "null" {
-            Expr::Value(Type::Null)
-        } else {
-            Expr::Value(Type::Symbol(token))
-        };
-
         if token_list.len() >= 2 {
-            let operator = ok!(token_list.get(token_list.len() - 2))?;
-            let has_lhs = |len: usize| {
-                Expr::parse(
-                    &ok!(token_list.get(..token_list.len() - len))?.join(&SPACE[0].to_string()),
-                )
-            };
-            Ok(Expr::Infix(Box::new(match operator.as_str() {
-                "+" => Operator::Add(has_lhs(2)?, token),
-                "-" => Operator::Sub(has_lhs(2)?, token),
-                "*" => Operator::Mul(has_lhs(2)?, token),
-                "/" => Operator::Div(has_lhs(2)?, token),
-                "%" => Operator::Mod(has_lhs(2)?, token),
-                "^" => Operator::Pow(has_lhs(2)?, token),
-                "==" => Operator::Equal(has_lhs(2)?, token),
-                "!=" => Operator::NotEq(has_lhs(2)?, token),
-                "<" => Operator::LessThan(has_lhs(2)?, token),
-                "<=" => Operator::LessThanEq(has_lhs(2)?, token),
-                ">" => Operator::GreaterThan(has_lhs(2)?, token),
-                ">=" => Operator::GreaterThanEq(has_lhs(2)?, token),
-                "&" => Operator::And(has_lhs(2)?, token),
-                "|" => Operator::Or(has_lhs(2)?, token),
-                "?" => Operator::Apply(has_lhs(2)?, true, token),
-                "::" => Operator::Access(has_lhs(2)?, token),
-                "as" => Operator::As(has_lhs(2)?, token),
-                "|>" => Operator::PipeLine(has_lhs(2)?, token),
-                ":=" => Operator::Assign(has_lhs(2)?, token),
-                "+=" => Operator::AssignAdd(has_lhs(2)?, token),
-                "-=" => Operator::AssignSub(has_lhs(2)?, token),
-                "*=" => Operator::AssignMul(has_lhs(2)?, token),
-                "/=" => Operator::AssignDiv(has_lhs(2)?, token),
-                "%=" => Operator::AssignMod(has_lhs(2)?, token),
-                "^=" => Operator::AssignPow(has_lhs(2)?, token),
-                "~" => Operator::To(has_lhs(2)?, token),
-                operator => {
-                    if operator.starts_with("`") && operator.ends_with("`") {
-                        let operator = operator[1..operator.len() - 1].to_string();
-                        Operator::Apply(
-                            Expr::Infix(Box::new(Operator::Apply(
-                                Expr::parse(&operator)?,
-                                false,
-                                has_lhs(2)?,
+            Ok(Expr::Infix(Box::new(Operator::parse(source)?)))
+        } else {
+            let token = ok!(token_list.last())?.trim().to_string();
+            Ok(if let Ok(n) = token.parse::<f64>() {
+                Expr::Value(Type::Number(n))
+            } else if let Ok(sig) = Signature::parse(&token) {
+                Expr::Value(Type::Signature(sig))
+            // Prefix operators
+            } else if token.starts_with("&") {
+                let token = remove!(token, "&");
+                Expr::Value(Type::Refer(token))
+            } else if token.starts_with("*") {
+                let token = remove!(token, "*");
+                Expr::Infix(Box::new(Operator::Derefer(Expr::parse(&token)?)))
+            } else if token.starts_with("!") {
+                let token = remove!(token, "!");
+                Expr::Infix(Box::new(Operator::Not(Expr::parse(&token)?)))
+            } else if token.starts_with("-") {
+                let token = remove!(token, "-");
+                Expr::Infix(Box::new(Operator::Sub(
+                    Expr::Value(Type::Number(0.0)),
+                    Expr::parse(&token)?,
+                )))
+            } else if token.starts_with("(") && token.ends_with(")") {
+                let token = trim!(token, "(", ")");
+                Expr::parse(&token)?
+            } else if token.starts_with("{") && token.ends_with("}") {
+                let token = trim!(token, "{", "}");
+                Expr::Block(Engine::parse(&token)?)
+            } else if token.starts_with("@{") && token.ends_with("}") {
+                let token = trim!(token, "@{", "}");
+                let mut result = Vec::new();
+                for i in tokenize(&token, &vec![','])? {
+                    let splited = tokenize(&i, &vec![':'])?;
+                    result.push((
+                        Expr::parse(ok!(splited.get(0))?)?,
+                        Expr::parse(ok!(splited.get(1))?)?,
+                    ));
+                }
+                Expr::Struct(result)
+            } else if token.starts_with("[") && token.ends_with("]") {
+                let token = trim!(token, "[", "]");
+                let mut list = vec![];
+                for elm in tokenize(&token, &vec![','])? {
+                    list.push(Expr::parse(&elm)?);
+                }
+                Expr::List(list)
+            } else if token.starts_with("\"") && token.ends_with("\"") {
+                let text = trim!(token, "\"", "\"");
+                Expr::Value(Type::Text(text_escape(text)))
+            // Text formating
+            } else if token.starts_with("f\"") && token.ends_with('"') {
+                let text = trim!(token, "f\"", "\"");
+                let splited = text_format(&text)?;
+                let mut result = Expr::Value(Type::Text(String::new()));
+                for i in splited {
+                    if i.starts_with("{") && i.ends_with("}") {
+                        let i = trim!(i, "{", "}");
+                        result = Expr::Infix(Box::new(Operator::Add(
+                            result,
+                            Expr::Infix(Box::new(Operator::As(
+                                Expr::Block(Engine::parse(&i)?),
+                                Expr::Value(Type::Signature(Signature::Text)),
                             ))),
-                            false,
-                            token,
-                        )
+                        )));
                     } else {
-                        Operator::Apply(has_lhs(1)?, false, token)
+                        result = Expr::Infix(Box::new(Operator::Add(
+                            result,
+                            Expr::Value(Type::Text(text_escape(&i))),
+                        )));
                     }
                 }
-            })))
-        } else {
-            Ok(token)
+                result
+            // Functionize operator
+            } else if token.starts_with("`") && token.ends_with("`") {
+                let token = trim!(token, "`", "`");
+                let source = format!("λx.λy.(x {token} y)");
+                let expr = Expr::parse(&source)?;
+                if expr.format() != source {
+                    return Err(Fault::Syntax);
+                }
+                expr
+            // Lambda abstract that original formula in the theory
+            } else if token.starts_with("λ") && token.contains(".") {
+                let token = remove!(token, "λ");
+                let (arg, body) = ok!(token.split_once("."))?;
+                Expr::Value(Type::Function(Function::UserDefined(
+                    arg.to_string(),
+                    Box::new(Expr::parse(body)?),
+                )))
+            // Lambda abstract using back-slash instead of lambda mark
+            } else if token.starts_with("\\") && token.contains(".") {
+                let token = remove!(token, "\\");
+                let (arg, body) = ok!(token.split_once("."))?;
+                Expr::Value(Type::Function(Function::UserDefined(
+                    arg.to_string(),
+                    Box::new(Expr::parse(body)?),
+                )))
+            // Imperative style syntactic sugar of lambda abstract
+            } else if token.starts_with("fn(") && token.contains("->") && token.ends_with(")") {
+                let token = trim!(token, "fn(", ")");
+                let (args, body) = ok!(token.split_once("->"))?;
+                let mut args: Vec<&str> = args.split(",").collect();
+                args.reverse();
+                let mut func = Expr::Value(Type::Function(Function::UserDefined(
+                    ok!(args.first())?.trim().to_string(),
+                    Box::new(Expr::Block(Engine::parse(&body.to_string())?)),
+                )));
+                // Currying
+                for arg in ok!(args.get(1..))? {
+                    func = Expr::Value(Type::Function(Function::UserDefined(
+                        arg.trim().to_string(),
+                        Box::new(func),
+                    )));
+                }
+                func
+            // Imperative style syntactic sugar of list access by index
+            } else if token.contains('[') && token.ends_with(']') {
+                let token = trim!(token, "", "]");
+                let (name, args) = ok!(token.split_once("["))?;
+                Expr::Infix(Box::new(Operator::Access(
+                    Expr::parse(name.trim())?,
+                    Expr::parse(args)?,
+                )))
+            // Imperative style syntactic sugar of function application
+            } else if token.contains('(') && token.ends_with(')') {
+                let token = trim!(token, "", ")");
+                let (name, args) = ok!(token.split_once("("))?;
+                let is_lazy = name.ends_with("?");
+                let args = tokenize(args, &vec![','])?;
+                let mut call = Expr::Infix(Box::new(Operator::Apply(
+                    Expr::parse(if is_lazy { trim!(token, "", "?") } else { name })?,
+                    is_lazy,
+                    Expr::parse(ok!(args.first())?)?,
+                )));
+                for arg in ok!(args.get(1..))? {
+                    call = Expr::Infix(Box::new(Operator::Apply(call, is_lazy, Expr::parse(arg)?)));
+                }
+                call
+            // Object-oriented style syntactic sugar of access operator
+            } else if token.matches(".").count() >= 1 {
+                let (obj, key) = ok!(token.rsplit_once("."))?;
+                Expr::Infix(Box::new(Operator::Access(
+                    Expr::parse(obj)?,
+                    Expr::Value(Type::Text(key.trim().to_string())),
+                )))
+            } else if token == "null" {
+                Expr::Value(Type::Null)
+            } else {
+                Expr::Value(Type::Symbol(token))
+            })
         }
     }
 
@@ -1408,6 +1357,59 @@ impl Operator {
                 Expr::List(vec![from.to_owned(), to.to_owned()]),
             )
             .eval(engine)?,
+        })
+    }
+
+    fn parse(source: &str) -> Result<Operator, Fault> {
+        let token_list: Vec<String> = tokenize(source, &SPACE.to_vec())?;
+        let token = Expr::parse(ok!(token_list.last())?)?;
+        let operator = ok!(token_list.get(ok!(token_list.len().checked_sub(2))?))?;
+        let has_lhs = |len: usize| {
+            Expr::parse(&ok!(token_list.get(..token_list.len() - len))?.join(&SPACE[0].to_string()))
+        };
+        Ok(match operator.as_str() {
+            "+" => Operator::Add(has_lhs(2)?, token),
+            "-" => Operator::Sub(has_lhs(2)?, token),
+            "*" => Operator::Mul(has_lhs(2)?, token),
+            "/" => Operator::Div(has_lhs(2)?, token),
+            "%" => Operator::Mod(has_lhs(2)?, token),
+            "^" => Operator::Pow(has_lhs(2)?, token),
+            "==" => Operator::Equal(has_lhs(2)?, token),
+            "!=" => Operator::NotEq(has_lhs(2)?, token),
+            "<" => Operator::LessThan(has_lhs(2)?, token),
+            "<=" => Operator::LessThanEq(has_lhs(2)?, token),
+            ">" => Operator::GreaterThan(has_lhs(2)?, token),
+            ">=" => Operator::GreaterThanEq(has_lhs(2)?, token),
+            "&" => Operator::And(has_lhs(2)?, token),
+            "|" => Operator::Or(has_lhs(2)?, token),
+            "?" => Operator::Apply(has_lhs(2)?, true, token),
+            "::" => Operator::Access(has_lhs(2)?, token),
+            "as" => Operator::As(has_lhs(2)?, token),
+            "|>" => Operator::PipeLine(has_lhs(2)?, token),
+            ":=" => Operator::Assign(has_lhs(2)?, token),
+            "+=" => Operator::AssignAdd(has_lhs(2)?, token),
+            "-=" => Operator::AssignSub(has_lhs(2)?, token),
+            "*=" => Operator::AssignMul(has_lhs(2)?, token),
+            "/=" => Operator::AssignDiv(has_lhs(2)?, token),
+            "%=" => Operator::AssignMod(has_lhs(2)?, token),
+            "^=" => Operator::AssignPow(has_lhs(2)?, token),
+            "~" => Operator::To(has_lhs(2)?, token),
+            operator => {
+                if operator.starts_with("`") && operator.ends_with("`") {
+                    let operator = operator[1..operator.len() - 1].to_string();
+                    Operator::Apply(
+                        Expr::Infix(Box::new(Operator::Apply(
+                            Expr::parse(&operator)?,
+                            false,
+                            has_lhs(2)?,
+                        ))),
+                        false,
+                        token,
+                    )
+                } else {
+                    Operator::Apply(has_lhs(1)?, false, token)
+                }
+            }
         })
     }
 
