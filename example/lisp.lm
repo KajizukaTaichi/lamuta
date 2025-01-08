@@ -8,7 +8,7 @@ const AST: struct = @{
         if (this.type == (sig as text))
             this.value
         else {
-            fault f"expected {sig} but it's {this.type}"
+            fault f"expected {sig} but {this.asText this} is {this.type}"
         }
     ),
     "asText": fn(this ->
@@ -244,7 +244,7 @@ let main = λ_.{
             let [scope, value] = it;
             print value.asText value, "\n";
         } else {
-            print "Error!\n";
+            print f"Error! {err}\n";
         }
     }
 };
