@@ -1,13 +1,13 @@
 load std;
 
-const specialForms: list = ["define", "if", "eval"];
+const specialForms: list = ["define", "if", "eval", "lambda"];
 const AST: struct = @{
     "type": null,
     "value": null,
     "get": fn(sig, this ->
-        if (this.type == (sig as text)) {
-            this.value as sig
-        } else {
+        if (this.type == (sig as text))
+            this.value
+        else {
             fault sig as text + ", " + this.type
         }
     ),
@@ -17,7 +17,8 @@ const AST: struct = @{
             "text" => "\"" + this.value + "\"",
             "symbol" => this.value,
             "bool" => { if (this.value == 1) "true" else "false" },
-            "list" => "\'(" + (join (map fn(x -> x.asText x) this.value) " ") + ")"
+            "list" => "\'(" + (join (map fn(x -> x.asText x) this.value) " ") + ")",
+            "function" => "<Function>",
         }
     )
 };
@@ -70,6 +71,21 @@ let evaluate = fn(e, p ->
                         },
                         "value": expr
                     })
+                },
+                "lambda" => {
+                    let [_, args, body] = code;
+                    let args = map (AST.get symbol) args.value;
+                    let funcObj = fn(args, body -> AST + @{
+                        "type": "function",
+                        "value": λl.{
+                            let funcScope = scope;
+                            for [name, value] in zip(args, l) {
+                                funcScope += @{ name: value }
+                            };
+                            evaluate funcScope body :: 1
+                        }
+                    });
+                    [scope, funcObj args body]
                 }
             }
         },
@@ -158,49 +174,49 @@ let tokenize = fn(source ->
 );
 
 let scope = @{
-    "+": @{
+    "+": AST + @{
         "type": "function",
         "value": λl.(AST + @{
             "type": "number",
             "value": reduce (`+`) (map (AST.get number) l)
         })
     },
-    "-": @{
+    "-": AST + @{
         "type": "function",
         "value": λl.(AST + @{
             "type": "number",
             "value": reduce (`-`) (map (AST.get number) l)
         })
     },
-    "*": @{
+    "*": AST + @{
         "type": "function",
         "value": λl.(AST + @{
             "type": "number",
             "value": reduce (`*`) (map (AST.get number) l)
         })
     },
-    "/": @{
+    "/": AST + @{
         "type": "function",
         "value": λl.(AST + @{
             "type": "number",
             "value": reduce (`/`) (map (AST.get number) l)
         })
     },
-    "%": @{
+    "%": AST + @{
         "type": "function",
         "value": λl.(AST + @{
             "type": "number",
             "value": reduce (`%`) (map (AST.get number) l)
         })
     },
-    "^": @{
+    "^": AST + @{
         "type": "function",
         "value": λl.(AST + @{
             "type": "number",
             "value": reduce (`^`) (map (AST.get number) l)
         })
     },
-    "=": @{
+    "=": AST + @{
         "type": "function",
         "value": λl.{
             let result = AST + @{ "type": "bool" };
@@ -208,7 +224,7 @@ let scope = @{
             result
         }
     },
-    "concat": @{
+    "concat": AST + @{
         "type": "function",
         "value": λl.(AST + @{
             "type": "text",
@@ -222,7 +238,7 @@ let main = λ_.{
     let flag = 1;
     while (flag == 1) {
         let entered = input ">>> ";
-        if (entered == "") {
+        if (entered == ":q") {
             let flag = 0;
         } else if evaluate(scope, parse entered) {
             let [scope, value] = it;
