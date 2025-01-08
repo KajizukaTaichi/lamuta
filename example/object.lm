@@ -4,10 +4,10 @@ const Fraction: struct = @{
     "asText": fn(this ->
         f"{this.numerator}/{this.denominator}"
     ),
-    "asNum": fn(this ->
+    "asNumber": fn(this ->
         this.numerator / this.denominator
     )
 };
 
 let hoge = Fraction + @{ "numerator": 2, "denominator": 5 };
-print hoge.asText hoge, " = ", hoge.asNum hoge;
+print hoge as text, " = ", hoge as number;
