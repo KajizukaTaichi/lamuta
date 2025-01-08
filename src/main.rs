@@ -729,7 +729,7 @@ impl Expr {
     fn parse(source: String) -> Result<Expr, Fault> {
         macro_rules! trim {
             ($token: expr, $top: expr, $end: expr) => {
-                ok!($token.get($top..$token.len() - $end))?.to_string()
+                ok!($token.get($top.len()..$token.len() - $end.len()))?.to_string()
             };
         }
 
@@ -762,13 +762,13 @@ impl Expr {
                 Expr::parse(token)?,
             )))
         } else if token.starts_with("(") && token.ends_with(")") {
-            let token = trim!(token, "(".len(), ")".len());
+            let token = trim!(token, "(", ")");
             Expr::parse(token)?
         } else if token.starts_with("{") && token.ends_with("}") {
-            let token = trim!(token, "{".len(), "}".len());
+            let token = trim!(token, "{", "}");
             Expr::Block(Engine::parse(token)?)
         } else if token.starts_with("@{") && token.ends_with("}") {
-            let token = trim!(token, "@{".len(), "}".len());
+            let token = trim!(token, "@{", "}");
             let mut result = Vec::new();
             for i in tokenize(token.clone(), vec![','])? {
                 let splited = tokenize(i, vec![':'])?;
@@ -779,20 +779,40 @@ impl Expr {
             }
             Expr::Struct(result)
         } else if token.starts_with("[") && token.ends_with("]") {
-            let token = trim!(token, "[".len(), "]".len());
+            let token = trim!(token, "[", "]");
             let mut list = vec![];
             for elm in tokenize(token, vec![','])? {
                 list.push(Expr::parse(elm.trim().to_string())?);
             }
             Expr::List(list)
-        } else if (token.starts_with('"') && token.ends_with('"'))
-            || (token.starts_with("'") && token.ends_with("'"))
-        {
-            let text = ok!(token.get(1..token.len() - 1))?.to_string();
+        } else if token.starts_with("\"") && token.ends_with("\"") {
+            let text = trim!(token, "\"", "\"");
             Expr::Value(Type::Text(text_escape(text)))
+        } else if token.starts_with("f\"") && token.ends_with('"') {
+            let text = trim!(token, "f\"", "\"");
+            let splited = tokenize(text, vec!['$'])?;
+            let mut result = Expr::Value(Type::Text(String::new()));
+            for i in splited {
+                if i.starts_with("{") && i.ends_with("}") {
+                    let i = trim!(i, "{", "}");
+                    result = Expr::Infix(Box::new(Operator::Add(
+                        result,
+                        Expr::Infix(Box::new(Operator::As(
+                            Expr::parse(i)?,
+                            Expr::Value(Type::Signature(Signature::Text)),
+                        ))),
+                    )));
+                } else {
+                    result = Expr::Infix(Box::new(Operator::Add(
+                        result,
+                        Expr::Value(Type::Text(text_escape(i))),
+                    )));
+                }
+            }
+            result
         // Functionize operator
         } else if token.starts_with("`") && token.ends_with("`") {
-            let token = trim!(token, "`".len(), "`".len());
+            let token = trim!(token, "`", "`");
             let source = format!("λx.λy.(x {token} y)");
             let expr = Expr::parse(source.clone())?;
             if expr.format() != source {
@@ -817,7 +837,7 @@ impl Expr {
             )))
         // Imperative style syntactic sugar of lambda abstract
         } else if token.starts_with("fn(") && token.contains("->") && token.ends_with(")") {
-            let token = trim!(token, "fn(".len(), ")".len());
+            let token = trim!(token, "fn(", ")");
             let (args, body) = ok!(token.split_once("->"))?;
             let mut args: Vec<&str> = args.split(",").collect();
             args.reverse();
@@ -842,7 +862,7 @@ impl Expr {
             )))
         // Imperative style syntactic sugar of list access by index
         } else if token.contains('[') && token.ends_with(']') {
-            let token = trim!(token, 0, "]".len());
+            let token = trim!(token, "", "]");
             let (name, args) = ok!(token.split_once("["))?;
             Expr::Infix(Box::new(Operator::Access(
                 Expr::Value(Type::Symbol(name.trim().to_string())),
@@ -850,13 +870,13 @@ impl Expr {
             )))
         // Imperative style syntactic sugar of function application
         } else if token.contains('(') && token.ends_with(')') {
-            let token = trim!(token, 0, ")".len());
+            let token = trim!(token, "", ")");
             let (name, args) = ok!(token.split_once("("))?;
             let is_lazy = name.ends_with("?");
             let args = tokenize(args.to_string(), vec![','])?;
             let mut call = Expr::Infix(Box::new(Operator::Apply(
                 Expr::Value(Type::Symbol(if is_lazy {
-                    trim!(token, 0, "?".len())
+                    trim!(token, "", "?")
                 } else {
                     name.to_string()
                 })),
