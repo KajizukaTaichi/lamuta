@@ -312,7 +312,7 @@ impl Engine {
     }
 
     fn alloc(&mut self, name: &String, value: &Type) -> Result<(), Fault> {
-        if self.protect.contains(name) {
+        if self.is_protect(name) {
             return Err(Fault::AccessDenied);
         }
         self.env.insert(name.clone(), value.clone());
@@ -320,7 +320,7 @@ impl Engine {
     }
 
     fn free(&mut self, name: &String) -> Result<(), Fault> {
-        if self.protect.contains(name) {
+        if self.is_protect(name) {
             return Err(Fault::AccessDenied);
         }
         ok!(self.env.shift_remove(name), Fault::Refer(name.to_string()))?;
@@ -328,9 +328,13 @@ impl Engine {
     }
 
     fn add_protect(&mut self, name: &String) {
-        if !self.protect.contains(name) {
+        if !self.is_protect(name) {
             self.protect.push(name.clone());
         }
+    }
+
+    fn is_protect(&mut self, name: &String) -> bool {
+        self.protect.contains(name)
     }
 }
 
