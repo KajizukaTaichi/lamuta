@@ -86,3 +86,26 @@ macro_rules! index_check {
         }
     };
 }
+
+#[macro_export]
+macro_rules! repl_print {
+    ($color: ident, $value: expr) => {
+        println!("{navi} {}", $value, navi = "=>".$color())
+    };
+}
+
+#[macro_export]
+macro_rules! fault {
+    ($e: expr) => {
+        repl_print!(red, format!("Fault: {}", $e))
+    };
+}
+
+#[macro_export]
+macro_rules! crash {
+    ($result: expr) => {
+        if let Err(e) = $result {
+            eprintln!("{}: {e}", "Fault".red())
+        }
+    };
+}
