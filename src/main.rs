@@ -1407,7 +1407,7 @@ impl Operator {
             Operator::As(lhs, rhs) => {
                 let lhs = lhs.eval(engine)?;
                 let rhs = rhs.eval(engine)?;
-                lhs.cast(rhs.get_signature()?)?
+                lhs.cast(&rhs.get_signature()?, engine)?
             }
             Operator::Apply(lhs, is_lazy, rhs) => {
                 let lhs = lhs.eval(engine)?;
@@ -1572,7 +1572,7 @@ enum Type {
 }
 
 impl Type {
-    fn cast(&self, sig: Signature) -> Result<Type, Fault> {
+    fn cast(&self, sig: &Signature, engine: &mut Engine) -> Result<Type, Fault> {
         let err = Err(Fault::Cast(self.clone(), sig.clone()));
         Ok(match sig {
             Signature::Number => Type::Number(match self {
@@ -1585,15 +1585,38 @@ impl Type {
                     }
                 }
                 Type::Null => 0.0,
+                Type::Struct(st) => {
+                    if let Some(Type::Function(as_number)) = st.get("asNumber") {
+                        Operator::Apply(
+                            Expr::Value(Type::Function(as_number.clone())),
+                            false,
+                            Expr::Value(self.clone()),
+                        )
+                        .eval(engine)?
+                        .get_number()?
+                    } else {
+                        return err;
+                    }
+                }
                 _ => return err,
             }),
-            Signature::Symbol => Type::Symbol(self.format()),
             Signature::Text => Type::Text(match self {
                 Type::Symbol(s) | Type::Text(s) => s.to_string(),
-                Type::Number(n) => n.to_string(),
-                Type::Signature(s) => s.format(),
                 Type::Null => String::new(),
-                _ => return err,
+                Type::Struct(st) => {
+                    if let Some(Type::Function(as_text)) = st.get("asText") {
+                        Operator::Apply(
+                            Expr::Value(Type::Function(as_text.clone())),
+                            false,
+                            Expr::Value(self.clone()),
+                        )
+                        .eval(engine)?
+                        .get_text()?
+                    } else {
+                        self.format()
+                    }
+                }
+                _ => self.format(),
             }),
             Signature::List => Type::List(match self {
                 Type::List(list) => list.to_owned(),
