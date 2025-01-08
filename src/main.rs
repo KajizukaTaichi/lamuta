@@ -727,6 +727,12 @@ impl Expr {
     }
 
     fn parse(source: String) -> Result<Expr, Fault> {
+        macro_rules! trim {
+            ($token: expr, $top: expr, $end: expr) => {
+                ok!($token.get($top..$token.len() - $end))?.to_string()
+            };
+        }
+
         let token_list: Vec<String> = tokenize(source, SPACE.to_vec())?;
         let token = ok!(token_list.last())?.trim().to_string();
         let token = if let Ok(n) = token.parse::<f64>() {
@@ -749,14 +755,14 @@ impl Expr {
                 Expr::Value(Type::Number(0.0)),
                 Expr::parse(token)?,
             )))
-        } else if token.starts_with('(') && token.ends_with(')') {
-            let token = ok!(token.get(1..token.len() - 1))?.to_string();
+        } else if token.starts_with("(") && token.ends_with(")") {
+            let token = trim!(token, "(".len(), ")".len());
             Expr::parse(token)?
-        } else if token.starts_with('{') && token.ends_with('}') {
-            let token = ok!(token.get(1..token.len() - 1))?.to_string();
+        } else if token.starts_with("{") && token.ends_with("}") {
+            let token = trim!(token, "{".len(), "}".len());
             Expr::Block(Engine::parse(token)?)
-        } else if token.starts_with("@{") && token.ends_with('}') {
-            let token = ok!(token.get(2..token.len() - 1))?.to_string();
+        } else if token.starts_with("@{") && token.ends_with("}") {
+            let token = trim!(token, "@{".len(), "}".len());
             let mut result = Vec::new();
             for i in tokenize(token.clone(), vec![','])? {
                 let splited = tokenize(i, vec![':'])?;
@@ -766,8 +772,8 @@ impl Expr {
                 ));
             }
             Expr::Struct(result)
-        } else if token.starts_with('[') && token.ends_with(']') {
-            let token = ok!(token.get(1..token.len() - 1))?.to_string();
+        } else if token.starts_with("[") && token.ends_with("]") {
+            let token = trim!(token, "[".len(), "]".len());
             let mut list = vec![];
             for elm in tokenize(token, vec![','])? {
                 list.push(Expr::parse(elm.trim().to_string())?);
@@ -780,7 +786,7 @@ impl Expr {
             Expr::Value(Type::Text(text_escape(text)))
         // Functionize operator
         } else if token.starts_with("`") && token.ends_with("`") {
-            let token = ok!(token.get(1..token.len() - 1))?.trim().to_string();
+            let token = trim!(token, "`".len(), "`".len());
             let source = format!("λx.λy.(x {token} y)");
             let expr = Expr::parse(source.clone())?;
             if expr.format() != source {
@@ -805,8 +811,7 @@ impl Expr {
             )))
         // Imperative style syntactic sugar of lambda abstract
         } else if token.starts_with("fn(") && token.contains("->") && token.ends_with(")") {
-            let token = token.replacen("fn(", "", 1);
-            let token = ok!(token.get(..token.len() - 1))?.to_string();
+            let token = trim!(token, "fn(".len(), ")".len());
             let (args, body) = ok!(token.split_once("->"))?;
             let mut args: Vec<&str> = args.split(",").collect();
             args.reverse();
@@ -831,7 +836,7 @@ impl Expr {
             )))
         // Imperative style syntactic sugar of list access by index
         } else if token.contains('[') && token.ends_with(']') {
-            let token = ok!(token.get(..token.len() - 1))?.to_string();
+            let token = trim!(token, 0, "]".len());
             let (name, args) = ok!(token.split_once("["))?;
             Expr::Infix(Box::new(Operator::Access(
                 Expr::Value(Type::Symbol(name.trim().to_string())),
@@ -839,7 +844,7 @@ impl Expr {
             )))
         // Imperative style syntactic sugar of function application
         } else if token.contains('(') && token.ends_with(')') {
-            let token = ok!(token.get(..token.len() - 1))?.to_string();
+            let token = trim!(token, 0, ")".len());
             let (name, args) = ok!(token.split_once("("))?;
             let is_lazy = name.ends_with("?");
             let args = tokenize(args.to_string(), vec![','])?;
