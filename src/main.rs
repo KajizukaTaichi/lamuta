@@ -790,7 +790,7 @@ impl Expr {
             Expr::Value(Type::Text(text_escape(text)))
         } else if token.starts_with("f\"") && token.ends_with('"') {
             let text = trim!(token, "f\"", "\"");
-            let splited = tokenize(text, vec!['$'])?;
+            let splited = text_format(text)?;
             let mut result = Expr::Value(Type::Text(String::new()));
             for i in splited {
                 if i.starts_with("{") && i.ends_with("}") {
@@ -798,7 +798,7 @@ impl Expr {
                     result = Expr::Infix(Box::new(Operator::Add(
                         result,
                         Expr::Infix(Box::new(Operator::As(
-                            Expr::parse(i)?,
+                            Expr::Block(Engine::parse(i)?),
                             Expr::Value(Type::Signature(Signature::Text)),
                         ))),
                     )));
@@ -1874,7 +1874,7 @@ fn tokenize(input: String, delimiter: Vec<char>) -> Result<Vec<String>, Fault> {
                 }
                 ')' | '}' | ']' if !in_quote => {
                     current_token.push(c);
-                    if in_parentheses > 0 {
+                    if in_parentheses != 0 {
                         in_parentheses -= 1;
                     } else {
                         return Err(Fault::Syntax);
@@ -1906,6 +1906,64 @@ fn tokenize(input: String, delimiter: Vec<char>) -> Result<Vec<String>, Fault> {
 
     // Syntax error check
     if is_escape || in_quote || in_parentheses != 0 {
+        return Err(Fault::Syntax);
+    }
+    if !current_token.is_empty() {
+        tokens.push(current_token.clone());
+        current_token.clear();
+    }
+    Ok(tokens)
+}
+
+fn text_format(input: String) -> Result<Vec<String>, Fault> {
+    let mut tokens: Vec<String> = Vec::new();
+    let mut current_token = String::new();
+    let mut in_parentheses: usize = 0;
+    let mut is_escape = false;
+
+    for c in input.chars() {
+        if is_escape {
+            current_token.push(match c {
+                'n' => '\n',
+                't' => '\t',
+                'r' => '\r',
+                _ => c,
+            });
+            is_escape = false;
+        } else {
+            match c {
+                '{' => {
+                    if in_parentheses == 0 {
+                        tokens.push(current_token.clone());
+                        current_token = c.to_string();
+                    } else {
+                        current_token.push(c)
+                    }
+                    in_parentheses += 1;
+                }
+                '}' => {
+                    current_token.push(c);
+                    if in_parentheses != 0 {
+                        in_parentheses -= 1;
+                    } else {
+                        return Err(Fault::Syntax);
+                    }
+                    if in_parentheses == 0 {
+                        tokens.push(current_token.clone());
+                        current_token.clear();
+                    }
+                }
+                '\\' => {
+                    current_token.push(c);
+                    is_escape = true;
+                }
+                _ => current_token.push(c),
+            }
+        }
+    }
+
+    // Syntax error check
+    if is_escape || in_parentheses != 0 {
         return Err(Fault::Syntax);
     }
     if !current_token.is_empty() {
