@@ -493,7 +493,7 @@ impl Statement {
                 Ok(Statement::Let(
                     Expr::parse(name)?,
                     false,
-                    Some(ok!(Signature::parse(sig))?),
+                    Some(Signature::parse(sig)?),
                     Expr::parse(code)?,
                 ))
             } else {
@@ -511,7 +511,7 @@ impl Statement {
             Ok(Statement::Let(
                 Expr::parse(name)?,
                 true,
-                Some(ok!(Signature::parse(sig))?),
+                Some(Signature::parse(sig)?),
                 Expr::parse(code)?,
             ))
         } else if code.starts_with("if") {
@@ -704,7 +704,7 @@ impl Expr {
         let token = ok!(token_list.last())?.trim().to_string();
         let token = if let Ok(n) = token.parse::<f64>() {
             Expr::Value(Type::Number(n))
-        } else if let Some(sig) = Signature::parse(&token) {
+        } else if let Ok(sig) = Signature::parse(&token) {
             Expr::Value(Type::Signature(sig))
         // Prefix operators
         } else if token.starts_with("&") {
@@ -1649,7 +1649,13 @@ impl Type {
             Type::List(_) => Signature::List,
             Type::Signature(_) => Signature::Signature,
             Type::Function(_) => Signature::Function,
-            Type::Struct(_) => Signature::Struct,
+            Type::Struct(st) => {
+                if let Some(r#type) = st.get("type") {
+                    r#type.get_signature().unwrap_or(Signature::Struct)
+                } else {
+                    Signature::Struct
+                }
+            }
             Type::Null => Signature::Symbol,
         }
     }
@@ -1739,12 +1745,13 @@ enum Signature {
     Function,
     Signature,
     Struct,
+    UserDefined(String),
 }
 
 impl Signature {
-    fn parse(token: &str) -> Option<Signature> {
+    fn parse(token: &str) -> Result<Signature, Fault> {
         let token = token.trim();
-        Some(if token == "number" {
+        Ok(if token == "number" {
             Signature::Number
         } else if token == "symbol" {
             Signature::Symbol
@@ -1760,13 +1767,25 @@ impl Signature {
             Signature::Signature
         } else if token == "struct" {
             Signature::Struct
+        } else if token.starts_with("#") {
+            Signature::UserDefined(trim!(token, "#", "").to_string())
         } else {
-            return None;
+            return Err(Fault::Syntax);
         })
     }
 
     fn format(&self) -> String {
-        format!("{self:?}").to_lowercase()
+        match self {
+            Signature::Number => "number".to_string(),
+            Signature::Symbol => "symbol".to_string(),
+            Signature::Text => "text".to_string(),
+            Signature::Refer => "refer".to_string(),
+            Signature::List => "list".to_string(),
+            Signature::Function => "function".to_string(),
+            Signature::Signature => "signature".to_string(),
+            Signature::Struct => "struct".to_string(),
+            Signature::UserDefined(s) => format!("#{s}"),
+        }
     }
 }
 
