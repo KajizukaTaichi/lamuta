@@ -8,16 +8,19 @@ const AST: struct = @{
         if (this.type == (sig as text))
             this.value
         else {
-            fault f"expected {sig} but {this.asText this} is {this.type}"
+            fault f"expected {sig} but {this as text} is {this.type}"
         }
     ),
     "asText": fn(this ->
         match this.type {
             "number" => this.value as text,
-            "text" => "\"" + this.value + "\"",
+            "text" => f"\"{this.value}\"",
             "symbol" => this.value,
             "bool" => { if (this.value == 1) "true" else "false" },
-            "list" => "\'(" + (join (map fn(x -> x.asText x) this.value) " ") + ")",
+            "list" => {
+                let inner = join (map fn(x -> x as text) this.value) " ";
+                f"\'({inner})"
+            },
             "function" => "<Function>"
         }
     )
@@ -242,7 +245,7 @@ let main = λ_.{
             let flag = 0;
         } else if evaluate(scope, parse entered) {
             let [scope, value] = it;
-            print value.asText value, "\n";
+            print value as text, "\n";
         } else {
             print f"Error! {err}\n";
         }
