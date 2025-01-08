@@ -55,14 +55,6 @@ fn main() {
     let cli = Cli::parse();
     let mut engine = Engine::new();
 
-    macro_rules! crash {
-        ($result: expr) => {
-            if let Err(e) = $result {
-                eprintln!("{}: {e}", "Fault".red())
-            }
-        };
-    }
-
     if let (Some(args), _) | (_, Some(args)) = (cli.args_position, cli.args_option) {
         crash!(engine.alloc(
             &"cmdLineArgs".to_string(),
@@ -81,17 +73,6 @@ fn main() {
         println!("{title} {VERSION}", title = "Lamuta".blue().bold());
         let mut rl = DefaultEditor::new().unwrap();
         let mut session = 1;
-
-        macro_rules! repl_print {
-            ($color: ident, $value: expr) => {
-                println!("{navi} {}", $value, navi = "=>".$color())
-            };
-        }
-        macro_rules! fault {
-            ($e: expr) => {
-                repl_print!(red, format!("Fault: {}", $e))
-            };
-        }
 
         loop {
             match rl.readline(&format!("[{session:0>3}]> ")) {
