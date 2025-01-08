@@ -7,14 +7,14 @@ const Animal: #Animal = @{
     )
 };
 
-const Cat: #Cat = Animal + @{
-    "class": #Cat,
-    "voice": "meow"
-};
-
 const Dog: #Dog = Animal + @{
     "class": #Dog,
     "voice": "bark"
+};
+
+const Cat: #Cat = Animal + @{
+    "class": #Cat,
+    "voice": "meow"
 };
 
 let pochi = Dog + @{ "name": "Pochi" };
