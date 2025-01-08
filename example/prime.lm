@@ -19,5 +19,5 @@ print "Prime Check\n";
 let flag = 1;
 while (flag == 1) {
     let num = input ">>> " as number;
-    print num, " is ", { if isPrime(num) it else err }, "\n";
+    print f"{num} is { if isPrime(num) it else err }\n";
 }
