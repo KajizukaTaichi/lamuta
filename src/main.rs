@@ -1873,7 +1873,9 @@ fn text_format(input: &str) -> Result<Vec<String>, Fault> {
             match c {
                 '{' => {
                     if in_parentheses == 0 {
-                        tokens.push(current_token.clone());
+                        if !current_token.is_empty() {
+                            tokens.push(current_token.clone());
+                        }
                         current_token = c.to_string();
                     } else {
                         current_token.push(c)
@@ -1888,7 +1890,9 @@ fn text_format(input: &str) -> Result<Vec<String>, Fault> {
                         return Err(Fault::Syntax);
                     }
                     if in_parentheses == 0 {
-                        tokens.push(current_token.clone());
+                        if !current_token.is_empty() {
+                            tokens.push(current_token.clone());
+                        }
                         current_token.clear();
                     }
                 }
