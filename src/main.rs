@@ -733,6 +733,12 @@ impl Expr {
             };
         }
 
+        macro_rules! remove {
+            ($token: expr, $to_remove: expr) => {
+                $token.replacen($to_remove, "", 1)
+            };
+        }
+
         let token_list: Vec<String> = tokenize(source, SPACE.to_vec())?;
         let token = ok!(token_list.last())?.trim().to_string();
         let token = if let Ok(n) = token.parse::<f64>() {
@@ -741,16 +747,16 @@ impl Expr {
             Expr::Value(Type::Signature(sig))
         // Prefix operators
         } else if token.starts_with("&") {
-            let token = token.replacen("&", "", 1);
+            let token = remove!(token, "&");
             Expr::Value(Type::Refer(token))
         } else if token.starts_with("*") {
-            let token = token.replacen("*", "", 1);
+            let token = remove!(token, "*");
             Expr::Infix(Box::new(Operator::Derefer(Expr::parse(token)?)))
         } else if token.starts_with("!") {
-            let token = token.replacen("!", "", 1);
+            let token = remove!(token, "!");
             Expr::Infix(Box::new(Operator::Not(Expr::parse(token)?)))
         } else if token.starts_with("-") {
-            let token = token.replacen("-", "", 1);
+            let token = remove!(token, "-");
             Expr::Infix(Box::new(Operator::Sub(
                 Expr::Value(Type::Number(0.0)),
                 Expr::parse(token)?,
@@ -794,16 +800,16 @@ impl Expr {
             }
             expr
         // Lambda abstract that original formula in the theory
-        } else if token.starts_with('λ') && token.contains('.') {
-            let token = token.replacen("λ", "", 1);
+        } else if token.starts_with("λ") && token.contains(".") {
+            let token = remove!(token, "λ");
             let (arg, body) = ok!(token.split_once("."))?;
             Expr::Value(Type::Function(Function::UserDefined(
                 arg.to_string(),
                 Box::new(Expr::parse(body.to_string())?),
             )))
         // Lambda abstract using back-slash instead of lambda mark
-        } else if token.starts_with('\\') && token.contains('.') {
-            let token = token.replacen('\\', "", 1);
+        } else if token.starts_with("\\") && token.contains(".") {
+            let token = remove!(token, "\\");
             let (arg, body) = ok!(token.split_once("."))?;
             Expr::Value(Type::Function(Function::UserDefined(
                 arg.to_string(),
