@@ -2,7 +2,7 @@ const Fraction: struct = @{
     "numerator": 0,
     "denominator": 1,
     "asText": fn(this ->
-        (this.numerator as text) + "/" + (this.denominator as text)
+        f"{this.numerator}/{this.denominator}"
     ),
     "asNum": fn(this ->
         this.numerator / this.denominator
