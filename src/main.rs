@@ -385,7 +385,9 @@ impl Engine {
     }
 
     fn add_protect(&mut self, name: &String) {
-        self.protect.push(name.clone());
+        if !self.protect.contains(name) {
+            self.protect.push(name.clone());
+        }
     }
 }
 
