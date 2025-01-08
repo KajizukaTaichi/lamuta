@@ -849,15 +849,11 @@ impl Expr {
             let is_lazy = name.ends_with("?");
             let args = tokenize(args.to_string(), vec![','])?;
             let mut call = Expr::Infix(Box::new(Operator::Apply(
-                Expr::Value(Type::Symbol(
-                    if is_lazy {
-                        ok!(name.get(..name.len() - 1))?
-                    } else {
-                        name
-                    }
-                    .trim()
-                    .to_string(),
-                )),
+                Expr::Value(Type::Symbol(if is_lazy {
+                    trim!(token, 0, "?".len())
+                } else {
+                    name.to_string()
+                })),
                 is_lazy,
                 Expr::parse(ok!(args.first())?.to_string())?,
             )));
