@@ -93,23 +93,28 @@ fn main() {
     let cli = Cli::parse();
     let mut engine = Engine::new();
 
+    macro_rules! crash {
+        ($result: expr) => {
+            if let Err(e) = $result {
+                eprintln!("{}: {e}", "Fault".red())
+            }
+        };
+    }
+
     if let (Some(args), _) | (_, Some(args)) = (cli.args_position, cli.args_option) {
-        engine.env.insert(
-            "cmdLineArgs".to_string(),
-            Type::List(args.iter().map(|i| Type::Text(i.to_owned())).collect()),
-        );
+        crash!(engine.alloc(
+            &"cmdLineArgs".to_string(),
+            &Type::List(args.iter().map(|i| Type::Text(i.to_owned())).collect()),
+        ));
     }
 
     if let Some(file) = cli.file {
-        if let Err(e) = Operator::Apply(
+        crash!(Operator::Apply(
             Expr::Value(Type::Symbol("load".to_string())),
             false,
             Expr::Value(Type::Text(file)),
         )
-        .eval(&mut engine)
-        {
-            eprintln!("{}: {e}", "Fault".red())
-        }
+        .eval(&mut engine))
     } else {
         println!("{title} {VERSION}", title = "Lamuta".blue().bold());
         let mut rl = DefaultEditor::new().unwrap();
@@ -175,13 +180,7 @@ impl Engine {
                     "free".to_string(),
                     Type::Function(Function::BuiltIn(|name, engine| {
                         let name = &name.get_refer()?;
-                        if engine.protect.contains(name) {
-                            return Err(Fault::AccessDenied);
-                        }
-                        ok!(
-                            engine.env.shift_remove(name),
-                            Fault::Refer(name.to_string())
-                        )?;
+                        engine.free(name)?;
                         Ok(Type::Null)
                     })),
                 ),
@@ -374,6 +373,14 @@ impl Engine {
             return Err(Fault::AccessDenied);
         }
         self.env.insert(name.clone(), value.clone());
+        Ok(())
+    }
+
+    fn free(&mut self, name: &String) -> Result<(), Fault> {
+        if self.protect.contains(name) {
+            return Err(Fault::AccessDenied);
+        }
+        ok!(self.env.shift_remove(name), Fault::Refer(name.to_string()))?;
         Ok(())
     }
 
