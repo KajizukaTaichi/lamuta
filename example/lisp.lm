@@ -18,7 +18,7 @@ const AST: struct = @{
             "symbol" => this.value,
             "bool" => { if (this.value == 1) "true" else "false" },
             "list" => "\'(" + (join (map fn(x -> x.asText x) this.value) " ") + ")",
-            "function" => "<Function>",
+            "function" => "<Function>"
         }
     )
 };
