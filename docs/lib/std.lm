@@ -64,4 +64,12 @@ const find: function = λt.λq.{
     if (result == null) { fault } else result
 };
 
+const zip: function = λa.λb.{
+    let result = [];
+    for i in (0 ~ len(a)) {
+        result += [[a[i], b[i]]]
+    };
+    result
+};
+
 const compose: function = λf.λg.λx.f(g(x));
