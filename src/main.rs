@@ -60,7 +60,7 @@ macro_rules! some {
 
 macro_rules! trim {
     ($token: expr, $top: expr, $end: expr) => {
-        ok!($token.get($top.len()..$token.len() - $end.len()))?.to_string()
+        ok!($token.get($top.len()..$token.len() - $end.len()))?
     };
 }
 
@@ -809,7 +809,7 @@ impl Expr {
         // Text formating
         } else if token.starts_with("f\"") && token.ends_with('"') {
             let text = trim!(token, "f\"", "\"");
-            let splited = text_format(text)?;
+            let splited = text_format(&text)?;
             let mut result = Expr::Value(Type::Text(String::new()));
             for i in splited {
                 if i.starts_with("{") && i.ends_with("}") {
@@ -824,7 +824,7 @@ impl Expr {
                 } else {
                     result = Expr::Infix(Box::new(Operator::Add(
                         result,
-                        Expr::Value(Type::Text(text_escape(i))),
+                        Expr::Value(Type::Text(text_escape(&i))),
                     )));
                 }
             }
@@ -873,11 +873,11 @@ impl Expr {
             }
             func
         // Object-oriented style syntactic sugar of access operator
-        } else if tokenize(&token, &vec!['.'])?.len() >= 2 {
-            let args = tokenize(&token, &vec!['.'])?;
+        } else if token.matches(".").count() >= 1 {
+            let (obj, key) = ok!(token.rsplit_once("."))?;
             Expr::Infix(Box::new(Operator::Access(
-                Expr::parse(&ok!(args.get(0..args.len() - 1))?.join("."))?,
-                Expr::Value(Type::Text(ok!(args.last())?.trim().to_string())),
+                Expr::parse(obj)?,
+                Expr::Value(Type::Text(key.trim().to_string())),
             )))
         // Imperative style syntactic sugar of list access by index
         } else if token.contains('[') && token.ends_with(']') {
@@ -895,7 +895,7 @@ impl Expr {
             let args = tokenize(args, &vec![','])?;
             let mut call = Expr::Infix(Box::new(Operator::Apply(
                 Expr::Value(Type::Symbol(if is_lazy {
-                    trim!(token, "", "?")
+                    trim!(token, "", "?").to_string()
                 } else {
                     name.to_string()
                 })),
@@ -1931,7 +1931,7 @@ fn tokenize(input: &str, delimiter: &Vec<char>) -> Result<Vec<String>, Fault> {
     Ok(tokens)
 }
 
-fn text_format(input: String) -> Result<Vec<String>, Fault> {
+fn text_format(input: &str) -> Result<Vec<String>, Fault> {
     let mut tokens: Vec<String> = Vec::new();
     let mut current_token = String::new();
     let mut in_parentheses: usize = 0;
@@ -1989,7 +1989,7 @@ fn text_format(input: String) -> Result<Vec<String>, Fault> {
     Ok(tokens)
 }
 
-fn text_escape(text: String) -> String {
+fn text_escape(text: &str) -> String {
     let mut result = String::new();
     let mut is_escape = false;
     for c in text.chars() {
