@@ -1,14 +1,26 @@
-const Fraction: #Fraction = @{
-    "numerator": 0,
-    "class": #Fraction,
-    "denominator": 1,
+const Animal: #Animal = @{
+    "class": #Animal,
+    "name": null,
+    "voice": null,
     "asText": fn(this ->
-        f"{this.numerator}/{this.denominator}"
-    ),
-    "asNumber": fn(this ->
-        this.numerator / this.denominator
+        f"{this.name} <<< {this.voice}, {this.voice}!"
     )
 };
 
-let hoge = Fraction + @{ "numerator": 2, "denominator": 5 };
-print hoge as text, " = ", hoge as number;
+const Cat: #Cat = Animal + @{
+    "class": #Cat,
+    "voice": "meow"
+};
+
+const Dog: #Dog = Animal + @{
+    "class": #Dog,
+    "voice": "bark"
+};
+
+let pochi = Dog + @{ "name": "Pochi" };
+let kuro = Dog + @{ "name": "Kuro" };
+print f"{pochi}\n", f"{kuro}\n";
+
+let mike = Cat + @{ "name": "Mike" };
+let tama = Cat + @{ "name": "Tama" };
+print f"{mike}\n", f"{tama}\n";
