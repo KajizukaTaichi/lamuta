@@ -61,7 +61,10 @@ const find: function = λt.λq.{
         };
         index += 1
     };
-    if (result == null) { fault } else result
+    if (result == null) {
+        fault
+    } else
+        result
 };
 
 const zip: function = λa.λb.{
