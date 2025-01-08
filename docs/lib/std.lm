@@ -1,7 +1,7 @@
 const len: function = λl.{
     let i = 0;
     for _ in (l as list) {
-        let i = (i + 1)
+        i += 1
     };
     i
 };
@@ -11,7 +11,7 @@ const join: function = λa.λb.{
     let index = 0;
     for i in a {
         let index = index + 1;
-        let result = result + (i as text) + { if (index == (len a)) "" else b }
+        let result = result + (i as text) + { if (len a == index) "" else b }
     };
     result
 };
@@ -19,7 +19,7 @@ const join: function = λa.λb.{
 const replace: function = λt.λb.λa.{
     if (find t b) {
         let [result, index] = [t, it];
-        result[index ~ ((len b) + 1] := a;
+        result[index ~ (len b + 1)] := a;
         result
     } else
         t
@@ -46,7 +46,7 @@ const filter: function = λf.λl.{
 const reduce: function = λf.λl.{
     let result = l[0];
     for i in l[1 ~ (len l)] {
-        let result = (f result i)
+        let result = f result i
     };
     result
 };
@@ -59,8 +59,9 @@ const find: function = λt.λq.{
         if (item == q) {
             let result = index
         };
-        let index = index + 1
+        index += 1
     };
     if (result == null) { fault } else result
 };
-const compose: function = λf.λg.λx.(f (g x));
+
+const compose: function = λf.λg.λx.f(g(x));
