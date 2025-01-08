@@ -1,3 +1,4 @@
+mod utils;
 use clap::Parser;
 use colored::*;
 use indexmap::IndexMap;
@@ -30,45 +31,6 @@ const BUILTIN: [&str; 14] = [
     "exit",
     "cmdLineArgs",
 ];
-
-macro_rules! ok {
-    ($option_value: expr, $fault_kind: expr) => {
-        if let Some(ok) = $option_value {
-            Ok(ok)
-        } else {
-            Err($fault_kind)
-        }
-    };
-    ($option_value: expr) => {
-        if let Some(ok) = $option_value {
-            Ok(ok)
-        } else {
-            Err(Fault::Syntax)
-        }
-    };
-}
-
-macro_rules! some {
-    ($result_value: expr) => {
-        if let Ok(ok) = $result_value {
-            Some(ok)
-        } else {
-            None
-        }
-    };
-}
-
-macro_rules! trim {
-    ($token: expr, $top: expr, $end: expr) => {
-        ok!($token.get($top.len()..$token.len() - $end.len()))?
-    };
-}
-
-macro_rules! remove {
-    ($token: expr, $to_remove: expr) => {
-        $token.replacen($to_remove, "", 1)
-    };
-}
 
 #[derive(Parser)]
 #[command(
@@ -1222,42 +1184,30 @@ impl Operator {
                 if let (Type::Number(lhs), Type::Number(rhs)) = (&lhs, &rhs) {
                     Type::Number(lhs - rhs)
                 } else if let (Type::Text(lhs), Type::Text(rhs)) = (&lhs, &rhs) {
-                    Type::Text(lhs.replacen(rhs, "", 1))
-                } else if let (Type::List(mut list1), Type::List(list2)) =
+                    Type::Text(remove!(lhs, rhs))
+                } else if let (Type::List(mut list), Type::List(index)) =
                     (lhs.clone(), &rhs.clone())
                 {
-                    let first_index = ok!(
-                        list1.windows(list2.len()).position(|i| {
-                            i.iter().map(|j| j.format()).collect::<Vec<_>>()
-                                == list2.iter().map(|j| j.format()).collect::<Vec<_>>()
-                        }),
-                        Fault::Index(rhs, lhs)
-                    )?;
-                    for _ in 0..list2.len() {
-                        list1.remove(first_index);
+                    let first_index = first_index!(index, lhs);
+                    range_check!(first_index, index, lhs, engine);
+                    for _ in 0..list.len() {
+                        index_check!(list, first_index, lhs);
+                        list.remove(first_index as usize);
                     }
-                    Type::List(list1)
+                    Type::List(list)
                 } else if let (Type::Struct(mut st), Type::Text(key)) = (lhs.clone(), &rhs) {
                     ok!(st.shift_remove(key), Fault::Key(rhs, lhs))?;
                     Type::Struct(st)
                 } else if let (Type::List(mut list), Type::Number(index)) = (lhs.clone(), &rhs) {
-                    if 0.0 <= *index && *index < list.len() as f64 {
-                        list.remove(index.clone() as usize);
-                        Type::List(list)
-                    } else {
-                        return Err(Fault::Index(rhs, lhs));
-                    }
+                    index_check!(list, *index, lhs);
+                    list.remove(index.clone() as usize);
+                    Type::List(list)
                 } else if let (Type::Text(text), Type::Number(index)) = (&lhs, &rhs) {
                     if 0.0 <= *index && *index < text.chars().count() as f64 {
-                        let mut chars: Vec<char> = text.chars().collect();
-                        chars.remove(index.clone() as usize);
-                        Type::Text(
-                            chars
-                                .iter()
-                                .map(|i| i.to_string())
-                                .collect::<Vec<String>>()
-                                .concat(),
-                        )
+                        let mut text = char_vec!(text);
+                        index_check!(text, *index, lhs);
+                        text.remove(index.clone() as usize);
+                        Type::Text(text.concat())
                     } else {
                         return Err(Fault::Index(rhs, lhs));
                     }
@@ -1370,7 +1320,7 @@ impl Operator {
                 if let (Type::List(list), Type::Number(index)) = (lhs.clone(), rhs.clone()) {
                     ok!(list.get(index as usize), Fault::Index(rhs, lhs))?.clone()
                 } else if let (Type::Text(text), Type::Number(index)) = (lhs.clone(), rhs.clone()) {
-                    let text: Vec<String> = text.chars().map(|i| i.to_string()).collect();
+                    let text = char_vec!(text);
                     Type::Text(ok!(
                         text.get(index as usize).cloned(),
                         Fault::Index(rhs.clone(), lhs.clone())
@@ -1754,84 +1704,38 @@ impl Type {
     }
 
     fn modify_inside(&self, index: Type, val: Type, engine: &mut Engine) -> Result<Type, Fault> {
-        macro_rules! assign {
-            ($list: expr, $index: expr, $proc: block) => {
-                if 0.0 <= $index && $index < $list.len() as f64 {
-                    $proc
-                } else {
-                    return Err(Fault::Index(Type::Number($index), self.to_owned()));
-                }
-            };
-        }
-        macro_rules! range_check {
-            ($first_index: expr, $index: expr) => {
-                if Type::List($index.clone()).format()
-                    != Operator::To(
-                        Expr::Value(Type::Number($first_index)),
-                        Expr::Value(Type::Number($first_index + $index.len() as f64)),
-                    )
-                    .eval(engine)?
-                    .format()
-                {
-                    return Err(Fault::Index(Type::List($index.clone()), self.clone()));
-                }
-            };
-        }
-        macro_rules! delete_iter {
-            ($list: expr, $first_index: expr, $index: expr) => {
-                for _ in 0..$index.len() {
-                    assign!($list, $first_index, {
-                        $list.remove($first_index as usize);
-                    });
-                }
-            };
-        }
-        macro_rules! first_index {
-            ($index: expr) => {
-                ok!(
-                    $index.first(),
-                    Fault::Index(Type::List($index.clone()), self.to_owned())
-                )?
-                .get_number()?
-            };
-        }
-        macro_rules! char_vec {
-            ($text: expr) => {
-                $text
-                    .chars()
-                    .map(|i| i.to_string())
-                    .collect::<Vec<String>>()
-            };
-        }
-
         Ok(
             if let (Type::List(mut list), Type::Number(index)) = (self.clone(), index.clone()) {
-                assign!(list, index, {
-                    list[index as usize] = val.clone();
-                    Type::List(list)
-                })
+                index_check!(list, index, self);
+                list[index as usize] = val.clone();
+                Type::List(list)
             } else if let (Type::Text(text), Type::Number(index)) = (self.clone(), index.clone()) {
                 let mut text = char_vec!(text);
-                assign!(text, index, {
-                    text[index as usize] = val.get_text()?;
-                    Type::Text(text.concat())
-                })
+                index_check!(text, index, self);
+                text[index as usize] = val.get_text()?;
+                Type::Text(text.concat())
             } else if let (Type::Struct(mut st), Type::Text(index)) = (self.clone(), index.clone())
             {
                 st.insert(index, val.clone());
                 Type::Struct(st)
             } else if let (Type::List(mut list), Type::List(index)) = (self.clone(), index.clone())
             {
-                let first_index = first_index!(index);
-                range_check!(first_index, index);
-                delete_iter!(list, first_index, index);
+                let first_index = first_index!(index, self);
+                range_check!(first_index, index, self, engine);
+                for _ in 0..list.len() {
+                    index_check!(list, first_index, self);
+                    list.remove(first_index as usize);
+                }
                 list.insert(first_index as usize, val.clone());
                 Type::List(list)
             } else if let (Type::Text(text), Type::List(index)) = (self.clone(), index.clone()) {
                 let mut text = char_vec!(text);
-                let first_index = first_index!(index);
-                range_check!(first_index, index);
-                delete_iter!(text, first_index, index);
+                let first_index = first_index!(index, self);
+                range_check!(first_index, index, self, engine);
+                for _ in 0..text.len() {
+                    index_check!(text, first_index, self);
+                    text.remove(first_index as usize);
+                }
                 text.insert(first_index as usize, val.get_text()?);
                 Type::Text(text.concat())
             } else {
