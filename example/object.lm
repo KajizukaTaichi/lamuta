@@ -17,10 +17,10 @@ const Cat: #Cat = Animal + @{
     "voice": "meow"
 };
 
-let pochi = Dog + @{ "name": "Pochi" };
-let kuro = Dog + @{ "name": "Kuro" };
+let pochi: #Dog = Dog + @{ "name": "Pochi" };
+let kuro: #Dog = Dog + @{ "name": "Kuro" };
 print f"{pochi}\n", f"{kuro}\n";
 
-let mike = Cat + @{ "name": "Mike" };
-let tama = Cat + @{ "name": "Tama" };
+let mike: #Cat = Cat + @{ "name": "Mike" };
+let tama: #Cat = Cat + @{ "name": "Tama" };
 print f"{mike}\n", f"{tama}\n";
