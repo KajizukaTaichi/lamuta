@@ -1,5 +1,6 @@
-const Fraction: struct = @{
+const Fraction: #Fraction = @{
     "numerator": 0,
+    "class": #Fraction,
     "denominator": 1,
     "asText": fn(this ->
         f"{this.numerator}/{this.denominator}"
