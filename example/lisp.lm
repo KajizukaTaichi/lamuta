@@ -121,8 +121,10 @@ let parse = fn(source ->
     } else if (source == "false") {
         AST + @{ "type": "bool", "value": 0 }
     } else {
-        if (source as number) AST + @{ "type": "number", "value": it }
-        else AST + @{ "type": "symbol", "value": source }
+        if (source as number)
+            AST + @{ "type": "number", "value": it }
+        else
+            AST + @{ "type": "symbol", "value": source }
     }
 );
 
