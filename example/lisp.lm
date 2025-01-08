@@ -8,7 +8,7 @@ const AST: struct = @{
         if (this.type == (sig as text))
             this.value
         else {
-            fault sig as text + ", " + this.type
+            fault f"expected {sig} but it's {this.type}"
         }
     ),
     "asText": fn(this ->
