@@ -62,7 +62,7 @@ const find: function = λt.λq.{
         index += 1
     };
     if (result == null) {
-        fault q as symbol as text + " is not found in " + (t as symbol as text)
+        fault f"{q as symbol} is not found in {t as symbol}"
     } else
         result
 };
