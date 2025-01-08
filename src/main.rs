@@ -872,19 +872,12 @@ impl Expr {
                 )));
             }
             func
-        // Object-oriented style syntactic sugar of access operator
-        } else if token.matches(".").count() >= 1 {
-            let (obj, key) = ok!(token.rsplit_once("."))?;
-            Expr::Infix(Box::new(Operator::Access(
-                Expr::parse(obj)?,
-                Expr::Value(Type::Text(key.trim().to_string())),
-            )))
         // Imperative style syntactic sugar of list access by index
         } else if token.contains('[') && token.ends_with(']') {
             let token = trim!(token, "", "]");
             let (name, args) = ok!(token.split_once("["))?;
             Expr::Infix(Box::new(Operator::Access(
-                Expr::Value(Type::Symbol(name.trim().to_string())),
+                Expr::parse(name.trim())?,
                 Expr::parse(args)?,
             )))
         // Imperative style syntactic sugar of function application
@@ -894,11 +887,7 @@ impl Expr {
             let is_lazy = name.ends_with("?");
             let args = tokenize(args, &vec![','])?;
             let mut call = Expr::Infix(Box::new(Operator::Apply(
-                Expr::Value(Type::Symbol(if is_lazy {
-                    trim!(token, "", "?").to_string()
-                } else {
-                    name.to_string()
-                })),
+                Expr::parse(if is_lazy { trim!(token, "", "?") } else { name })?,
                 is_lazy,
                 Expr::parse(ok!(args.first())?)?,
             )));
@@ -906,6 +895,13 @@ impl Expr {
                 call = Expr::Infix(Box::new(Operator::Apply(call, is_lazy, Expr::parse(arg)?)));
             }
             call
+        // Object-oriented style syntactic sugar of access operator
+        } else if token.matches(".").count() >= 1 {
+            let (obj, key) = ok!(token.rsplit_once("."))?;
+            Expr::Infix(Box::new(Operator::Access(
+                Expr::parse(obj)?,
+                Expr::Value(Type::Text(key.trim().to_string())),
+            )))
         } else if token == "null" {
             Expr::Value(Type::Null)
         } else {
