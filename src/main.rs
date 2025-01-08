@@ -1650,7 +1650,7 @@ impl Type {
             Type::Signature(_) => Signature::Signature,
             Type::Function(_) => Signature::Function,
             Type::Struct(st) => {
-                if let Some(r#type) = st.get("type") {
+                if let Some(r#type) = st.get("class") {
                     r#type.get_signature().unwrap_or(Signature::Struct)
                 } else {
                     Signature::Struct
@@ -1745,7 +1745,7 @@ enum Signature {
     Function,
     Signature,
     Struct,
-    UserDefined(String),
+    Class(String),
 }
 
 impl Signature {
@@ -1768,7 +1768,7 @@ impl Signature {
         } else if token == "struct" {
             Signature::Struct
         } else if token.starts_with("#") {
-            Signature::UserDefined(trim!(token, "#", "").to_string())
+            Signature::Class(trim!(token, "#", "").to_string())
         } else {
             return Err(Fault::Syntax);
         })
@@ -1784,7 +1784,7 @@ impl Signature {
             Signature::Function => "function".to_string(),
             Signature::Signature => "signature".to_string(),
             Signature::Struct => "struct".to_string(),
-            Signature::UserDefined(s) => format!("#{s}"),
+            Signature::Class(s) => format!("#{s}"),
         }
     }
 }
