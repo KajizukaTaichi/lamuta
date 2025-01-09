@@ -19,18 +19,17 @@ const SPACE: [char; 5] = [' ', '　', '\n', '\t', '\r'];
 const RESERVED: [&str; 10] = [
     "print", "let", "const", "if", "else", "match", "for", "in", "while", "fault",
 ];
-const BUILTIN: [&str; 14] = [
+const BUILTIN: [&str; 13] = [
     "type",
+    "std",
     "env",
     "free",
     "eval",
     "alphaConvert",
     "input",
     "readFile",
-    "range",
     "load",
     "save",
-    "std",
     "sleep",
     "exit",
     "cmdLineArgs",
@@ -118,6 +117,10 @@ impl Engine {
                     })),
                 ),
                 (
+                    "std".to_string(),
+                    Type::Text("https://kajizukataichi.github.io/lamuta/lib/std.lm".to_string()),
+                ),
+                (
                     "env".to_string(),
                     Type::Function(Function::BuiltIn(|_, engine| {
                         Ok(Type::Struct(engine.env.clone()))
@@ -187,58 +190,6 @@ impl Engine {
                     })),
                 ),
                 (
-                    "range".to_string(),
-                    Type::Function(Function::BuiltIn(|params, _| {
-                        let params = params.get_list()?;
-                        if params.len() == 1 {
-                            let mut range: Vec<Type> = vec![];
-                            let mut current: f64 = 0.0;
-                            while current < params[0].get_number()? {
-                                range.push(Type::Number(current));
-                                current += 1.0;
-                            }
-                            Ok(Type::List(range))
-                        } else if params.len() == 2 {
-                            let mut range: Vec<Type> = vec![];
-                            let mut current: f64 = params[0].get_number()?;
-                            let start = params[0].get_number()?;
-                            let end = params[1].get_number()?;
-                            let is_positive = (end - start).is_sign_positive();
-                            while if is_positive {
-                                current < params[1].get_number()?
-                            } else {
-                                current > params[1].get_number()?
-                            } {
-                                range.push(Type::Number(current));
-                                current += if is_positive { 1.0 } else { -1.0 };
-                            }
-                            Ok(Type::List(range))
-                        } else if params.len() == 3 {
-                            let mut range: Vec<Type> = vec![];
-                            let mut current: f64 = params[0].get_number()?;
-                            let step = params[2].get_number()?;
-                            if step == 0.0 {
-                                return Err(Fault::Logic(Operator::Apply(
-                                    Expr::Value(Type::Symbol("range".to_string())),
-                                    false,
-                                    Expr::Value(Type::List(params)),
-                                )));
-                            }
-                            while if step.is_sign_positive() {
-                                current < params[1].get_number()?
-                            } else {
-                                current > params[1].get_number()?
-                            } {
-                                range.push(Type::Number(current));
-                                current += step;
-                            }
-                            Ok(Type::List(range))
-                        } else {
-                            Err(Fault::ArgLen)
-                        }
-                    })),
-                ),
-                (
                     "load".to_string(),
                     Type::Function(Function::BuiltIn(|expr, engine| {
                         let name = expr.get_text()?;
@@ -274,10 +225,6 @@ impl Engine {
                             Err(Fault::IO)
                         }
                     })),
-                ),
-                (
-                    "std".to_string(),
-                    Type::Text("https://kajizukataichi.github.io/lamuta/lib/std.lm".to_string()),
                 ),
                 (
                     "sleep".to_string(),
