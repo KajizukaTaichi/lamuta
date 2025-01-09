@@ -14,7 +14,7 @@ use std::{
 use thiserror::Error;
 use unicode_xid::UnicodeXID;
 
-const VERSION: &str = "0.4.2";
+const VERSION: &str = "0.4.3";
 const SPACE: [char; 5] = [' ', '　', '\n', '\t', '\r'];
 const RESERVED: [&str; 10] = [
     "print", "let", "const", "if", "else", "match", "for", "in", "while", "fault",
