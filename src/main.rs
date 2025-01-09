@@ -684,20 +684,20 @@ impl Expr {
                 let text = trim!(token, "f\"", "\"");
                 let splited = text_format(text)?;
                 let mut result = Expr::Value(Type::Text(String::new()));
-                for i in splited {
-                    if i.starts_with("{") && i.ends_with("}") {
-                        let i = trim!(i, "{", "}");
+                for elm in splited {
+                    if elm.starts_with("{") && elm.ends_with("}") {
+                        let elm = trim!(elm, "{", "}");
                         result = Expr::Infix(Box::new(Operator::Add(
                             result,
                             Expr::Infix(Box::new(Operator::As(
-                                Expr::Block(Engine::parse(i)?),
+                                Expr::Block(Engine::parse(elm)?),
                                 Expr::Value(Type::Signature(Signature::Text)),
                             ))),
                         )));
                     } else {
                         result = Expr::Infix(Box::new(Operator::Add(
                             result,
-                            Expr::Value(Type::Text(text_escape(&i))),
+                            Expr::Value(Type::Text(text_escape(&elm))),
                         )));
                     }
                 }
