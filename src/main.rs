@@ -1875,11 +1875,14 @@ fn tokenize(input: &str, delimiter: &Vec<char>) -> Result<Vec<String>, Fault> {
     Ok(tokens)
 }
 
-fn is_identifier(s: &str) -> bool {
-    if s.is_empty() {
+fn is_identifier(name: &str) -> bool {
+    if name.is_empty() {
         return false;
     }
-    let mut chars = s.chars();
+    if name == "_" {
+        return true;
+    }
+    let mut chars = name.chars();
     let first_char = chars.next().unwrap();
     if !UnicodeXID::is_xid_start(first_char) {
         return false;
@@ -1887,7 +1890,7 @@ fn is_identifier(s: &str) -> bool {
     if !chars.all(UnicodeXID::is_xid_continue) {
         return false;
     }
-    if RESERVED.contains(&s) {
+    if RESERVED.contains(&name) {
         return false;
     }
     true
