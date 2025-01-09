@@ -16,15 +16,6 @@ const join: function = λa.λb.{
     result
 };
 
-const replace: function = λt.λb.λa.{
-    if (find t b) {
-        let [result, index] = [t, it];
-        result[index ~ (len b + 1)] := a;
-        result
-    } else
-        t
-};
-
 const map: function = λf.λl.{
     let result = [];
     for i in l {
