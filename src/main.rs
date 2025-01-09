@@ -682,9 +682,9 @@ impl Expr {
             // Text formating
             } else if token.starts_with("f\"") && token.ends_with('"') {
                 let text = trim!(token, "f\"", "\"");
-                let splited = text_format(text)?;
+                let text = text_format(text)?;
                 let mut result = Expr::Value(Type::Text(String::new()));
-                for elm in splited {
+                for elm in text {
                     if elm.starts_with("{") && elm.ends_with("}") {
                         let elm = trim!(elm, "{", "}");
                         result = Expr::Infix(Box::new(Operator::Add(
