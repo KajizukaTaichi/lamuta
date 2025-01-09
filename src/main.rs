@@ -210,13 +210,22 @@ impl Engine {
                     Type::Function(Function::BuiltIn(|arg, engine| {
                         let mut render = String::new();
                         for (k, v) in &engine.env {
-                            if !BUILTIN.contains(&k.as_str()) {
+                            if BUILTIN.contains(&k.as_str()) {
+                                continue;
+                            }
+                            if engine.clone().is_protect(k) {
+                                render += &format!(
+                                    "const {k}: {} = {};\n",
+                                    v.type_of().format(),
+                                    v.format()
+                                );
+                            } else {
                                 render += &format!("let {k} = {};\n", v.format());
                             }
                         }
                         if let Ok(mut file) = File::create(arg.get_text()?) {
                             if file.write_all(render.as_bytes()).is_ok() {
-                                Ok(Type::Text("Saved environment".to_string()))
+                                Ok(Type::Text("Environment is saved!".to_string()))
                             } else {
                                 Err(Fault::IO)
                             }
