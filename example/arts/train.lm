@@ -1,0 +1,18 @@
+load std;
+const art: text = "|‾‾‾‾‾|=";
+const init: number = 50;
+
+let width = init;
+let count = [0, 0];
+while 1 {
+    for i in (0 ~ width as list) {
+        print f"\r車両工場 生産台数: {count[0]}両 {count[1]}編成〔", " " * i, art;
+        sleep 0.03
+    };
+    width -= len(art);
+    if (width < len(art)) {
+        width := init;
+        count[1] += 1
+    };
+    count[0] += 1
+}
