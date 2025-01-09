@@ -241,13 +241,13 @@ impl Engine {
 
     fn parse(source: &str) -> Result<Program, Fault> {
         let mut program: Program = Vec::new();
-        for line in tokenize(&source, &vec![';'])? {
-            let line = line.trim().to_string();
+        for line in tokenize(source, &[';'])? {
+            let line = line.trim();
             // Ignore empty line and comment
             if line.is_empty() || line.starts_with("//") {
                 continue;
             }
-            program.push(Statement::parse(&line)?);
+            program.push(Statement::parse(line)?);
         }
         Ok(program)
     }
@@ -435,17 +435,16 @@ impl Statement {
 
     fn parse(code: &str) -> Result<Statement, Fault> {
         let code = code.trim();
-        if code.starts_with("print") {
+        if let Some(code) = code.strip_prefix("print") {
             let mut exprs = vec![];
-            for i in tokenize(&code["print".len()..], &vec![','])? {
+            for i in tokenize(code, &[','])? {
                 exprs.push(Expr::parse(&i)?)
             }
             Ok(Statement::Print(exprs))
-        } else if code.starts_with("let") {
-            let code = code["let".len()..].to_string();
-            let splited = tokenize(&code, &vec!['='])?;
+        } else if let Some(code) = code.strip_prefix("let") {
+            let splited = tokenize(code, &['='])?;
             let (name, code) = (ok!(splited.get(0))?, ok!(splited.get(1))?);
-            let splited = tokenize(name, &vec![':'])?;
+            let splited = tokenize(name, &[':'])?;
             if let (Some(name), Some(sig)) = (splited.get(0), splited.get(1)) {
                 Ok(Statement::Let(
                     Expr::parse(name)?,
@@ -461,8 +460,7 @@ impl Statement {
                     Expr::parse(code)?,
                 ))
             }
-        } else if code.starts_with("const") {
-            let code = code["const".len()..].to_string();
+        } else if let Some(code) = code.strip_prefix("const") {
             let (name, code) = ok!(code.split_once("="))?;
             let (name, sig) = ok!(name.split_once(":"))?;
             Ok(Statement::Let(
@@ -471,9 +469,8 @@ impl Statement {
                 Some(Signature::parse(sig)?),
                 Expr::parse(code)?,
             ))
-        } else if code.starts_with("if") {
-            let code = code["if".len()..].to_string();
-            let code = tokenize(&code, &SPACE.to_vec())?;
+        } else if let Some(code) = code.strip_prefix("if") {
+            let code = tokenize(code, SPACE.as_ref())?;
             if let Some(pos) = code.iter().position(|i| i == "else") {
                 Ok(Statement::If(
                     Expr::parse(ok!(code.get(0))?)?,
@@ -489,19 +486,18 @@ impl Statement {
                     None,
                 ))
             }
-        } else if code.starts_with("match") {
-            let code = code["match".len()..].to_string();
-            let tokens = tokenize(&code, &SPACE.to_vec())?;
+        } else if let Some(code) = code.strip_prefix("match") {
+            let tokens = tokenize(code, SPACE.as_ref())?;
             let expr = Expr::parse(ok!(tokens.get(0))?)?;
-            let tokens = tokenize(&trim!(ok!(tokens.get(1))?, "{", "}"), &vec![','])?;
+            let tokens = tokenize(trim!(ok!(tokens.get(1))?, "{", "}"), &[','])?;
             let mut body = vec![];
             for i in tokens {
-                let tokens = tokenize(&i, &SPACE.to_vec())?;
+                let tokens = tokenize(&i, SPACE.as_ref())?;
                 let pos = ok!(tokens.iter().position(|i| i == "=>"))?;
                 let mut cond = vec![];
                 for i in tokenize(
                     &ok!(tokens.get(..pos))?.join(&SPACE[0].to_string()),
-                    &vec!['|'],
+                    &['|'],
                 )? {
                     cond.push(Expr::parse(&i)?)
                 }
@@ -511,9 +507,8 @@ impl Statement {
                 ))
             }
             Ok(Statement::Match(expr, body))
-        } else if code.starts_with("for") {
-            let code = code["for".len()..].to_string();
-            let code = tokenize(&code, &SPACE.to_vec())?;
+        } else if  let Some(code) = code.strip_prefix("for") {
+            let code = tokenize(&code, SPACE.as_ref())?;
             if code.get(1).and_then(|x| Some(x == "in")).unwrap_or(false) {
                 Ok(Statement::For(
                     Expr::parse(ok!(code.get(0))?)?,
@@ -523,18 +518,16 @@ impl Statement {
             } else {
                 Err(Fault::Syntax)
             }
-        } else if code.starts_with("while") {
-            let code = code["while".len()..].to_string();
-            let code = tokenize(&code, &SPACE.to_vec())?;
+        } else if let Some(code) = code.strip_prefix("while") {
+            let code = tokenize(code, SPACE.as_ref())?;
             Ok(Statement::While(
                 Expr::parse(ok!(code.get(0))?)?,
                 Expr::parse(ok!(code.get(1))?)?,
             ))
-        } else if code.starts_with("fault") {
-            let code = code["fault".len()..].to_string();
-            Ok(Statement::Fault(some!(Expr::parse(&code))))
+        } else if let Some(code) = code.strip_prefix("fault") {
+            Ok(Statement::Fault(some!(Expr::parse(code))))
         } else {
-            Ok(Statement::Return(Expr::parse(&code)?))
+            Ok(Statement::Return(Expr::parse(code)?))
         }
     }
 
@@ -608,7 +601,7 @@ impl Statement {
             }
             Statement::Fault(Some(msg)) => format!("fault {}", msg.format()),
             Statement::Fault(None) => "fault".to_string(),
-            Statement::Return(expr) => format!("{}", expr.format()),
+            Statement::Return(expr) => expr.format(),
         }
     }
 }
@@ -644,12 +637,10 @@ impl Expr {
             Expr::Value(Type::Symbol(name)) => {
                 if name == "_" {
                     Type::Symbol(name.to_string())
+                } else if let Some(refer) = engine.env.get(name.as_str()) {
+                    refer.clone()
                 } else {
-                    if let Some(refer) = engine.env.get(name.as_str()) {
-                        refer.clone()
-                    } else {
-                        return Err(Fault::Refer(name.to_string()));
-                    }
+                    return Err(Fault::Refer(name.to_string()));
                 }
             }
             Expr::Value(value) => value.clone(),
@@ -657,7 +648,7 @@ impl Expr {
     }
 
     fn parse(source: &str) -> Result<Expr, Fault> {
-        let token_list: Vec<String> = tokenize(source, &SPACE.to_vec())?;
+        let token_list: Vec<String> = tokenize(source, SPACE.as_ref())?;
         if token_list.len() >= 2 {
             Ok(Expr::Infix(Box::new(Operator::parse(source)?)))
         } else {
@@ -684,15 +675,15 @@ impl Expr {
                 )))
             } else if token.starts_with("(") && token.ends_with(")") {
                 let token = trim!(token, "(", ")");
-                Expr::parse(&token)?
+                Expr::parse(token)?
             } else if token.starts_with("{") && token.ends_with("}") {
                 let token = trim!(token, "{", "}");
-                Expr::Block(Engine::parse(&token)?)
+                Expr::Block(Engine::parse(token)?)
             } else if token.starts_with("@{") && token.ends_with("}") {
                 let token = trim!(token, "@{", "}");
                 let mut result = Vec::new();
-                for i in tokenize(&token, &vec![','])? {
-                    let splited = tokenize(&i, &vec![':'])?;
+                for i in tokenize(token, &[','])? {
+                    let splited = tokenize(&i, &[':'])?;
                     result.push((
                         Expr::parse(ok!(splited.get(0))?)?,
                         Expr::parse(ok!(splited.get(1))?)?,
@@ -702,7 +693,7 @@ impl Expr {
             } else if token.starts_with("[") && token.ends_with("]") {
                 let token = trim!(token, "[", "]");
                 let mut list = vec![];
-                for elm in tokenize(&token, &vec![','])? {
+                for elm in tokenize(token, &[','])? {
                     list.push(Expr::parse(&elm)?);
                 }
                 Expr::List(list)
@@ -712,7 +703,7 @@ impl Expr {
             // Text formating
             } else if token.starts_with("f\"") && token.ends_with('"') {
                 let text = trim!(token, "f\"", "\"");
-                let splited = text_format(&text)?;
+                let splited = text_format(text)?;
                 let mut result = Expr::Value(Type::Text(String::new()));
                 for i in splited {
                     if i.starts_with("{") && i.ends_with("}") {
@@ -720,7 +711,7 @@ impl Expr {
                         result = Expr::Infix(Box::new(Operator::Add(
                             result,
                             Expr::Infix(Box::new(Operator::As(
-                                Expr::Block(Engine::parse(&i)?),
+                                Expr::Block(Engine::parse(i)?),
                                 Expr::Value(Type::Signature(Signature::Text)),
                             ))),
                         )));
@@ -765,7 +756,7 @@ impl Expr {
                 args.reverse();
                 let mut func = Expr::Value(Type::Function(Function::UserDefined(
                     ok!(args.first())?.trim().to_string(),
-                    Box::new(Expr::Block(Engine::parse(&body.to_string())?)),
+                    Box::new(Expr::Block(Engine::parse(body)?)),
                 )));
                 // Currying
                 for arg in ok!(args.get(1..))? {
@@ -788,7 +779,7 @@ impl Expr {
                 let token = trim!(token, "", ")");
                 let (name, args) = ok!(token.split_once("("))?;
                 let is_lazy = name.ends_with("?");
-                let args = tokenize(args, &vec![','])?;
+                let args = tokenize(args, &[','])?;
                 let mut call = Expr::Infix(Box::new(Operator::Apply(
                     Expr::parse(if is_lazy { trim!(name, "", "?") } else { name })?,
                     is_lazy,
@@ -948,7 +939,7 @@ impl Expr {
                         }
                         Statement::Let(name, protect, sig, val) => Statement::Let(
                             name.clone(),
-                            protect.clone(),
+                            *protect,
                             sig.clone(),
                             val.replace(from, to),
                         ),
@@ -1057,7 +1048,7 @@ impl Operator {
                 if let (Type::Number(lhs), Type::Number(rhs)) = (&lhs, &rhs) {
                     Type::Number(lhs + rhs)
                 } else if let (Type::Text(lhs), Type::Text(rhs)) = (&lhs, &rhs) {
-                    Type::Text(lhs.clone() + &rhs)
+                    Type::Text(lhs.clone() + rhs)
                 } else if let (Type::List(lhs), Type::List(rhs)) = (&lhs, &rhs) {
                     Type::List([lhs.clone(), rhs.clone()].concat())
                 } else if let (Type::Struct(mut lhs), Type::Struct(rhs)) = (lhs.clone(), &rhs) {
@@ -1302,7 +1293,7 @@ impl Operator {
     }
 
     fn parse(source: &str) -> Result<Operator, Fault> {
-        let token_list: Vec<String> = tokenize(source, &SPACE.to_vec())?;
+        let token_list: Vec<String> = tokenize(source, SPACE.as_ref())?;
         let token = Expr::parse(ok!(token_list.last())?)?;
         let operator = ok!(token_list.get(ok!(token_list.len().checked_sub(2))?))?;
         let has_lhs = |len: usize| {
@@ -1636,12 +1627,10 @@ impl Type {
                 }
             }
             true
+        } else if pattern.format() == "_" {
+            true
         } else {
-            if pattern.format() == "_" {
-                true
-            } else {
-                self.format() == pattern.format()
-            }
+            self.format() == pattern.format()    
         }
     }
 
@@ -1677,10 +1666,10 @@ impl Type {
             {
                 for _ in start..end {
                     index_check!(list, start as f64, self);
-                    list.remove(start as usize);
+                    list.remove(start);
                 }
                 if let Some(val) = val {
-                    list.insert(start as usize, val.clone());
+                    list.insert(start, val.clone());
                 }
                 Type::List(list)
             } else if let (Type::Text(text), Type::Range(start, end)) =
@@ -1689,10 +1678,10 @@ impl Type {
                 let mut text = char_vec!(text);
                 for _ in start..end {
                     index_check!(text, start as f64, self);
-                    text.remove(start as usize);
+                    text.remove(start);
                 }
                 if let Some(val) = val {
-                    text.insert(start as usize, val.get_text()?);
+                    text.insert(start, val.get_text()?);
                 }
                 Type::Text(text.concat())
             } else if let (Type::Text(text), Type::Text(index)) = (&self, &index) {
@@ -1774,7 +1763,7 @@ impl Signature {
     }
 }
 
-fn tokenize(input: &str, delimiter: &Vec<char>) -> Result<Vec<String>, Fault> {
+fn tokenize(input: &str, delimiter: &[char]) -> Result<Vec<String>, Fault> {
     let mut tokens: Vec<String> = Vec::new();
     let mut current_token = String::new();
     let mut in_parentheses: usize = 0;
