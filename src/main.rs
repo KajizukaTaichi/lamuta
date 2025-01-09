@@ -406,7 +406,7 @@ impl Statement {
                     if let Operator::Access(accessor, key) = infix {
                         let obj = accessor.eval(engine)?;
                         let key = key.eval(engine)?;
-                        let updated_obj = obj.modify_inside(key, Some(val.clone()), engine)?;
+                        let updated_obj = obj.modify_inside(key, Some(val.clone()))?;
                         Statement::Let(accessor, false, None, Expr::Value(updated_obj.clone()))
                             .eval(engine)?;
                     } else if let Operator::Derefer(pointer) = infix {
@@ -1128,7 +1128,7 @@ impl Operator {
                 if let (Type::Number(lhs), Type::Number(rhs)) = (&lhs, &rhs) {
                     Type::Number(lhs - rhs)
                 } else {
-                    lhs.modify_inside(rhs, None, engine)?
+                    lhs.modify_inside(rhs, None)?
                 }
             }
             Operator::Mul(lhs, rhs) => {
@@ -1243,27 +1243,31 @@ impl Operator {
                     )?)
                 } else if let (Type::Struct(st), Type::Text(index)) = (lhs.clone(), rhs.clone()) {
                     ok!(st.get(&index), Fault::Key(rhs, lhs))?.clone()
-                } else if let (Type::List(list), Type::List(index)) = (lhs.clone(), rhs.clone()) {
+                } else if let (Type::List(list), Type::Range(start, end)) =
+                    (lhs.clone(), rhs.clone())
+                {
                     let mut result = vec![];
-                    range_check!(first_index!(index, lhs), index, lhs, engine);
-                    for i in index {
+                    for i in start..end {
                         result.push(ok!(
-                            list.get(i.get_number()? as usize).cloned(),
+                            list.get(i).cloned(),
                             Fault::Index(rhs.clone(), lhs.clone())
                         )?);
                     }
                     Type::List(result)
-                } else if let (Type::Text(text), Type::List(index)) = (lhs.clone(), rhs.clone()) {
+                } else if let (Type::Text(text), Type::Range(start, end)) =
+                    (lhs.clone(), rhs.clone())
+                {
                     let mut result = String::new();
                     let text: Vec<char> = text.chars().collect();
-                    range_check!(first_index!(index, lhs), index, lhs, engine);
-                    for i in index {
+                    for i in start..end {
                         result.push(ok!(
-                            text.get(i.get_number()? as usize).cloned(),
+                            text.get(i).cloned(),
                             Fault::Index(rhs.clone(), lhs.clone())
                         )?);
                     }
                     Type::Text(result)
+                } else if let (Type::Text(text), Type::Text(query)) = (lhs.clone(), rhs.clone()) {
+                    Type::Number(ok!(text.find(&query), Fault::Key(rhs, lhs))? as f64)
                 } else {
                     return Err(Fault::Infix(self.clone()));
                 }
@@ -1339,12 +1343,15 @@ impl Operator {
                 Expr::Infix(Box::new(Operator::Pow(name.to_owned(), rhs.clone()))),
             )
             .eval(engine)?,
-            Operator::To(from, to) => Operator::Apply(
-                Expr::Value(Type::Symbol("range".to_string())),
-                false,
-                Expr::List(vec![from.to_owned(), to.to_owned()]),
-            )
-            .eval(engine)?,
+            Operator::To(from, to) => {
+                let from = from.eval(engine)?.get_number()? as usize;
+                let to = to.eval(engine)?.get_number()? as usize;
+                if from < to {
+                    Type::Range(from, to)
+                } else {
+                    return Err(Fault::Syntax);
+                }
+            }
         })
     }
 
@@ -1486,6 +1493,7 @@ enum Type {
     Refer(String),
     Text(String),
     List(Vec<Type>),
+    Range(usize, usize),
     Function(Function),
     Signature(Signature),
     Struct(IndexMap<String, Type>),
@@ -1576,6 +1584,7 @@ impl Type {
                 "[{}]",
                 l.iter().map(|i| i.format()).collect::<Vec<_>>().join(", ")
             ),
+            Type::Range(start, end) => format!("({start} ~ {end})",),
             Type::Signature(sig) => sig.format(),
             Type::Refer(to) => format!("&{to}"),
             Type::Struct(val) => format!(
@@ -1637,6 +1646,7 @@ impl Type {
             Type::Refer(_) => Signature::Refer,
             Type::Symbol(_) => Signature::Symbol,
             Type::List(_) => Signature::List,
+            Type::Range(_, _) => Signature::Range,
             Type::Signature(_) => Signature::Signature,
             Type::Function(_) => Signature::Function,
             Type::Struct(st) => {
@@ -1680,12 +1690,7 @@ impl Type {
         }
     }
 
-    fn modify_inside(
-        &self,
-        index: Type,
-        val: Option<Type>,
-        engine: &mut Engine,
-    ) -> Result<Type, Fault> {
+    fn modify_inside(&self, index: Type, val: Option<Type>) -> Result<Type, Fault> {
         Ok(
             if let (Type::List(mut list), Type::Number(index)) = (self.clone(), index.clone()) {
                 index_check!(list, index, self);
@@ -1712,28 +1717,27 @@ impl Type {
                     st.shift_remove(&index);
                 }
                 Type::Struct(st)
-            } else if let (Type::List(mut list), Type::List(index)) = (self.clone(), index.clone())
+            } else if let (Type::List(mut list), Type::Range(start, end)) =
+                (self.clone(), index.clone())
             {
-                let first_index = first_index!(index, self);
-                range_check!(first_index, index, self, engine);
-                for _ in 0..index.len() {
-                    index_check!(list, first_index, self);
-                    list.remove(first_index as usize);
+                for _ in start..end {
+                    index_check!(list, start as f64, self);
+                    list.remove(start as usize);
                 }
                 if let Some(val) = val {
-                    list.insert(first_index as usize, val.clone());
+                    list.insert(start as usize, val.clone());
                 }
                 Type::List(list)
-            } else if let (Type::Text(text), Type::List(index)) = (self.clone(), index.clone()) {
+            } else if let (Type::Text(text), Type::Range(start, end)) =
+                (self.clone(), index.clone())
+            {
                 let mut text = char_vec!(text);
-                let first_index = first_index!(index, self);
-                range_check!(first_index, index, self, engine);
-                for _ in 0..index.len() {
-                    index_check!(text, first_index, self);
-                    text.remove(first_index as usize);
+                for _ in start..end {
+                    index_check!(text, start as f64, self);
+                    text.remove(start as usize);
                 }
                 if let Some(val) = val {
-                    text.insert(first_index as usize, val.get_text()?);
+                    text.insert(start as usize, val.get_text()?);
                 }
                 Type::Text(text.concat())
             } else if let (Type::Text(text), Type::Text(index)) = (&self, &index) {
@@ -1759,6 +1763,7 @@ enum Signature {
     Refer,
     Text,
     List,
+    Range,
     Function,
     Signature,
     Struct,
@@ -1778,6 +1783,8 @@ impl Signature {
             Signature::Refer
         } else if token == "list" {
             Signature::List
+        } else if token == "range" {
+            Signature::Range
         } else if token == "function" {
             Signature::Function
         } else if token == "signature" {
@@ -1803,6 +1810,7 @@ impl Signature {
             Signature::Text => "text".to_string(),
             Signature::Refer => "refer".to_string(),
             Signature::List => "list".to_string(),
+            Signature::Range => "range".to_string(),
             Signature::Function => "function".to_string(),
             Signature::Signature => "signature".to_string(),
             Signature::Struct => "struct".to_string(),
