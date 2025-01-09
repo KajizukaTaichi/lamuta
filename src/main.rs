@@ -406,7 +406,7 @@ impl Statement {
                     if let Operator::Access(accessor, key) = infix {
                         let obj = accessor.eval(engine)?;
                         let key = key.eval(engine)?;
-                        let updated_obj = obj.modify_inside(key, val.clone(), engine)?;
+                        let updated_obj = obj.modify_inside(key, Some(val.clone()), engine)?;
                         Statement::Let(accessor, false, None, Expr::Value(updated_obj.clone()))
                             .eval(engine)?;
                     } else if let Operator::Derefer(pointer) = infix {
@@ -1127,36 +1127,8 @@ impl Operator {
                 let rhs = rhs.eval(engine)?;
                 if let (Type::Number(lhs), Type::Number(rhs)) = (&lhs, &rhs) {
                     Type::Number(lhs - rhs)
-                } else if let (Type::Text(lhs), Type::Text(rhs)) = (&lhs, &rhs) {
-                    Type::Text(remove!(lhs, rhs))
-                } else if let (Type::List(mut list), Type::List(index)) =
-                    (lhs.clone(), &rhs.clone())
-                {
-                    let first_index = first_index!(index, lhs);
-                    range_check!(first_index, index, lhs, engine);
-                    for _ in 0..list.len() {
-                        index_check!(list, first_index, lhs);
-                        list.remove(first_index as usize);
-                    }
-                    Type::List(list)
-                } else if let (Type::Struct(mut st), Type::Text(key)) = (lhs.clone(), &rhs) {
-                    ok!(st.shift_remove(key), Fault::Key(rhs, lhs))?;
-                    Type::Struct(st)
-                } else if let (Type::List(mut list), Type::Number(index)) = (lhs.clone(), &rhs) {
-                    index_check!(list, *index, lhs);
-                    list.remove(index.clone() as usize);
-                    Type::List(list)
-                } else if let (Type::Text(text), Type::Number(index)) = (&lhs, &rhs) {
-                    if 0.0 <= *index && *index < text.chars().count() as f64 {
-                        let mut text = char_vec!(text);
-                        index_check!(text, *index, lhs);
-                        text.remove(index.clone() as usize);
-                        Type::Text(text.concat())
-                    } else {
-                        return Err(Fault::Index(rhs, lhs));
-                    }
                 } else {
-                    return Err(Fault::Infix(self.clone()));
+                    lhs.modify_inside(rhs, None, engine)?
                 }
             }
             Operator::Mul(lhs, rhs) => {
@@ -1708,20 +1680,37 @@ impl Type {
         }
     }
 
-    fn modify_inside(&self, index: Type, val: Type, engine: &mut Engine) -> Result<Type, Fault> {
+    fn modify_inside(
+        &self,
+        index: Type,
+        val: Option<Type>,
+        engine: &mut Engine,
+    ) -> Result<Type, Fault> {
         Ok(
             if let (Type::List(mut list), Type::Number(index)) = (self.clone(), index.clone()) {
                 index_check!(list, index, self);
-                list[index as usize] = val.clone();
+                if let Some(val) = val {
+                    list[index as usize] = val.clone();
+                } else {
+                    list.remove(index as usize);
+                }
                 Type::List(list)
             } else if let (Type::Text(text), Type::Number(index)) = (self.clone(), index.clone()) {
                 let mut text = char_vec!(text);
                 index_check!(text, index, self);
-                text[index as usize] = val.get_text()?;
+                if let Some(val) = val {
+                    text[index as usize] = val.get_text()?;
+                } else {
+                    text.remove(index as usize);
+                }
                 Type::Text(text.concat())
             } else if let (Type::Struct(mut st), Type::Text(index)) = (self.clone(), index.clone())
             {
-                st.insert(index, val.clone());
+                if let Some(val) = val {
+                    st.insert(index, val.clone());
+                } else {
+                    st.shift_remove(&index);
+                }
                 Type::Struct(st)
             } else if let (Type::List(mut list), Type::List(index)) = (self.clone(), index.clone())
             {
@@ -1731,7 +1720,9 @@ impl Type {
                     index_check!(list, first_index, self);
                     list.remove(first_index as usize);
                 }
-                list.insert(first_index as usize, val.clone());
+                if let Some(val) = val {
+                    list.insert(first_index as usize, val.clone());
+                }
                 Type::List(list)
             } else if let (Type::Text(text), Type::List(index)) = (self.clone(), index.clone()) {
                 let mut text = char_vec!(text);
@@ -1741,8 +1732,16 @@ impl Type {
                     index_check!(text, first_index, self);
                     text.remove(first_index as usize);
                 }
-                text.insert(first_index as usize, val.get_text()?);
+                if let Some(val) = val {
+                    text.insert(first_index as usize, val.get_text()?);
+                }
                 Type::Text(text.concat())
+            } else if let (Type::Text(text), Type::Text(index)) = (&self, &index) {
+                if let Some(val) = val {
+                    Type::Text(text.replace(index, &val.get_text()?))
+                } else {
+                    Type::Text(remove!(text, index))
+                }
             } else {
                 return Err(Fault::Infix(Operator::Access(
                     Expr::Value(self.clone()),
