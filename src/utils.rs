@@ -52,33 +52,6 @@ macro_rules! char_vec {
 }
 
 #[macro_export]
-macro_rules! first_index {
-    ($index: expr, $obj: expr) => {
-        ok!(
-            $index.first(),
-            Fault::Index(Type::List($index.clone()), $obj.to_owned())
-        )?
-        .get_number()?
-    };
-}
-
-#[macro_export]
-macro_rules! range_check {
-    ($first_index: expr, $index: expr, $obj: expr, $engine: expr) => {
-        if Type::List($index.clone()).format()
-            != Operator::To(
-                Expr::Value(Type::Number($first_index)),
-                Expr::Value(Type::Number($first_index + $index.len() as f64)),
-            )
-            .eval($engine)?
-            .format()
-        {
-            return Err(Fault::Index(Type::List($index.clone()), $obj.clone()));
-        }
-    };
-}
-
-#[macro_export]
 macro_rules! index_check {
     ($list: expr, $index: expr, $obj: expr) => {
         if !(0.0 <= $index && $index < $list.len() as f64) {
