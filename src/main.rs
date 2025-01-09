@@ -495,10 +495,7 @@ impl Statement {
                 let tokens = tokenize(&i, SPACE.as_ref())?;
                 let pos = ok!(tokens.iter().position(|i| i == "=>"))?;
                 let mut cond = vec![];
-                for i in tokenize(
-                    &ok!(tokens.get(..pos))?.join(&SPACE[0].to_string()),
-                    &['|'],
-                )? {
+                for i in tokenize(&ok!(tokens.get(..pos))?.join(&SPACE[0].to_string()), &['|'])? {
                     cond.push(Expr::parse(&i)?)
                 }
                 body.push((
@@ -507,7 +504,7 @@ impl Statement {
                 ))
             }
             Ok(Statement::Match(expr, body))
-        } else if  let Some(code) = code.strip_prefix("for") {
+        } else if let Some(code) = code.strip_prefix("for") {
             let code = tokenize(&code, SPACE.as_ref())?;
             if code.get(1).and_then(|x| Some(x == "in")).unwrap_or(false) {
                 Ok(Statement::For(
@@ -1630,7 +1627,7 @@ impl Type {
         } else if pattern.format() == "_" {
             true
         } else {
-            self.format() == pattern.format()    
+            self.format() == pattern.format()
         }
     }
 
