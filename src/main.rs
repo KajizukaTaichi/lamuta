@@ -1199,6 +1199,14 @@ impl Operator {
                         )?);
                     }
                     Type::Text(result)
+                } else if let (Type::List(list), Type::List(query)) = (lhs.clone(), rhs.clone()) {
+                    let index = ok!(
+                        list.windows(query.len())
+                            .position(|i| Type::List(i.to_vec()).format()
+                                == Type::List(query.clone()).format()),
+                        Fault::Key(rhs, lhs)
+                    )?;
+                    Type::Range(index, index + query.len())
                 } else if let (Type::Text(text), Type::Text(query)) = (lhs.clone(), rhs.clone()) {
                     let index = ok!(text.find(&query), Fault::Key(rhs, lhs))?;
                     Type::Range(index, index + query.chars().count())
