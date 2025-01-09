@@ -1,7 +1,0 @@
-let msg = "Hello, world!";
-const spaceLen: number = 50;
-for i in (1 ~ spaceLen as list) {
-    print "\r", " " * (spaceLen - i), msg;
-    sleep 0.1
-};
-print "\n";
