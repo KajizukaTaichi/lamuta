@@ -1,7 +1,8 @@
 load std;
 
 const specialForms: list = ["define", "if", "eval", "lambda"];
-const AST: struct = @{
+const AST: #AST = @{
+    "class": #AST,
     "type": null,
     "value": null,
     "get": fn(sig, this ->
