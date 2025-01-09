@@ -1,0 +1,12 @@
+load std;
+let L = [3, 4, 1, 8, 2];
+
+for i in (0 ~ len(L) as list) {
+    for j in (0 ~ len(L) as list) {
+        if (L[i] < L[j]) {
+            [L[i], L[j]] := [L[j], L[i]]
+        }
+    }
+};
+
+print L;
