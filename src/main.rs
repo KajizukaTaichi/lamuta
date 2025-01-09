@@ -12,9 +12,13 @@ use std::{
     time::Duration,
 };
 use thiserror::Error;
+use unicode_xid::UnicodeXID;
 
 const VERSION: &str = "0.4.2";
 const SPACE: [char; 5] = [' ', '　', '\n', '\t', '\r'];
+const RESERVED: [&str; 10] = [
+    "print", "let", "const", "if", "else", "match", "for", "in", "while", "fault",
+];
 const BUILTIN: [&str; 14] = [
     "type",
     "env",
@@ -315,8 +319,12 @@ impl Engine {
         if self.is_protect(name) {
             return Err(Fault::AccessDenied);
         }
-        self.env.insert(name.clone(), value.clone());
-        Ok(())
+        if is_identifier(name) {
+            self.env.insert(name.clone(), value.clone());
+            Ok(())
+        } else {
+            Err(Fault::Syntax)
+        }
     }
 
     fn free(&mut self, name: &String) -> Result<(), Fault> {
@@ -854,8 +862,10 @@ impl Expr {
                 )))
             } else if token == "null" {
                 Expr::Value(Type::Null)
-            } else {
+            } else if is_identifier(&token) {
                 Expr::Value(Type::Symbol(token))
+            } else {
+                return Err(Fault::Syntax);
             })
         }
     }
@@ -1774,7 +1784,12 @@ impl Signature {
         } else if token == "struct" {
             Signature::Struct
         } else if token.starts_with("#") {
-            Signature::Class(trim!(token, "#", "").to_string())
+            let token = trim!(token, "#", "");
+            if is_identifier(token) {
+                Signature::Class(token.to_string())
+            } else {
+                return Err(Fault::Syntax);
+            }
         } else {
             return Err(Fault::Syntax);
         })
@@ -1858,6 +1873,24 @@ fn tokenize(input: &str, delimiter: &Vec<char>) -> Result<Vec<String>, Fault> {
         current_token.clear();
     }
     Ok(tokens)
+}
+
+fn is_identifier(s: &str) -> bool {
+    if s.is_empty() {
+        return false;
+    }
+    let mut chars = s.chars();
+    let first_char = chars.next().unwrap();
+    if !UnicodeXID::is_xid_start(first_char) {
+        return false;
+    }
+    if !chars.all(UnicodeXID::is_xid_continue) {
+        return false;
+    }
+    if RESERVED.contains(&s) {
+        return false;
+    }
+    true
 }
 
 fn text_format(input: &str) -> Result<Vec<String>, Fault> {
