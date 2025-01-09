@@ -12,6 +12,20 @@ let normalSort = fn(array ->
     L
 );
 
+let insertionSort = fn(array ->
+    let L = array as list;
+    for i in (1 ~ len(L) as list) {
+        let key = L[i];  
+        let j = i - 1;
+        while (j >= 0 & (L[j] > key)) {
+            L[j + 1] := L[j];
+            j -= 1;
+        };
+        L[j + 1] := key
+    };
+    L
+);
+
 let stalinSort =  fn(array ->
     let L = array as list;
     let base = 0;
@@ -36,6 +50,6 @@ let communeSort = fn(array ->
 );
 
 let array = [5, 4, 1, 8, 2];
-for algorithm in [normalSort, stalinSort, kimSort, communeSort] {
+for algorithm in [normalSort, insertionSort, stalinSort, kimSort, communeSort] {
     print algorithm(array), "\n";
 }
