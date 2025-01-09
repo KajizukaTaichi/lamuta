@@ -19,7 +19,7 @@ const SPACE: [char; 5] = [' ', '　', '\n', '\t', '\r'];
 const RESERVED: [&str; 10] = [
     "print", "let", "const", "if", "else", "match", "for", "in", "while", "fault",
 ];
-const BUILTIN: [&str; 13] = [
+const BUILTIN: [&str; 12] = [
     "type",
     "std",
     "env",
@@ -32,7 +32,6 @@ const BUILTIN: [&str; 13] = [
     "save",
     "sleep",
     "exit",
-    "cmdLineArgs",
 ];
 
 #[derive(Parser)]
