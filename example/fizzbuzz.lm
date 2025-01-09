@@ -7,6 +7,6 @@ let fizzbuzz = fn(n ->　
     }
 );
 
-for i in (1 ~ 101) {
+for i in (1 ~ 101 as list) {
     print fizzbuzz i, "\n"
 }
