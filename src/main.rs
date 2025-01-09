@@ -1218,7 +1218,8 @@ impl Operator {
                     }
                     Type::Text(result)
                 } else if let (Type::Text(text), Type::Text(query)) = (lhs.clone(), rhs.clone()) {
-                    Type::Number(ok!(text.find(&query), Fault::Key(rhs, lhs))? as f64)
+                    let index = ok!(text.find(&query), Fault::Key(rhs, lhs))?;
+                    Type::Range(index, index + query.chars().count())
                 } else {
                     return Err(Fault::Infix(self.clone()));
                 }
