@@ -28,7 +28,7 @@ let insertionSort = fn(array ->
 
 let stalinSort =  fn(array ->
     let [L, R] = [array as list, []];
-    let [base, index] = [0] * 2;
+    let [maxi, index] = [0] * 2;
     for i in L {
         if (index == 0) {
             R += [i];
