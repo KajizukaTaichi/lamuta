@@ -413,11 +413,7 @@ impl Statement {
             }
             Statement::For(counter, expr, code) => {
                 let mut result = Type::Null;
-                for i in expr
-                    .eval(engine)?
-                    .cast(&Signature::List, engine)?
-                    .get_list()?
-                {
+                for i in expr.eval(engine)?.get_list()? {
                     Statement::Let(counter.clone(), false, None, Expr::Value(i)).eval(engine)?;
                     result = code.eval(engine)?;
                 }
