@@ -69,7 +69,7 @@ const find: function = λt.λq.{
 
 const zip: function = λa.λb.{
     let result = [];
-    for i in (0 ~ len(a)) {
+    for i in (0 ~ len(a) as list) {
         result += [[a[i], b[i]]]
     };
     result
