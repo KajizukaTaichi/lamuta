@@ -1,7 +1,7 @@
 mod utils;
 use clap::Parser;
 use colored::*;
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 use reqwest::blocking;
 use rustyline::{error::ReadlineError, DefaultEditor};
 use std::{
@@ -91,7 +91,7 @@ type Program = Vec<Statement>;
 #[derive(Debug, Clone)]
 struct Engine {
     env: Scope,
-    protect: Vec<String>,
+    protect: IndexSet<String>,
 }
 
 impl Engine {
@@ -265,7 +265,9 @@ impl Engine {
             return Err(Fault::AccessDenied);
         }
         if is_identifier(name) {
-            self.env.insert(name.clone(), value.clone());
+            if name != "_" {
+                self.env.insert(name.clone(), value.clone());
+            }
             Ok(())
         } else {
             Err(Fault::Syntax)
@@ -281,9 +283,7 @@ impl Engine {
     }
 
     fn add_protect(&mut self, name: &String) {
-        if !self.is_protect(name) {
-            self.protect.push(name.clone());
-        }
+        self.protect.insert(name.clone());
     }
 
     fn is_protect(&mut self, name: &String) -> bool {
@@ -327,14 +327,9 @@ impl Statement {
                     }
                 }
                 if let Expr::Value(Type::Symbol(name)) = name {
-                    if engine.protect.contains(name) {
-                        return Err(Fault::AccessDenied);
-                    }
-                    if name != "_" {
-                        engine.alloc(name, &val)?;
-                        if *protect {
-                            engine.add_protect(name);
-                        }
+                    engine.alloc(name, &val)?;
+                    if *protect {
+                        engine.add_protect(name);
                     }
                 } else if let Expr::List(list) = name {
                     let val = val.get_list()?;
@@ -373,24 +368,12 @@ impl Statement {
             }
             Statement::If(expr, then, r#else) => match expr.eval(engine) {
                 Ok(it) => {
-                    Statement::Let(
-                        Expr::Value(Type::Symbol("it".to_string())),
-                        false,
-                        None,
-                        Expr::Value(it),
-                    )
-                    .eval(engine)?;
+                    engine.alloc(&"it".to_string(), &it)?;
                     then.eval(engine)?
                 }
                 Err(err) => {
                     if let Some(r#else) = r#else {
-                        Statement::Let(
-                            Expr::Value(Type::Symbol("err".to_string())),
-                            false,
-                            None,
-                            Expr::Value(Type::Text(format!("{err}"))),
-                        )
-                        .eval(engine)?;
+                        engine.alloc(&"err".to_string(), &Type::Text(format!("{err}")))?;
                         r#else.eval(engine)?
                     } else {
                         Type::Null
@@ -420,7 +403,7 @@ impl Statement {
             Statement::While(expr, code) => {
                 let mut result = Type::Null;
                 while let Ok(it) = expr.eval(engine) {
-                    engine.env.insert("it".to_string(), it);
+                    engine.alloc(&"it".to_string(), &it)?;
                     result = code.eval(engine)?;
                 }
                 result
