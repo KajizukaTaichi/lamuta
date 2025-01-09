@@ -679,7 +679,7 @@ impl Expr {
             } else if token.starts_with("\"") && token.ends_with("\"") {
                 let text = trim!(token, "\"", "\"");
                 Expr::Value(Type::Text(text_escape(text)))
-            // Text formating
+            // Text formatting
             } else if token.starts_with("f\"") && token.ends_with('"') {
                 let text = trim!(token, "f\"", "\"");
                 let text = text_format(text)?;
