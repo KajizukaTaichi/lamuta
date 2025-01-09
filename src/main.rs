@@ -351,7 +351,7 @@ impl Statement {
                     if let Operator::Access(accessor, key) = infix {
                         let obj = accessor.eval(engine)?;
                         let key = key.eval(engine)?;
-                        let updated_obj = obj.modify_inside(key, Some(val.clone()))?;
+                        let updated_obj = obj.modify_inside(key, Some(val.clone()), engine)?;
                         Statement::Let(accessor, false, None, Expr::Value(updated_obj.clone()))
                             .eval(engine)?;
                     } else if let Operator::Derefer(pointer) = infix {
@@ -1061,7 +1061,7 @@ impl Operator {
                 if let (Type::Number(lhs), Type::Number(rhs)) = (&lhs, &rhs) {
                     Type::Number(lhs - rhs)
                 } else {
-                    lhs.modify_inside(rhs, None)?
+                    lhs.modify_inside(rhs, None, engine)?
                 }
             }
             Operator::Mul(lhs, rhs) => {
@@ -1639,7 +1639,7 @@ impl Type {
         }
     }
 
-    fn modify_inside(&self, index: Type, val: Option<Type>) -> Result<Type, Fault> {
+    fn modify_inside(&self, index: Type, val: Option<Type>, engine: &mut Engine) -> Result<Type, Fault> {
         Ok(
             if let (Type::List(mut list), Type::Number(index)) = (self.clone(), index.clone()) {
                 index_check!(list, index, self);
@@ -1695,6 +1695,8 @@ impl Type {
                 } else {
                     Type::Text(remove!(text, index))
                 }
+            } else if let (Type::List(_), Type::List(_)) = (self.clone(), index.clone()) {
+                self.modify_inside(Operator::Access(Expr::Value(self.clone()), Expr::Value(index)).eval(engine)?, val, engine)?
             } else {
                 return Err(Fault::Infix(Operator::Access(
                     Expr::Value(self.clone()),
