@@ -20,18 +20,8 @@ const RESERVED: [&str; 10] = [
     "print", "let", "const", "if", "else", "match", "for", "in", "while", "fault",
 ];
 const BUILTIN: [&str; 12] = [
-    "type",
-    "std",
-    "env",
-    "free",
-    "eval",
-    "alphaConvert",
-    "input",
-    "readFile",
-    "load",
-    "save",
-    "sleep",
-    "exit",
+    "type", "std", "env", "free", "eval", "alphaConvert",
+    "input", "readFile", "load", "save", "sleep", "exit"
 ];
 
 #[derive(Parser)]
