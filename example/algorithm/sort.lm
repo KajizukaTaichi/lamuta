@@ -25,10 +25,17 @@ let stalinSort =  fn(array ->
     L
 );
 
+let kimSort = fn(array ->
+    let L = array as list;
+    [0] * (len(L) - 1) + [reduce (`+`) L] 
+);
+
 let communeSort = fn(array ->
     let L = array as list;
     [reduce (`+`) L / len(L)] * len(L) 
 );
 
 let array = [5, 4, 1, 8, 2];
-print normalSort(array), stalinSort(array), communeSort(array);
+for algorithm in [normalSort, stalinSort, kimSort, communeSort] {
+    print algorithm(array), "\n";
+}
