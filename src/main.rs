@@ -1273,6 +1273,7 @@ impl Operator {
                     ok!(st.get(&index), Fault::Key(rhs, lhs))?.clone()
                 } else if let (Type::List(list), Type::List(index)) = (lhs.clone(), rhs.clone()) {
                     let mut result = vec![];
+                    range_check!(first_index!(index, lhs), index, lhs, engine);
                     for i in index {
                         result.push(ok!(
                             list.get(i.get_number()? as usize).cloned(),
@@ -1283,6 +1284,7 @@ impl Operator {
                 } else if let (Type::Text(text), Type::List(index)) = (lhs.clone(), rhs.clone()) {
                     let mut result = String::new();
                     let text: Vec<char> = text.chars().collect();
+                    range_check!(first_index!(index, lhs), index, lhs, engine);
                     for i in index {
                         result.push(ok!(
                             text.get(i.get_number()? as usize).cloned(),
@@ -1471,7 +1473,7 @@ enum Fault {
     #[error("key `{}` is not found in the struct `{}`", _0.format(), _1.format())]
     Key(Type, Type),
 
-    #[error("index `{}` is out of the list `{}`", _0.format(), _1.format())]
+    #[error("index `{}` is out of the sequence `{}`", _0.format(), _1.format())]
     Index(Type, Type),
 
     #[error("access is denied because it's protected memory area")]
@@ -1725,7 +1727,7 @@ impl Type {
             {
                 let first_index = first_index!(index, self);
                 range_check!(first_index, index, self, engine);
-                for _ in 0..list.len() {
+                for _ in 0..index.len() {
                     index_check!(list, first_index, self);
                     list.remove(first_index as usize);
                 }
@@ -1735,7 +1737,7 @@ impl Type {
                 let mut text = char_vec!(text);
                 let first_index = first_index!(index, self);
                 range_check!(first_index, index, self, engine);
-                for _ in 0..text.len() {
+                for _ in 0..index.len() {
                     index_check!(text, first_index, self);
                     text.remove(first_index as usize);
                 }
