@@ -1,12 +1,34 @@
 load std;
-let L = [3, 4, 1, 8, 2];
 
-for i in (0 ~ len(L) as list) {
-    for j in (0 ~ len(L) as list) {
-        if (L[i] < L[j]) {
-            [L[i], L[j]] := [L[j], L[i]]
+let normalSort = fn(array ->
+    let L = array as list;
+    for i in (0 ~ len(L) as list) {
+        for j in (0 ~ len(L) as list) {
+            if (L[i] < L[j]) {
+                [L[i], L[j]] := [L[j], L[i]]
+            }
         }
-    }
-};
+    };
+    L
+);
 
-print L;
+let stalinSort =  fn(array ->
+    let L = array as list;
+    let base = 0;
+    for i in L {
+        if (base < i) {
+            base := i;
+        } else {
+            L -= [i];
+        }
+    };
+    L
+);
+
+let communeSort = fn(array ->
+    let L = array as list;
+    [reduce (`+`) L / len(L)] * len(L) 
+);
+
+let array = [5, 4, 1, 8, 2];
+print normalSort(array), stalinSort(array), communeSort(array);
