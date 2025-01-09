@@ -466,7 +466,11 @@ impl Statement {
             }
             Statement::For(counter, expr, code) => {
                 let mut result = Type::Null;
-                for i in expr.eval(engine)?.get_list()? {
+                for i in expr
+                    .eval(engine)?
+                    .cast(&Signature::List, engine)?
+                    .get_list()?
+                {
                     Statement::Let(counter.clone(), false, None, Expr::Value(i)).eval(engine)?;
                     result = code.eval(engine)?;
                 }
@@ -1554,6 +1558,15 @@ impl Type {
                     .iter()
                     .map(|(k, y)| Type::List(vec![Type::Text(k.to_owned()), y.to_owned()]))
                     .collect(),
+                Type::Range(start, end) => {
+                    let mut range: Vec<Type> = vec![];
+                    let mut current = *start;
+                    while current < *end {
+                        range.push(Type::Number(current as f64));
+                        current += 1;
+                    }
+                    range
+                }
                 Type::Null => Vec::new(),
                 _ => return err,
             }),
