@@ -2,11 +2,14 @@ load std;
 const art: text = "|‾‾‾‾‾|=";
 const init: number = 50;
 
+print f"\n車両工場||> //{"｀" * 20}\n"; 
+print   "| [+] [+] ===| ====|＼\n";
+
 let width = init;
 let count = [0, 0];
 while 1 {
     for i in (0 ~ width as list) {
-        print f"\r車両工場 生産台数: {count[0]}両 {count[1]}編成〔", " " * i, art;
+        print f"\r生産台数: {count[0]}両 {count[1]}編成〔", " " * i, art;
         sleep 0.03
     };
     width -= len(art);
