@@ -1,8 +1,8 @@
 load std;
 
 const specialForms: list = ["define", "if", "eval", "lambda"];
-const AST: #AST = @{
-    "class": #AST,
+const AST: #Expr = @{
+    "class": #Expr,
     "type": null,
     "value": null,
     "get": fn(sig, this ->
