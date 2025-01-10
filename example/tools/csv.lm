@@ -5,8 +5,13 @@ let csvParse = fn(x ->
     let line = trim(x / "\n");
     (map \x.trim(x / ",") line)
 );
+let list2Csv = fn(x -> 
+    join map(\x.join(x, ", "), x) "\n"
+);
 
-print csvParse "
+let csvData = "
 A, B, C
 1, 2, 3
 ";
+let csvList = csvParse csvData;
+print csvList, "\n", list2Csv csvList;
