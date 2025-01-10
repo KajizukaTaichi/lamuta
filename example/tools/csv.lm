@@ -1,0 +1,12 @@
+load std;
+
+let trim = \x.filter(\x.(x != ""), x);
+let csvParse = fn(x -> 
+    let line = trim(x / "\n");
+    (map \x.trim(x / ",") line)
+);
+
+print csvParse "
+A, B, C
+1, 2, 3
+";
