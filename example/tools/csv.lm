@@ -6,7 +6,7 @@ let csvParse = fn(x ->
     (map \x.trim(x / ",") line)
 );
 let list2Csv = fn(x -> 
-    join map(\x.join(x, ", "), x) "\n"
+    join map(\x.join(x, ","), x) "\n"
 );
 
 let csvData = "
