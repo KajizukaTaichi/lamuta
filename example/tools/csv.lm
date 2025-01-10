@@ -14,4 +14,5 @@ A, B, C
 1, 2, 3
 ";
 let csvList = csvParse csvData;
-print csvList, "\n", list2Csv csvList;
+print csvList, "\n";
+print list2Csv csvList, "\n";
