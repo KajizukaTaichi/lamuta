@@ -1,12 +1,8 @@
-<div align="center">
-  <img width="150" alt="image" src="docs/static/logo.png" />
-
- # **Lamuta**
-</div>
+# ![Banner](docs/static/banner.png)
 
 ラムダ計算の数式がそのまま書ける関数型プログラミング言語
 
-<img width="778" alt="image" src="docs/static/lambda.png" />
+![image](docs/static/lambda.png)
 
 > [!IMPORTANT]
 > 未踏事業にエントリーしました。
