@@ -1054,7 +1054,15 @@ impl Operator {
                 }
             }
             Operator::Div(lhs, rhs) => {
-                Type::Number(lhs.eval(engine)?.get_number()? / rhs.eval(engine)?.get_number()?)
+                let lhs = lhs.eval(engine)?;
+                let rhs = rhs.eval(engine)?;
+                if let (Type::Number(lhs), Type::Number(rhs)) = (&lhs, &rhs) {
+                    Type::Number(lhs / rhs)
+                } else if let (Type::Text(lhs), Type::Text(rhs)) = (&lhs, &rhs) {
+                    Type::List(lhs.split(rhs).map(|i|Type::Text(i.to_string())).collect())
+                } else {
+                    return Err(Fault::Infix(self.clone()));
+                }
             }
             Operator::Mod(lhs, rhs) => {
                 Type::Number(lhs.eval(engine)?.get_number()? % rhs.eval(engine)?.get_number()?)
