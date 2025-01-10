@@ -308,13 +308,7 @@ impl Statement {
         Ok(match self {
             Statement::Print(expr) => {
                 for i in expr {
-                    print!(
-                        "{}",
-                        match i.eval(engine)? {
-                            Type::Text(text) => text,
-                            other => other.format(),
-                        }
-                    );
+                    print!("{}", i.eval(engine)?.cast(&Signature::Text, engine)?.get_text()?);
                 }
                 io::stdout().flush().unwrap();
                 Type::Null
