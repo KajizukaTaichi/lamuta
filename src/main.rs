@@ -340,7 +340,7 @@ impl Statement {
                     if let Operator::Access(accessor, key) = infix {
                         let obj = accessor.eval(engine)?;
                         let key = key.eval(engine)?;
-                        let updated_obj = obj.modify_inside(key, Some(val.clone()), engine)?;
+                        let updated_obj = obj.modify_inside(&key, &Some(val.clone()), engine)?;
                         Statement::Let(accessor, false, None, Expr::Value(updated_obj.clone()))
                             .eval(engine)?;
                     } else if let Operator::Derefer(pointer) = infix {
@@ -1037,7 +1037,7 @@ impl Operator {
                 if let (Type::Number(lhs), Type::Number(rhs)) = (&lhs, &rhs) {
                     Type::Number(lhs - rhs)
                 } else {
-                    lhs.modify_inside(rhs, None, engine)?
+                    lhs.modify_inside(&rhs, &None, engine)?
                 }
             }
             Operator::Mul(lhs, rhs) => {
