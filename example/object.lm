@@ -2,8 +2,8 @@ const Animal: #Animal = @{
     "class": #Animal,
     "name": null,
     "voice": null,
-    "asText": fn(this ->
-        f"{this.name} <<< {this.voice}, {this.voice}!"
+    "say": fn(this ->
+        print f"{this.name} <<< {this.voice}, {this.voice}!\n";
     )
 };
 
@@ -19,8 +19,8 @@ const Cat: #Cat = Animal + @{
 
 let pochi: #Dog = Dog + @{ "name": "Pochi" };
 let kuro: #Dog = Dog + @{ "name": "Kuro" };
-print f"{pochi}\n", f"{kuro}\n";
+pochi $ "say";  kuro $ "say";
 
 let mike: #Cat = Cat + @{ "name": "Mike" };
 let tama: #Cat = Cat + @{ "name": "Tama" };
-print f"{mike}\n", f"{tama}\n";
+mike $ "say";  tama $ "say"
