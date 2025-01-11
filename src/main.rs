@@ -308,7 +308,10 @@ impl Statement {
         Ok(match self {
             Statement::Print(expr) => {
                 for i in expr {
-                    print!("{}", i.eval(engine)?.cast(&Signature::Text, engine)?.get_text()?);
+                    print!(
+                        "{}",
+                        i.eval(engine)?.cast(&Signature::Text, engine)?.get_text()?
+                    );
                 }
                 io::stdout().flush().unwrap();
                 Type::Null
@@ -1059,7 +1062,7 @@ impl Operator {
                 if let (Type::Number(lhs), Type::Number(rhs)) = (&lhs, &rhs) {
                     Type::Number(lhs / rhs)
                 } else if let (Type::Text(lhs), Type::Text(rhs)) = (&lhs, &rhs) {
-                    Type::List(lhs.split(rhs).map(|i|Type::Text(i.to_string())).collect())
+                    Type::List(lhs.split(rhs).map(|i| Type::Text(i.to_string())).collect())
                 } else {
                     return Err(Fault::Infix(self.clone()));
                 }
@@ -1174,11 +1177,11 @@ impl Operator {
                                 Fault::Key(rhs, lhs)
                             )?;
                             Type::Range(index, index + query.len())
-                        }    
-                        _ => return err
-                    }
+                        }
+                        _ => return err,
+                    },
                     Type::Text(text) => match rhs.clone() {
-                        Type::Number(index)=>{
+                        Type::Number(index) => {
                             let text = char_vec!(text);
                             Type::Text(ok!(
                                 text.get(index as usize).cloned(),
@@ -1196,17 +1199,17 @@ impl Operator {
                             }
                             Type::Text(result)
                         }
-                        Type::Text(query)=>{
+                        Type::Text(query) => {
                             let index = ok!(text.find(&query), Fault::Key(rhs, lhs))?;
                             Type::Range(index, index + query.chars().count())
                         }
-                        _ => return err
-                    }
-                    Type::Struct(st)=> match rhs.clone() {
+                        _ => return err,
+                    },
+                    Type::Struct(st) => match rhs.clone() {
                         Type::Text(key) => ok!(st.get(&key), Fault::Key(rhs, lhs))?.clone(),
-                        _ => return err
-                    }
-                    _ => return err
+                        _ => return err,
+                    },
+                    _ => return err,
                 }
             }
             Operator::Derefer(pointer) => {
@@ -1315,6 +1318,11 @@ impl Operator {
             "&" => Operator::And(has_lhs(2)?, token),
             "|" => Operator::Or(has_lhs(2)?, token),
             "?" => Operator::Apply(has_lhs(2)?, true, token),
+            "$" => Operator::Apply(
+                has_lhs(2)?,
+                false,
+                Expr::Infix(Box::new(Operator::Access(has_lhs(2)?, token))),
+            ),
             "::" => Operator::Access(has_lhs(2)?, token),
             "as" => Operator::As(has_lhs(2)?, token),
             "|>" => Operator::PipeLine(has_lhs(2)?, token),
@@ -1634,8 +1642,13 @@ impl Type {
         }
     }
 
-    fn modify_inside(&self, index: &Type, val: &Option<Type>, engine: &mut Engine) -> Result<Type, Fault> {
-        let err= Err(Fault::Infix(Operator::Access(
+    fn modify_inside(
+        &self,
+        index: &Type,
+        val: &Option<Type>,
+        engine: &mut Engine,
+    ) -> Result<Type, Fault> {
+        let err = Err(Fault::Infix(Operator::Access(
             Expr::Value(self.clone()),
             Expr::Value(index.clone()),
         )));
@@ -1660,12 +1673,15 @@ impl Type {
                     }
                     Type::List(list)
                 }
-                Type::List(_) => {
-                    self.modify_inside(&Operator::Access(Expr::Value(self.clone()), Expr::Value(index.clone())).eval(engine)?, val, engine)?
-                } 
+                Type::List(_) => self.modify_inside(
+                    &Operator::Access(Expr::Value(self.clone()), Expr::Value(index.clone()))
+                        .eval(engine)?,
+                    val,
+                    engine,
+                )?,
                 _ => return err,
-            }
-            Type::Text(text)=> match index.clone() {
+            },
+            Type::Text(text) => match index.clone() {
                 Type::Number(index) => {
                     let mut text = char_vec!(text);
                     index_check!(text, index, self);
@@ -1676,7 +1692,7 @@ impl Type {
                     }
                     Type::Text(text.concat())
                 }
-                Type::Range(start,end ) => {
+                Type::Range(start, end) => {
                     let mut text = char_vec!(text);
                     for _ in start..end {
                         index_check!(text, start as f64, self);
@@ -1691,14 +1707,14 @@ impl Type {
                     if let Some(val) = val {
                         Type::Text(text.replace(&query, &val.get_text()?))
                     } else {
-                        Type::Text(remove!(text,& query))
+                        Type::Text(remove!(text, &query))
                     }
                 }
-                
+
                 _ => return err,
-            }
+            },
             Type::Struct(mut st) => match index {
-                Type::Text(key)=>{
+                Type::Text(key) => {
                     if let Some(val) = val {
                         st.insert(key.clone(), val.clone());
                     } else {
@@ -1707,10 +1723,10 @@ impl Type {
                     Type::Struct(st)
                 }
                 _ => return err,
-            }
+            },
             _ => return err,
         })
-     }
+    }
 }
 
 #[derive(Debug, Clone)]
