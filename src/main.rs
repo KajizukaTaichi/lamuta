@@ -1150,52 +1150,63 @@ impl Operator {
             Operator::Access(lhs, rhs) => {
                 let lhs = lhs.eval(engine)?;
                 let rhs = rhs.eval(engine)?;
-                if let (Type::List(list), Type::Number(index)) = (lhs.clone(), rhs.clone()) {
-                    ok!(list.get(index as usize), Fault::Index(rhs, lhs))?.clone()
-                } else if let (Type::Text(text), Type::Number(index)) = (lhs.clone(), rhs.clone()) {
-                    let text = char_vec!(text);
-                    Type::Text(ok!(
-                        text.get(index as usize).cloned(),
-                        Fault::Index(rhs.clone(), lhs.clone())
-                    )?)
-                } else if let (Type::Struct(st), Type::Text(index)) = (lhs.clone(), rhs.clone()) {
-                    ok!(st.get(&index), Fault::Key(rhs, lhs))?.clone()
-                } else if let (Type::List(list), Type::Range(start, end)) =
-                    (lhs.clone(), rhs.clone())
-                {
-                    let mut result = vec![];
-                    for i in start..end {
-                        result.push(ok!(
-                            list.get(i).cloned(),
-                            Fault::Index(rhs.clone(), lhs.clone())
-                        )?);
+                let err = Err(Fault::Apply(lhs.clone()));
+                match lhs.clone() {
+                    Type::List(list) => match rhs.clone() {
+                        Type::Number(index) => {
+                            ok!(list.get(index as usize), Fault::Index(rhs, lhs))?.clone()
+                        }
+                        Type::Range(start, end) => {
+                            let mut result = Vec::new();
+                            for i in start..end {
+                                result.push(ok!(
+                                    list.get(i).cloned(),
+                                    Fault::Index(rhs.clone(), lhs.clone())
+                                )?);
+                            }
+                            Type::List(result)
+                        }
+                        Type::List(query) => {
+                            let index = ok!(
+                                list.windows(query.len())
+                                    .position(|i| Type::List(i.to_vec()).format()
+                                        == Type::List(query.clone()).format()),
+                                Fault::Key(rhs, lhs)
+                            )?;
+                            Type::Range(index, index + query.len())
+                        }    
+                        _ => return err
                     }
-                    Type::List(result)
-                } else if let (Type::Text(text), Type::Range(start, end)) =
-                    (lhs.clone(), rhs.clone())
-                {
-                    let mut result = String::new();
-                    let text: Vec<char> = text.chars().collect();
-                    for i in start..end {
-                        result.push(ok!(
-                            text.get(i).cloned(),
-                            Fault::Index(rhs.clone(), lhs.clone())
-                        )?);
+                    Type::Text(text) => match rhs.clone() {
+                        Type::Number(index)=>{
+                            let text = char_vec!(text);
+                            Type::Text(ok!(
+                                text.get(index as usize).cloned(),
+                                Fault::Index(rhs.clone(), lhs.clone())
+                            )?)
+                        }
+                        Type::Range(start, end) => {
+                            let mut result = String::new();
+                            let text: Vec<char> = text.chars().collect();
+                            for i in start..end {
+                                result.push(ok!(
+                                    text.get(i).cloned(),
+                                    Fault::Index(rhs.clone(), lhs.clone())
+                                )?);
+                            }
+                            Type::Text(result)
+                        }
+                        Type::Text(query)=>{
+                            let index = ok!(text.find(&query), Fault::Key(rhs, lhs))?;
+                            Type::Range(index, index + query.chars().count())
+                        }
+                        _ => return err
                     }
-                    Type::Text(result)
-                } else if let (Type::List(list), Type::List(query)) = (lhs.clone(), rhs.clone()) {
-                    let index = ok!(
-                        list.windows(query.len())
-                            .position(|i| Type::List(i.to_vec()).format()
-                                == Type::List(query.clone()).format()),
-                        Fault::Key(rhs, lhs)
-                    )?;
-                    Type::Range(index, index + query.len())
-                } else if let (Type::Text(text), Type::Text(query)) = (lhs.clone(), rhs.clone()) {
-                    let index = ok!(text.find(&query), Fault::Key(rhs, lhs))?;
-                    Type::Range(index, index + query.chars().count())
-                } else {
-                    return Err(Fault::Infix(self.clone()));
+                    Type::Struct(st)=> match rhs.clone() {
+                        Type::Text(key) => ok!(st.get(&key), Fault::Key(rhs, lhs))?.clone(),
+                        _ => return err
+                    }
+                    _ => return err
                 }
             }
             Operator::Derefer(pointer) => {
