@@ -15,7 +15,6 @@ let AST = @{
 let evaluate = fn(x ->
     let ast = x;
     if (type ast == #Nand) {
-        print "Test 01\n";
         let terms = map self ast.value;
         let a = terms[0] as number;
         let b = terms[1] as number;
@@ -111,4 +110,4 @@ let tokenize = fn(source ->
     tokens
 );
 
-print evaluate(parse("1 nand 1")) as number
+print evaluate(parse("1 nand (0 nand 1)")) as number
