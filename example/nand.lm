@@ -1,7 +1,6 @@
 load std;
 
 let AST = @{
-    "class": null,
     "value": null,
     "asNumber": fn(this ->
         if (type this == #Bool) {
