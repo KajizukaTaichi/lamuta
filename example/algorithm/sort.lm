@@ -15,8 +15,7 @@ let normalSort = fn(array ->
 let insertionSort = fn(array ->
     let L = array as list;
     for i in (1 ~ len(L) as list) {
-        let key = L[i];  
-        let j = i - 1;
+        let [key, j] = [L[i], i - 1];
         while (j >= 0 & (L[j] > key)) {
             L[j + 1] := L[j];
             j -= 1;
