@@ -48,7 +48,7 @@ let parse = fn(source ->
             fault "invaild value"
         }
     };
-    if (len tokenList >= 2 & (tokenList[len tokenList - 2])) {
+    if (len tokenList >= 2 & tokenList[len tokenList - 2]) {
         if (trim it == "nand") {
             AST + @{ 
                 "class": #Nand,
