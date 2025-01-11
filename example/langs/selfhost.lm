@@ -52,7 +52,7 @@ let parse = fn(source ->
             "-" => @{ "class": #Sub, "value": [hasLhs 2, token] },
             "*" => @{ "class": #Mul, "value": [hasLhs 2, token] },
             "/" => @{ "class": #Div, "value": [hasLhs 2, token] },
-            _ =>  @{ "class": #Apply, "value": [hasLhs 1, token] }
+            _ => @{ "class": #Apply, "value": [hasLhs 1, token] }
         }
     } else {
         token
