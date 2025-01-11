@@ -19,8 +19,8 @@ const Cat: #Cat = Animal + @{
 
 let pochi: #Dog = Dog + @{ "name": "Pochi" };
 let kuro: #Dog = Dog + @{ "name": "Kuro" };
-pochi $ "say";  kuro $ "say";
+pochi $ "say"; kuro $ "say";
 
 let mike: #Cat = Cat + @{ "name": "Mike" };
 let tama: #Cat = Cat + @{ "name": "Tama" };
-mike $ "say";  tama $ "say"
+mike $ "say"; tama $ "say"
