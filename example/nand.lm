@@ -4,7 +4,7 @@ let AST = @{
     "class": null,
     "value": null,
     "asNumber": fn(this ->
-        if this.ident == "bool" {
+        if (type this == #Bool) {
             this.value as number
         } else {
             fault
@@ -12,9 +12,27 @@ let AST = @{
     )
 };
 
-let evaluate = fn(x -> 
-    let ast: #Expr = x;
-    
+let evaluate = fn(x ->
+    let ast = x;
+    if (type ast == #Nand) {
+        print "Test 01\n";
+        let terms = map self ast.value;
+        let a = terms[0] as number;
+        let b = terms[1] as number;
+        AST + @{ 
+            "class": #Bool, 
+            "value": { 
+                if (a == 0 & (b == 0)) 1
+                else if (a == 0 & (b == 1)) 1
+                else if (a == 1 & (b == 0)) 1
+                else if (a == 1 & (b == 1)) 0
+            }
+        }
+    } else if (type ast == #Bool) {
+        ast
+    } else {
+        fault
+    }
 );
 
 let parse = fn(source ->
@@ -26,7 +44,7 @@ let parse = fn(source ->
         } else if (token == "1") {
             AST + @{ "class": #Bool, "value": 1 }
         } else if (token[0] == "(" & (token[len token - 1] == ")")) {
-            parse token[1 ~ (len token - 1)]
+            self token[1 ~ (len token - 1)]
         } else {
             fault "invaild value"
         }
@@ -93,4 +111,4 @@ let tokenize = fn(source ->
     tokens
 );
 
-print parse "1 nand 0"
+print evaluate(parse("1 nand 1")) as number
