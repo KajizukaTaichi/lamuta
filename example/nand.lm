@@ -48,9 +48,8 @@ let parse = fn(source ->
             fault "invaild value"
         }
     };
-    if (len tokenList >= 2) {
-        let op = tokenList[len tokenList - 2];
-        if (trim op == "nand") {
+    if (len tokenList >= 2 & (tokenList[len tokenList - 2])) {
+        if (trim it == "nand") {
             AST + @{ 
                 "class": #Nand,
                 "value": [parse (join tokenList[0 ~ (len tokenList - 2)] " "), token]
