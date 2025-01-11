@@ -772,6 +772,10 @@ impl Expr {
                     Expr::parse(obj)?,
                     Expr::Value(Type::Text(key.trim().to_string())),
                 )))
+            // Calling method of the object
+            } else if token.matches("$").count() >= 1 {
+                let (obj, key) = ok!(token.rsplit_once("$"))?;
+                Expr::parse(&format!("{obj} $ \"{key}\""))?
             } else if token == "null" {
                 Expr::Value(Type::Null)
             } else if is_identifier(&token) {
