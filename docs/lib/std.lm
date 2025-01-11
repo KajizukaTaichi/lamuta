@@ -78,10 +78,10 @@ const reverse: function = λt.{
 
 const trim: function = λt.{
     const trimStart: function = λt.{
-        let isFirstChar = 0;
-        let result = "";
+        let delimiter = [" ", "　", "\n", "\t", "\r"];
+        let [isFirstChar, result] = [0, ""];
         for c in (t as list) {
-            if ([" ", "　", "\n", "\t", "\r"] :: [c]) {
+            if (delimiter :: [c]) {
                 if (isFirstChar == 1) {
                     result += c;
                 }
