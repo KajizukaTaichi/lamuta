@@ -1,0 +1,85 @@
+load std;
+
+let AST = @{
+    "class": #Expr,
+    "ident": null,
+    "value": null
+};
+
+let parse = fn(source ->
+    let tokenList = tokenize source;
+    let token = tokenList[len tokenList  - 1];
+    let token = { 
+        if (token == "0") {
+            AST + @{ "ident": "bool", "value": 0 }
+        } else if (token == "1") {
+            AST + @{ "ident": "bool", "value": 1 }
+        } else if (token[0] == "(" & (token[len token - 1] == ")")) {
+            parse token[1 ~ (len token - 1)]
+        } else {
+            fault "invaild value"
+        }
+    };
+    if (len tokenList >= 2) {
+        let op = tokenList[len tokenList - 2];
+        if (trim op == "nand") {
+            AST + @{ 
+                "ident": "nand", 
+                "value": [parse (join tokenList[0 ~ (len tokenList - 2)] " "), token]
+            }
+        } else {
+            fault "invaild operator"
+        }
+    } else {
+        token
+    }
+);
+
+let tokenize = fn(source ->
+    let tokens = [];
+    let current = "";
+    let nest = 0;
+    let quote = 0;
+
+    for c in (source as list) {
+        match c {
+            "(" | "[" | "{" => {
+                if (quote == 0) {
+                    let current = current + c;
+                    let nest = nest + 1;
+                }
+            },
+            ")" | "]" | "}" => {
+                if (quote == 0) {
+                    let current = current + c;
+                    let nest = nest - 1;
+                }
+            },
+            " " | "　" => {
+                if ((nest == 0) & (quote == 0)) {
+                    if (current != "") {
+                        let tokens = tokens + [current];
+                        let current = "";
+                    }
+                } else {
+                    let current = current + c;
+                }
+            },
+            "\"" => {
+                let quote = { if (quote == 1) 0 else 1 };
+                let current = current + c;
+            },
+            _ => {
+                let current = current + c;
+            }
+        }
+    };
+
+    if (current != "") {
+        let tokens = tokens + [current];
+    };
+
+    tokens
+);
+
+print parse "1 nand 0"
