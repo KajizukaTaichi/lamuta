@@ -1,0 +1,254 @@
+load std;
+
+const specialForms: list = ["define", "if", "eval", "lambda"];
+const AST: struct = @{
+    "value": null,
+    "get": fn(sig, this ->
+        if (type this == sig)
+            this.value
+        else {
+            fault f"expected {sig} but {this} is {type this}"
+        }
+    ),
+    "asText": fn(this ->
+        match type(this) {
+            #Number => this.value as text,
+            #Text => f"\"{this.value}\"",
+            #Symbol => this.value,
+            #Bool => { if (this.value == 1) "true" else "false" },
+            #List => {
+                let inner = join (map fn(x -> x as text) this.value) " ";
+                f"\'({inner})"
+            },
+            #Function => "<Function>"
+        }
+    )
+};
+
+let evaluate = fn(e, p ->
+    let scope = e;
+    match type(p) {
+        #Expr => {
+            let code = [];
+            for i in p.value {
+                let [scope, value] = evaluate scope i;
+                code += [value];
+            };
+            if (type code[0] == #Function) {
+                let func: function = code[0].value;
+                [scope, func code[1 ~ (len code)]]
+            } else {
+                fault
+            }
+        },
+        #SpecialForm => {
+            let code: list = p.value;
+            match (code[0].value) {
+                "define" => {
+                    let name = code[1].value;
+                    let expr = code[2];
+                    let [scope, value] = evaluate scope expr;
+                    scope += @{ name: value };
+                    [scope, value]
+                },
+                "if" => {
+                    let [_, expr, thenCode, elseCode] = code;
+                    let [scope, value] = evaluate scope expr;
+                    evaluate scope {
+                        if (0 != value.value != "")
+                            thenCode
+                        else
+                            elseCode
+                    }
+                },
+                "eval" => {
+                    let [scope, expr] = evaluate(scope, code[1]);
+                    let expr = AST.get list expr;
+                    evaluate scope (AST + @{
+                        "class": {
+                            if (specialForms `find` [expr[0].value])
+                                #SpecialForm
+                            else
+                                #Expr
+                        },
+                        "value": expr
+                    })
+                },
+                "lambda" => {
+                    let [_, args, body] = code;
+                    let args = map (AST.get #Symbol) args.value;
+                    let funcObj = fn(args, body -> AST + @{
+                        "class": #Function,
+                        "value": λl.{
+                            let funcScope = scope;
+                            for [name, value] in zip(args, l) {
+                                funcScope += @{ name: value }
+                            };
+                            evaluate funcScope body :: 1
+                        }
+                    });
+                    [scope, funcObj args body]
+                }
+            }
+        },
+        #Symbol => [scope, { if (scope :: p.value) it else p }],
+        _ => [scope, p]
+    }
+);
+
+let parse = fn(source ->
+    if (source[0] == "(" & (source[len source - 1] == ")")) {
+        let inner = source[1 ~ (len source - 1)];
+        let result = [];
+        for i in (tokenize inner) {
+            let result = result + [parse i];
+        };
+        if (specialForms `find` [result[0].value]) {
+            AST + @{ "class": #SpecialForm, "value": result }
+        } else {
+            AST + @{ "class": #Expr, "value": result }
+        }
+    } else if (source[0 ~ 2] == "\'(" & (source[len source - 1] == ")")) {
+        let inner = source[2 ~ (len source - 1)];
+        let result = [];
+        for i in (tokenize inner) {
+            let result = result + [parse i];
+        };
+        AST + @{ "class": #List, "value": result }
+    } else if (source[0] == "\"" & (source[len source - 1] == "\"")) {
+        let inner = source[1 ~ (len source - 1)];
+        AST + @{ "class": #Text, "value": inner }
+    } else if (source == "true") {
+        AST + @{ "class": #Bool, "value": 1 }
+    } else if (source == "false") {
+        AST + @{ "class": #Bool, "value": 0 }
+    } else if (source as number)
+        AST + @{ "class": #Number, "value": it }
+    else
+        AST + @{ "class": #Symbol, "value": source }
+);
+
+let tokenize = fn(source ->
+    let tokens = [];
+    let current = "";
+    let nest = 0;
+    let quote = 0;
+
+    for c in (source as list) {
+        match c {
+            "(" | "[" | "{" => {
+                if (quote == 0) {
+                    let current = current + c;
+                    let nest = nest + 1;
+                }
+            },
+            ")" | "]" | "}" => {
+                if (quote == 0) {
+                    let current = current + c;
+                    let nest = nest - 1;
+                }
+            },
+            " " | "　" => {
+                if ((nest == 0) & (quote == 0)) {
+                    if (current != "") {
+                        let tokens = tokens + [current];
+                        let current = "";
+                    }
+                } else {
+                    let current = current + c;
+                }
+            },
+            "\"" => {
+                let quote = { if (quote == 1) 0 else 1 };
+                let current = current + c;
+            },
+            _ => {
+                let current = current + c;
+            }
+        }
+    };
+
+    if (current != "") {
+        let tokens = tokens + [current];
+    };
+
+    tokens
+);
+
+let scope = @{
+    "+": AST + @{
+        "class": #Function,
+        "value": λl.(AST + @{
+            "class": #Number,
+            "value": reduce (`+`) (map (AST.get #Number) l)
+        })
+    },
+    "-": AST + @{
+        "class": #Function,
+        "value": λl.(AST + @{
+            "class": #Number,
+            "value": reduce (`-`) (map (AST.get #Number) l)
+        })
+    },
+    "*": AST + @{
+        "class": #Function,
+        "value": λl.(AST + @{
+            "class": #Number,
+            "value": reduce (`*`) (map (AST.get #Number) l)
+        })
+    },
+    "/": AST + @{
+        "class": #Function,
+        "value": λl.(AST + @{
+            "class": #Number,
+            "value": reduce (`/`) (map (AST.get #Number) l)
+        })
+    },
+    "%": AST + @{
+        "class": #Function,
+        "value": λl.(AST + @{
+            "class": #Number,
+            "value": reduce (`%`) (map (AST.get #Number) l)
+        })
+    },
+    "^": AST + @{
+        "class": #Function,
+        "value": λl.(AST + @{
+            "class": #Number,
+            "value": reduce (`^`) (map (AST.get #Number) l)
+        })
+    },
+    "=": AST + @{
+        "class": #Function,
+        "value": λl.{
+            let result = AST + @{ "class": #Bool };
+            result.value := { if (reduce (`==`) l) 1 else 0 };
+            result
+        }
+    },
+    "concat": AST + @{
+        "class": #Function,
+        "value": λl.(AST + @{
+            "class": #Text,
+            "value": reduce (`+`) (map (AST.get #Text) l)
+        })
+    }
+};
+
+let main = λ_.{
+    print "Lamuta Lisp\n";
+    let flag = 1;
+    while (flag == 1) {
+        let entered = input ">>> ";
+        if (entered == ":q") {
+            let flag = 0;
+        } else if evaluate(scope, parse entered) {
+            let [scope, value] = it;
+            print value as text, "\n";
+        } else {
+            print f"Error! {err}\n";
+        }
+    }
+};
+
+main _
