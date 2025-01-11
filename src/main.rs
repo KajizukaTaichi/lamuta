@@ -1653,17 +1653,14 @@ impl Type {
                     text.remove(index as usize);
                 }
                 Type::Text(text.concat())
-            } else if let (Type::Struct(mut st), Type::Text(index)) = (self.clone(), index.clone())
-            {
+            } else if let (Type::Struct(mut st), Type::Text(index)) = (self.clone(), index.clone()) {
                 if let Some(val) = val {
                     st.insert(index, val.clone());
                 } else {
                     st.shift_remove(&index);
                 }
                 Type::Struct(st)
-            } else if let (Type::List(mut list), Type::Range(start, end)) =
-                (self.clone(), index.clone())
-            {
+            } else if let (Type::List(mut list), Type::Range(start, end)) = (self.clone(), index.clone()) {
                 for _ in start..end {
                     index_check!(list, start as f64, self);
                     list.remove(start);
@@ -1672,9 +1669,7 @@ impl Type {
                     list.insert(start, val.clone());
                 }
                 Type::List(list)
-            } else if let (Type::Text(text), Type::Range(start, end)) =
-                (self.clone(), index.clone())
-            {
+            } else if let (Type::Text(text), Type::Range(start, end)) = (self.clone(), index.clone()) {
                 let mut text = char_vec!(text);
                 for _ in start..end {
                     index_check!(text, start as f64, self);
