@@ -2,16 +2,18 @@ load std;
 
 let evaluate = fn(x ->
     let ast = x;
-    if (type ast == #Add) {
-        let terms = map self ast.value;
-        let a = terms[0].value;
-        let b = terms[1].value;
-        @{ 
-            "class": #Number, 
-            "value": a + b
-        }
-    } else {
-        ast
+    match (type ast) {
+        #Add => {
+            let terms = map self ast.value;
+            let [a, b] = [terms[0].value, terms[1].value];
+            @{ "class": #Number, "value": a + b }
+        },
+        #Sub => {
+            let terms = map self ast.value;
+            let [a, b] = [terms[0].value, terms[1].value];
+            @{ "class": #Number,  "value": a - b }
+        },
+        _ => ast
     }
 );
 
