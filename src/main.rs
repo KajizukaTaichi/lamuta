@@ -1634,67 +1634,83 @@ impl Type {
         }
     }
 
-    fn modify_inside(&self, index: Type, val: Option<Type>, engine: &mut Engine) -> Result<Type, Fault> {
-        Ok(
-            if let (Type::List(mut list), Type::Number(index)) = (self.clone(), index.clone()) {
-                index_check!(list, index, self);
-                if let Some(val) = val {
-                    list[index as usize] = val.clone();
-                } else {
-                    list.remove(index as usize);
+    fn modify_inside(&self, index: &Type, val: &Option<Type>, engine: &mut Engine) -> Result<Type, Fault> {
+        let err= Err(Fault::Infix(Operator::Access(
+            Expr::Value(self.clone()),
+            Expr::Value(index.clone()),
+        )));
+        Ok(match self.clone() {
+            Type::List(mut list) => match index.clone() {
+                Type::Number(index) => {
+                    index_check!(list, index, self);
+                    if let Some(val) = val {
+                        list[index as usize] = val.clone();
+                    } else {
+                        list.remove(index as usize);
+                    }
+                    Type::List(list)
                 }
-                Type::List(list)
-            } else if let (Type::Text(text), Type::Number(index)) = (self.clone(), index.clone()) {
-                let mut text = char_vec!(text);
-                index_check!(text, index, self);
-                if let Some(val) = val {
-                    text[index as usize] = val.get_text()?;
-                } else {
-                    text.remove(index as usize);
+                Type::Range(start, end) => {
+                    for _ in start..end {
+                        index_check!(list, start as f64, self);
+                        list.remove(start);
+                    }
+                    if let Some(val) = val {
+                        list.insert(start, val.clone());
+                    }
+                    Type::List(list)
                 }
-                Type::Text(text.concat())
-            } else if let (Type::Struct(mut st), Type::Text(index)) = (self.clone(), index.clone()) {
-                if let Some(val) = val {
-                    st.insert(index, val.clone());
-                } else {
-                    st.shift_remove(&index);
+                Type::List(_) => {
+                    self.modify_inside(&Operator::Access(Expr::Value(self.clone()), Expr::Value(index.clone())).eval(engine)?, val, engine)?
+                } 
+                _ => return err,
+            }
+            Type::Text(text)=> match index.clone() {
+                Type::Number(index) => {
+                    let mut text = char_vec!(text);
+                    index_check!(text, index, self);
+                    if let Some(val) = val {
+                        text[index as usize] = val.get_text()?;
+                    } else {
+                        text.remove(index as usize);
+                    }
+                    Type::Text(text.concat())
                 }
-                Type::Struct(st)
-            } else if let (Type::List(mut list), Type::Range(start, end)) = (self.clone(), index.clone()) {
-                for _ in start..end {
-                    index_check!(list, start as f64, self);
-                    list.remove(start);
+                Type::Range(start,end ) => {
+                    let mut text = char_vec!(text);
+                    for _ in start..end {
+                        index_check!(text, start as f64, self);
+                        text.remove(start);
+                    }
+                    if let Some(val) = val {
+                        text.insert(start, val.get_text()?);
+                    }
+                    Type::Text(text.concat())
                 }
-                if let Some(val) = val {
-                    list.insert(start, val.clone());
+                Type::Text(query) => {
+                    if let Some(val) = val {
+                        Type::Text(text.replace(&query, &val.get_text()?))
+                    } else {
+                        Type::Text(remove!(text,& query))
+                    }
                 }
-                Type::List(list)
-            } else if let (Type::Text(text), Type::Range(start, end)) = (self.clone(), index.clone()) {
-                let mut text = char_vec!(text);
-                for _ in start..end {
-                    index_check!(text, start as f64, self);
-                    text.remove(start);
+                
+                _ => return err,
+            }
+            Type::Struct(mut st) => match index {
+                Type::Text(key)=>{
+                    if let Some(val) = val {
+                        st.insert(key.clone(), val.clone());
+                    } else {
+                        st.shift_remove(key);
+                    }
+                    Type::Struct(st)
                 }
-                if let Some(val) = val {
-                    text.insert(start, val.get_text()?);
-                }
-                Type::Text(text.concat())
-            } else if let (Type::Text(text), Type::Text(index)) = (&self, &index) {
-                if let Some(val) = val {
-                    Type::Text(text.replace(index, &val.get_text()?))
-                } else {
-                    Type::Text(remove!(text, index))
-                }
-            } else if let (Type::List(_), Type::List(_)) = (self.clone(), index.clone()) {
-                self.modify_inside(Operator::Access(Expr::Value(self.clone()), Expr::Value(index)).eval(engine)?, val, engine)?
-            } else {
-                return Err(Fault::Infix(Operator::Access(
-                    Expr::Value(self.clone()),
-                    Expr::Value(index),
-                )));
-            },
-        )
-    }
+                _ => return err,
+            }
+            _ => return err,
+        })
+     }
 }
 
 #[derive(Debug, Clone)]
