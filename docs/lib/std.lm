@@ -80,7 +80,7 @@ const trimStart: function = λt.{
     let isFirstChar = 0;
     let result = "";
     for c in (t as list) {
-        if (c == " ") {
+        if ([" ", "　", "\n", "\t", "\r"] :: [c]) {
             if (isFirstChar == 1) {
                 result += c;
             }
