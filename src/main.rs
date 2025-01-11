@@ -1320,8 +1320,7 @@ impl Operator {
             "?" => Operator::Apply(has_lhs(2)?, true, token),
             "$" => Operator::Apply(
                 Expr::Infix(Box::new(Operator::Access(has_lhs(2)?, token))),
-                false,
-                has_lhs(2)?,
+                false, has_lhs(2)?,
             ),
             "::" => Operator::Access(has_lhs(2)?, token),
             "as" => Operator::As(has_lhs(2)?, token),
