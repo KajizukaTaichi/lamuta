@@ -66,4 +66,33 @@ const zip: function = λa.λb.{
     result
 };
 
+const reverse: function = λt.{
+    let result = { if (type t == text) "" else [] };
+    let index = len t;
+    while (index != 0) {
+        index -= 1;
+        result += { if (type t == text) t[index] else [t[index]] };
+    };
+    result
+};
+
+const trimStart: function = λt.{
+    let isFirstChar = 0;
+    let result = "";
+    for c in (t as list) {
+        if (c == " ") {
+            if (isFirstChar == 1) {
+                result += c;
+            }
+        } else {
+            if (isFirstChar == 0) {
+                isFirstChar := 1;
+            };
+            result += c;
+        }
+    };
+    result
+};
+const trim: function = λt.reverse(trimStart(reverse(trimStart(t))));
+
 const compose: function = λf.λg.λx.f(g(x));
