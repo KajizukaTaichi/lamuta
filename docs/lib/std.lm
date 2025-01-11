@@ -76,23 +76,25 @@ const reverse: function = λt.{
     result
 };
 
-const trimStart: function = λt.{
-    let isFirstChar = 0;
-    let result = "";
-    for c in (t as list) {
-        if ([" ", "　", "\n", "\t", "\r"] :: [c]) {
-            if (isFirstChar == 1) {
+const trim: function = λt{
+    const trimStart: function = λt.{
+        let isFirstChar = 0;
+        let result = "";
+        for c in (t as list) {
+            if ([" ", "　", "\n", "\t", "\r"] :: [c]) {
+                if (isFirstChar == 1) {
+                    result += c;
+                }
+            } else {
+                if (isFirstChar == 0) {
+                    isFirstChar := 1;
+                };
                 result += c;
             }
-        } else {
-            if (isFirstChar == 0) {
-                isFirstChar := 1;
-            };
-            result += c;
-        }
+        };
+        result
     };
-    result
+    reverse(trimStart(reverse(trimStart(t))))
 };
-const trim: function = λt.reverse(trimStart(reverse(trimStart(t))));
 
 const compose: function = λf.λg.λx.f(g(x));
