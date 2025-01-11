@@ -76,7 +76,7 @@ const reverse: function = λt.{
     result
 };
 
-const trim: function = λt{
+const trim: function = λt.{
     const trimStart: function = λt.{
         let isFirstChar = 0;
         let result = "";
