@@ -6,12 +6,22 @@ let evaluate = fn(x ->
         #Add => {
             let terms = map self ast.value;
             let [a, b] = [terms[0].value, terms[1].value];
-            @{ "class": #Number, "value": a + b }
+            @{ "class": #Value, "value": a + b }
         },
         #Sub => {
             let terms = map self ast.value;
             let [a, b] = [terms[0].value, terms[1].value];
-            @{ "class": #Number,  "value": a - b }
+            @{ "class": #Value, "value": a - b }
+        },
+        #Mul => {
+            let terms = map self ast.value;
+            let [a, b] = [terms[0].value, terms[1].value];
+            @{ "class": #Value, "value": a * b }
+        },
+        #Div => {
+            let terms = map self ast.value;
+            let [a, b] = [terms[0].value, terms[1].value];
+            @{ "class": #Value, "value": a / b }
         },
         _ => ast
     }
@@ -22,14 +32,14 @@ let parse = fn(source ->
     let token = tokenList[len tokenList  - 1];
     let token = { 
         if (token as number) {
-            @{ "class": #Number, "value": it }
+            @{ "class": #Value, "value": it }
         } else if (token[0] == "(" & (token[len token - 1] == ")")) {
             self token[1 ~ (len token - 1)]
         } else if (token[0] == "\"" & (token[len token - 1] == "\"")) {
-            @{ "class": #Text, "value": token[1 ~ (len token - 1)] }
+            @{ "class": #Value, "value": token[1 ~ (len token - 1)] }
         } else if (token[0] == "λ" & token["."]) {
             let [args, body] = token - "λ" / ".";
-            @{ "class": #Lambda, "value": [args, self body] }
+            @{ "class": #Value, "value": fn(x -> self body) }
         } else {
            @{ "class": #Symbol, "value": it }
         }
