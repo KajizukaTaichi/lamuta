@@ -76,7 +76,8 @@ const reverse: function = λt.{
     result
 };
 
-const trim: function = λt.{
+const trim: function = λx.{
+    let t: text = x;
     const trimStart: function = λt.{
         let delimiter = [" ", "　", "\n", "\t", "\r"];
         let [isFirstChar, result] = [0, ""];
