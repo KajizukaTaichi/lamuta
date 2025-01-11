@@ -1,19 +1,30 @@
 load std;
 
 let AST = @{
-    "class": #Expr,
-    "ident": null,
-    "value": null
+    "class": null,
+    "value": null,
+    "asNumber": fn(this ->
+        if this.ident == "bool" {
+            this.value as number
+        } else {
+            fault
+        }
+    )
 };
+
+let evaluate = fn(x -> 
+    let ast: #Expr = x;
+    
+);
 
 let parse = fn(source ->
     let tokenList = tokenize source;
     let token = tokenList[len tokenList  - 1];
     let token = { 
         if (token == "0") {
-            AST + @{ "ident": "bool", "value": 0 }
+            AST + @{ "class": #Bool, "value": 0 }
         } else if (token == "1") {
-            AST + @{ "ident": "bool", "value": 1 }
+            AST + @{ "class": #Bool, "value": 1 }
         } else if (token[0] == "(" & (token[len token - 1] == ")")) {
             parse token[1 ~ (len token - 1)]
         } else {
@@ -24,7 +35,7 @@ let parse = fn(source ->
         let op = tokenList[len tokenList - 2];
         if (trim op == "nand") {
             AST + @{ 
-                "ident": "nand", 
+                "class": #Nand,
                 "value": [parse (join tokenList[0 ~ (len tokenList - 2)] " "), token]
             }
         } else {
