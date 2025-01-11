@@ -46,8 +46,7 @@ let parse = fn(source ->
     };
     if (len tokenList >= 2 & tokenList[len tokenList - 2]) {
         let hasLhs = \x.parse(join tokenList[0 ~ (len tokenList - x)] " ");
-        let operator = trim it;
-        match operator {
+        match (trim it) {
             "+" => @{ "class": #Add, "value": [hasLhs 2, token] },
             "-" => @{ "class": #Sub, "value": [hasLhs 2, token] },
             "*" => @{ "class": #Mul, "value": [hasLhs 2, token] },
