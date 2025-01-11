@@ -1,0 +1,26 @@
+const Animal: #Animal = @{
+    "class": #Animal,
+    "name": null,
+    "voice": null,
+    "say": fn(this ->
+        print f"{this.name} <<< {this.voice}, {this.voice}!\n";
+    )
+};
+
+const Dog: #Dog = Animal + @{
+    "class": #Dog,
+    "voice": "bark"
+};
+
+const Cat: #Cat = Animal + @{
+    "class": #Cat,
+    "voice": "meow"
+};
+
+let pochi: #Dog = Dog + @{ "name": "Pochi" };
+let kuro: #Dog = Dog + @{ "name": "Kuro" };
+pochi$say; kuro$say;
+
+let mike: #Cat = Cat + @{ "name": "Mike" };
+let tama: #Cat = Cat + @{ "name": "Tama" };
+mike$say; tama$say
