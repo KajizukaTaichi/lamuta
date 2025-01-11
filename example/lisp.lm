@@ -1,49 +1,47 @@
 load std;
 
 const specialForms: list = ["define", "if", "eval", "lambda"];
-const AST: #Expr = @{
-    "class": #Expr,
-    "type": null,
+const AST: struct = @{
     "value": null,
     "get": fn(sig, this ->
-        if (this.type == (sig as text))
+        if (type this == sig)
             this.value
         else {
-            fault f"expected {sig} but {this} is {this.type}"
+            fault f"expected {sig} but {this} is {type this}"
         }
     ),
     "asText": fn(this ->
-        match this.type {
-            "number" => this.value as text,
-            "text" => f"\"{this.value}\"",
-            "symbol" => this.value,
-            "bool" => { if (this.value == 1) "true" else "false" },
-            "list" => {
+        match type(this) {
+            #Number => this.value as text,
+            #Text => f"\"{this.value}\"",
+            #Symbol => this.value,
+            #Bool => { if (this.value == 1) "true" else "false" },
+            #List => {
                 let inner = join (map fn(x -> x as text) this.value) " ";
                 f"\'({inner})"
             },
-            "function" => "<Function>"
+            #Function => "<Function>"
         }
     )
 };
 
 let evaluate = fn(e, p ->
     let scope = e;
-    match p.type {
-        "expr" => {
+    match type(p) {
+        #Expr => {
             let code = [];
             for i in p.value {
                 let [scope, value] = evaluate scope i;
                 code += [value];
             };
-            if (code[0].type == "function") {
+            if (type code[0] == #Function) {
                 let func: function = code[0].value;
                 [scope, func code[1 ~ (len code)]]
             } else {
                 fault
             }
         },
-        "specialForm" => {
+        #SpecialForm => {
             let code: list = p.value;
             match (code[0].value) {
                 "define" => {
@@ -67,20 +65,20 @@ let evaluate = fn(e, p ->
                     let [scope, expr] = evaluate(scope, code[1]);
                     let expr = AST.get list expr;
                     evaluate scope (AST + @{
-                        "type": {
+                        "class": {
                             if (specialForms `find` [expr[0].value])
-                                "specialForm"
+                                #SpecialForm
                             else
-                                "expr"
+                                #Expr
                         },
                         "value": expr
                     })
                 },
                 "lambda" => {
                     let [_, args, body] = code;
-                    let args = map (AST.get symbol) args.value;
+                    let args = map (AST.get #Symbol) args.value;
                     let funcObj = fn(args, body -> AST + @{
-                        "type": "function",
+                        "class": #Function,
                         "value": λl.{
                             let funcScope = scope;
                             for [name, value] in zip(args, l) {
@@ -93,7 +91,7 @@ let evaluate = fn(e, p ->
                 }
             }
         },
-        "symbol" => [scope, { if (scope :: p.value) it else p }],
+        #Symbol => [scope, { if (scope :: p.value) it else p }],
         _ => [scope, p]
     }
 );
@@ -106,9 +104,9 @@ let parse = fn(source ->
             let result = result + [parse i];
         };
         if (specialForms `find` [result[0].value]) {
-            AST + @{ "type": "specialForm", "value": result }
+            AST + @{ "class": #SpecialForm, "value": result }
         } else {
-            AST + @{ "type": "expr", "value": result }
+            AST + @{ "class": #Expr, "value": result }
         }
     } else if (source[0 ~ 2] == "\'(" & (source[len source - 1] == ")")) {
         let inner = source[2 ~ (len source - 1)];
@@ -116,18 +114,18 @@ let parse = fn(source ->
         for i in (tokenize inner) {
             let result = result + [parse i];
         };
-        AST + @{ "type": "list", "value": result }
+        AST + @{ "class": #List, "value": result }
     } else if (source[0] == "\"" & (source[len source - 1] == "\"")) {
         let inner = source[1 ~ (len source - 1)];
-        AST + @{ "type": "text", "value": inner }
+        AST + @{ "class": #Text, "value": inner }
     } else if (source == "true") {
-        AST + @{ "type": "bool", "value": 1 }
+        AST + @{ "class": #Bool, "value": 1 }
     } else if (source == "false") {
-        AST + @{ "type": "bool", "value": 0 }
+        AST + @{ "class": #Bool, "value": 0 }
     } else if (source as number)
-        AST + @{ "type": "number", "value": it }
+        AST + @{ "class": #Number, "value": it }
     else
-        AST + @{ "type": "symbol", "value": source }
+        AST + @{ "class": #Symbol, "value": source }
 );
 
 let tokenize = fn(source ->
@@ -179,60 +177,60 @@ let tokenize = fn(source ->
 
 let scope = @{
     "+": AST + @{
-        "type": "function",
+        "class": #Function,
         "value": λl.(AST + @{
-            "type": "number",
-            "value": reduce (`+`) (map (AST.get number) l)
+            "class": #Number,
+            "value": reduce (`+`) (map (AST.get #Number) l)
         })
     },
     "-": AST + @{
-        "type": "function",
+        "class": #Function,
         "value": λl.(AST + @{
-            "type": "number",
-            "value": reduce (`-`) (map (AST.get number) l)
+            "class": #Number,
+            "value": reduce (`-`) (map (AST.get #Number) l)
         })
     },
     "*": AST + @{
-        "type": "function",
+        "class": #Function,
         "value": λl.(AST + @{
-            "type": "number",
-            "value": reduce (`*`) (map (AST.get number) l)
+            "class": #Number,
+            "value": reduce (`*`) (map (AST.get #Number) l)
         })
     },
     "/": AST + @{
-        "type": "function",
+        "class": #Function,
         "value": λl.(AST + @{
-            "type": "number",
-            "value": reduce (`/`) (map (AST.get number) l)
+            "class": #Number,
+            "value": reduce (`/`) (map (AST.get #Number) l)
         })
     },
     "%": AST + @{
-        "type": "function",
+        "class": #Function,
         "value": λl.(AST + @{
-            "type": "number",
-            "value": reduce (`%`) (map (AST.get number) l)
+            "class": #Number,
+            "value": reduce (`%`) (map (AST.get #Number) l)
         })
     },
     "^": AST + @{
-        "type": "function",
+        "class": #Function,
         "value": λl.(AST + @{
-            "type": "number",
-            "value": reduce (`^`) (map (AST.get number) l)
+            "class": #Number,
+            "value": reduce (`^`) (map (AST.get #Number) l)
         })
     },
     "=": AST + @{
-        "type": "function",
+        "class": #Function,
         "value": λl.{
-            let result = AST + @{ "type": "bool" };
+            let result = AST + @{ "class": #Bool };
             result.value := { if (reduce (`==`) l) 1 else 0 };
             result
         }
     },
     "concat": AST + @{
-        "type": "function",
+        "class": #Function,
         "value": λl.(AST + @{
-            "type": "text",
-            "value": reduce (`+`) (map (AST.get text) l)
+            "class": #Text,
+            "value": reduce (`+`) (map (AST.get #Text) l)
         })
     }
 };
