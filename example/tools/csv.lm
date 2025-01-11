@@ -1,9 +1,8 @@
 load std;
 
-let trim = \x.filter(\x.(x != ""), x);
 let csvParse = fn(x -> 
-    let line = trim(x / "\n");
-    (map \x.trim(x / ",") line)
+    let line = trim x / "\n";
+    map \x.(map trim (trim x / ",")) line
 );
 let list2Csv = fn(x -> 
     join map(\x.join(x, ","), x) "\n"
