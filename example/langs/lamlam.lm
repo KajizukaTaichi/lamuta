@@ -97,6 +97,10 @@ let evalExpr = fn(e, x ->
             let [[scope, a], [scope, b]] = map (evalExpr scope) ast.value;
             [scope, @{ "class": #Value, "value": a.value == b.value }]
         },
+        #As => {
+            let [[scope, a], [scope, b]] = map (evalExpr scope) ast.value;
+            [scope, @{ "class": #Value, "value": a.value as b.value }]
+        },
         _ => [scope, ast]
     }
 );
@@ -183,24 +187,39 @@ let parseExpr = fn(source ->
     let tokenList = tokenize SPACE source;
     let token = tokenList[len tokenList  - 1] |> trim;
     let token = { 
+        // Number 64-bit float;
         if (token as number) {
-            @{ "class": #Value, "value": it }
+            @{ "class": #Value, "value": it };
+
+        // Expression that override other operator
         } else if (token[0] == "(" & (token[len token - 1] == ")")) {
-            token[1 ~ (len token - 1)] |> trim |> parseExpr
+            token[1 ~ (len token - 1)] |> trim |> parseExpr;
+        
+        // Code block that includes plural statement
         } else if (token[0] == "{" & (token[len token - 1] == "}")) {
-            token[1 ~ (len token - 1)] |> trim |> parseBlock
+            token[1 ~ (len token - 1)] |> trim |> parseBlock;
+        
+        // List that can handle many different typed value
         } else if (token[0] == "[" & (token[len token - 1] == "]")) {
-            @{ "class": #List, "value": map parseExpr (tokenize [","] token[1 ~ (len token - 1)]) }
+            @{ "class": #List, "value": map parseExpr (tokenize [","] token[1 ~ (len token - 1)]) };
+        
+        // Text
         } else if (token[0] == "\"" & (token[len token - 1] == "\"")) {
-            @{ "class": #Value, "value": token[1 ~ (len token - 1)] }
+            @{ "class": #Value, "value": token[1 ~ (len token - 1)] };
+        
+        // Lambda abstract that is true formula
         } else if (token[0] == "λ" & token["."]) {
             let token = token - "λ" / ".";
             let [args, body] = [token[0], join token[1 ~ len(token)] "."];
-            @{ "class": #Lambda, "value": [args, (parseExpr body)] } 
+            @{ "class": #Lambda, "value": [args, (parseExpr body)] };
+        
+        // Lambda abstract using back-slash instead
         } else if (token[0] == "\\" & token["."]) {
             let token = token - "\\" / ".";
             let [args, body] = [token[0], join token[1 ~ len(token)] "."];
-            @{ "class": #Lambda, "value": [args, (parseExpr body)] } 
+            @{ "class": #Lambda, "value": [args, (parseExpr body)] };
+        
+        // Symbol
         } else {
            @{ "class": #Symbol, "value": token }
         }
@@ -215,6 +234,7 @@ let parseExpr = fn(source ->
             "%" => @{ "class": #Mod, "value": [hasLhs 2, token] },
             "^" => @{ "class": #Pow, "value": [hasLhs 2, token] },
             "==" => @{ "class": #Equal, "value": [hasLhs 2, token] },
+            "as" => @{ "class": #As, "value": [hasLhs 2, token] },
             _ => @{ "class": #Apply, "value": [hasLhs 1, token] }
         }
     } else {
