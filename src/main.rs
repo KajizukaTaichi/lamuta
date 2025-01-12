@@ -1526,6 +1526,7 @@ impl Type {
                 Type::Null => Vec::new(),
                 _ => return err,
             }),
+            Signature::Signature => Type::Signature(Signature::parse(&self.get_text()?)?),
             _ => return err,
         })
     }
