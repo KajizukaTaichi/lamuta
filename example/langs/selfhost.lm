@@ -21,7 +21,7 @@ let evalExpr = fn(e, x ->
             else if ast.value[2] 
                 evalExpr scope it
             else 
-                @{ "class": #Value, "value": null }
+                [scope, @{ "class": #Value, "value": null }]
             
         },
         #Block => {
@@ -119,10 +119,14 @@ let parseStmt = fn(source ->
         @{ 
             "class": #If, 
             "value": { 
-                if (token[2] == "else")
-                    [parseExpr token[0], parseExpr token[1], parseBlock token[3]] 
-                else 
-                    [parseExpr token[0], parseExpr token[1]] 
+                if (token :: ["else"]) [
+                    parseExpr token[0], 
+                    parseExpr (join token[1 ~ (it as list :: 0)] SPACE[0]), 
+                    parseBlock (join token[(it as list :: 0) + 1 ~ len(token)] SPACE[0])
+                ] else [
+                    parseExpr token[0], 
+                    parseExpr (join token[1 ~ len(token)] SPACE[0])
+                ]
             }
         }
     } else {
