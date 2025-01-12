@@ -191,6 +191,10 @@ let parseExpr = fn(source ->
         if (token as number) {
             @{ "class": #Value, "value": it };
 
+        // Type signature
+        } else if (token as signature) {
+            @{ "class": #Value, "value": it };
+
         // Expression that override other operator
         } else if (token[0] == "(" & (token[len token - 1] == ")")) {
             token[1 ~ (len token - 1)] |> trim |> parseExpr;
