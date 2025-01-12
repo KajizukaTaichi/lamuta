@@ -1,5 +1,7 @@
 load std;
 
+cosnt SPACE: list = [" ", "　", "\n", "\t", "\r"];
+
 let evalExpr = fn(e, x ->
     let [scope, ast] = [e, x];
     match (type ast) {
@@ -11,6 +13,16 @@ let evalExpr = fn(e, x ->
                 [scope, val]
             } else {
                 fault "the program is not able to parse. check out is the syntax correct"
+            }
+        },
+        #If => {
+            let [scope, cond] = evalExpr scope ast.value[0];
+            if cond {
+                evalExpr scope ast.value[1]
+            } else if ast.value[3] {
+                evalExpr scope it
+            } else {
+                @{ "class": #Value, "value": null }
             }
         },
         #Block => {
@@ -63,7 +75,7 @@ let betaReduct = fn(x, y, z ->
         #Let => {
             @{ "class": #Let, "value": [ast.value[0], betaReduct from to ast.value[1]] }
         },
-        #Apply | #Add | #Sub | #Mul | #Div | #Mod | #Pow | #Block => {
+        #Apply | #Add | #Sub | #Mul | #Div | #Mod | #Pow | #Block | #If => {
             @{ "class": type ast, "value": map (betaReduct from to) ast.value }
         },
         #Symbol => {
@@ -101,13 +113,16 @@ let parseStmt = fn(source ->
     if (token["let"] == (0 ~ 3)) {
         let token = token - "let" / "=";
         @{ "class": #Let, "value": map parseExpr [token[0], join token[1 ~ len(token)] "="] }
+    } else if (token["if"] == (0 ~ 2)) {
+        let token = tokenize SPACE (token - "if");
+        @{ "class": #If, "value": map parseExpr { if [token[0], token[1], token[3]] it else [token[0], token[1]] } }
     } else {
         parseExpr token
     }
 ); 
 
 let parseExpr = fn(source ->
-    let tokenList = tokenize [" ", "　", "\n", "\t", "\r"] source;
+    let tokenList = tokenize SPACE source;
     let token = tokenList[len tokenList  - 1] |> trim;
     let token = { 
         if (token as number) {
