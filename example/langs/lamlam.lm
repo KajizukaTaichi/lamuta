@@ -5,6 +5,13 @@ const SPACE: list = [" ", "　", "\n", "\t", "\r"];
 let evalExpr = fn(e, x ->
     let [scope, ast] = [e, x];
     match (type ast) {
+        #Print => {
+            for i in ast.value {
+                let [scope, val] = evalExpr scope i;
+                print valueShow val;
+            };
+            [scope, @{ "class": #Value, "value": null }]
+        },
         #Let => {
             let name = ast.value[0];
             let [scope, val] = evalExpr scope ast.value[1];
@@ -27,7 +34,16 @@ let evalExpr = fn(e, x ->
                 evalExpr scope it
             else 
                 [scope, @{ "class": #Value, "value": null }]
-            
+        },
+        #For => {
+            let [counter, iter, body] = ast.value;
+            let result = @{ "class": #Value, "value": null };
+            let [scope, iter] = evalExpr scope iter;
+            for item in iter.value {
+                let [scope, _] = evalExpr scope @{ "class": #Let, "value": [counter, item] };
+                let [scope, result] = evalExpr scope body;
+            };
+            [scope, result]
         },
         #Block => {
             let result = @{ "class": #Value, "value": null };
@@ -92,7 +108,7 @@ let betaReduct = fn(x, y, z ->
             @{ "class": #Let, "value": [ast.value[0], betaReduct from to ast.value[1]] }
         },
         #Add | #Sub | #Mul | #Div | #Mod | #Pow
-        | #Apply | #Equal | #Block | #If => {
+        | #Apply | #Equal | #Block | #Print | #If | #For => {
             @{ "class": type ast, "value": map (betaReduct from to) ast.value }
         },
         #Symbol => { if (ast.value == from) to else ast },
@@ -115,16 +131,17 @@ let betaReduct = fn(x, y, z ->
 let parseBlock = fn(source -> 
     let [token, block] = [trim source, []];
     for line in (tokenize [";"] token) {
-        if (parseStmt line) {
-            block += [it]
-        }
+        block += [parseStmt line]
     };
     @{ "class": #Block, "value": block }
 ); 
 
 let parseStmt = fn(source -> 
     let token = trim source;
-    if (token["let"] == (0 ~ 3)) {
+    if (token["print"] == (0 ~ 5)) {
+        let token = tokenize [","] (token - "print");
+        @{ "class": #Print, "value": map parseExpr token }
+    } else if (token["let"] == (0 ~ 3)) {
         let token = token - "let" / "=";
         @{ "class": #Let, "value": map parseExpr [token[0], join token[1 ~ len(token)] "="] }
     } else if (token["if"] == (0 ~ 2)) {
@@ -132,14 +149,29 @@ let parseStmt = fn(source ->
         @{ 
             "class": #If, 
             "value": { 
-                if (token :: ["else"]) [
-                    parseExpr token[0], 
-                    parseExpr (join token[1 ~ (it as list :: 0)] SPACE[0]), 
-                    parseBlock (join token[(it as list :: 0) + 1 ~ len(token)] SPACE[0])
-                ] else [
+                if (token :: ["else"]) {
+                    let index = it as list :: 0;
+                    [
+                        parseExpr token[0], 
+                        parseExpr (join token[1 ~ index] SPACE[0]), 
+                        parseBlock (join token[index + 1 ~ len(token)] SPACE[0])
+                    ]
+                } else [
                     parseExpr token[0], 
                     parseExpr (join token[1 ~ len(token)] SPACE[0])
                 ]
+            }
+        }
+     } else if (token["for"] == (0 ~ 3)) {
+        let token = tokenize SPACE (token - "for");
+        @{ 
+            "class": #For, 
+            "value": { 
+                if (token[1] == "in") {
+                    [parseExpr token[0], parseExpr token[2], parseExpr token[3]]
+                } else {
+                    fault
+                }
             }
         }
     } else {
