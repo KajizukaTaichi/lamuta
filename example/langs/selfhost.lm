@@ -11,6 +11,11 @@ let evalExpr = fn(e, x ->
             if (type name == #Symbol) {
                 scope[name.value] := val;
                 [scope, val]
+            } else if (type name == #List) {
+                for item in zip(name.value, val.value) {
+                    let [scope, _] = evalExpr scope @{ "class": #Let, "value": item }
+                };
+                [scope, val]
             } else {
                 fault "the program is not able to parse. check out is the syntax correct"
             }
@@ -231,12 +236,26 @@ let tokenize = fn(delimiter, source ->
     tokens
 );
 
+let valueShow = fn(x ->
+    match type(x) {
+        #Value => {
+            let val = x.value;
+            match (type val) {
+                list => map valueShow val,
+                text => f"\"{val}\"",
+                _ => val
+            }
+        },
+        _ => x
+    }
+);
+
 print "LamLam\n";
 let scope = @{};
 while 1 {
     if evalExpr(scope, parseBlock(input ">>> ")) {
         let [scope, result] = it;
-        print result.value, "\n"
+        print valueShow result, "\n"
     } else {
         print "Fault: ", err, "\n"
     }
