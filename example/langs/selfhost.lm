@@ -1,29 +1,36 @@
 load std;
 
-let evaluate = fn(x ->
-    let ast = x;
+let evaluate = fn(e, x ->
+    let [scope, ast] = [e, x];
     match (type ast) {
+        #Symbol => {
+            [scope, scope[ast.value]]
+        },
         #Add => {
-            let terms = map self ast.value;
-            let [a, b] = [terms[0].value, terms[1].value];
-            @{ "class": #Value, "value": a + b }
+            let [[scope, a], [scope, b]] = map (evaluate scope) ast.value;
+            [scope, @{ "class": #Value, "value": a.value + b.value }]
         },
         #Sub => {
-            let terms = map self ast.value;
-            let [a, b] = [terms[0].value, terms[1].value];
-            @{ "class": #Value, "value": a - b }
+            let [[scope, a], [scope, b]] = map (evaluate scope) ast.value;
+            [scope,@{ "class": #Value, "value": a.value - b.value }]
         },
         #Mul => {
-            let terms = map self ast.value;
-            let [a, b] = [terms[0].value, terms[1].value];
-            @{ "class": #Value, "value": a * b }
+            let [[scope, a], [scope, b]] = map (evaluate scope) ast.value;
+            [scope, @{ "class": #Value, "value": a.value * b.value }]
         },
         #Div => {
-            let terms = map self ast.value;
-            let [a, b] = [terms[0].value, terms[1].value];
-            @{ "class": #Value, "value": a / b }
+            let [[scope, a], [scope, b]] = map (evaluate scope) ast.value;
+            [scope, @{ "class": #Value, "value": a.value / b.value }]
         },
-        _ => ast
+        #Mod => {
+            let [[scope, a], [scope, b]] = map (evaluate scope) ast.value;
+            [scope, @{ "class": #Value, "value": a.value % b.value }]
+        },
+        #Pow => {
+            let [[scope, a], [scope, b]] = map (evaluate scope) ast.value;
+            [scope, @{ "class": #Value, "value": a.value ^ b.value }]
+        },
+        _ => [scope, ast]
     }
 );
 
@@ -51,6 +58,8 @@ let parse = fn(source ->
             "-" => @{ "class": #Sub, "value": [hasLhs 2, token] },
             "*" => @{ "class": #Mul, "value": [hasLhs 2, token] },
             "/" => @{ "class": #Div, "value": [hasLhs 2, token] },
+            "%" => @{ "class": #Mod, "value": [hasLhs 2, token] },
+            "^" => @{ "class": #Pow, "value": [hasLhs 2, token] },
             _ => @{ "class": #Apply, "value": [hasLhs 1, token] }
         }
     } else {
@@ -106,6 +115,8 @@ let tokenize = fn(source ->
 );
 
 print "LamLam\n";
+let scope = @{};
 while 1 {
-    print evaluate parse(input ">>> "), "\n"
+    let [scope, value] = evaluate(scope, parse(input ">>> "));
+    print value, "\n"
 }
