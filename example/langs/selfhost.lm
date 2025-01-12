@@ -34,6 +34,14 @@ let evalExpr = fn(e, x ->
         #Symbol => {
             [scope, scope[ast.value]]
         },
+        #List => {
+            let result = [];
+            for i in ast.value {
+                [scope, val] := evalExpr(scope, i);
+                result += [val]
+            };
+            [scope, @{ "class": #Value, "value": result }]
+        },
         #Apply => {
             let [[scope, func], [scope, value]] = map (evalExpr scope) ast.value;
             let [[arg, body], funcScope] = [func.value, scope];
@@ -144,6 +152,8 @@ let parseExpr = fn(source ->
             token[1 ~ (len token - 1)] |> trim |> parseExpr
         } else if (token[0] == "{" & (token[len token - 1] == "}")) {
             token[1 ~ (len token - 1)] |> trim |> parseBlock
+        } else if (token[0] == "[" & (token[len token - 1] == "]")) {
+            @{ "class": #List, "value": map parseExpr (tokenize [","] token[1 ~ (len token - 1)]) }
         } else if (token[0] == "\"" & (token[len token - 1] == "\"")) {
             @{ "class": #Value, "value": token[1 ~ (len token - 1)] }
         } else if (token[0] == "λ" & token["."]) {
