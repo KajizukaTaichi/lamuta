@@ -55,7 +55,10 @@ let betaReduct = fn(x, y, z ->
         #Lambda => {
             let [args, body] = ast.value;
             @{ "class": type ast, "value": [args, {
-                if (args == from) body else (betaReduct from to) body
+                if (args == from) 
+                    body 
+                else 
+                    (betaReduct from to) body
             }] }
         },
         _ => ast
