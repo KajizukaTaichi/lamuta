@@ -13,6 +13,13 @@ let evalExpr = fn(e, x ->
                 fault "the program is not able to parse. check out is the syntax correct"
             }
         },
+        #Block => {
+            let result = @{ "class": #Value, "value": null };
+            for i in ast.value {
+                [scope, result] := evalExpr(scope, i);
+            };
+           [scope, result]
+        },
         #Symbol => {
             [scope, scope[ast.value]]
         },
@@ -53,6 +60,9 @@ let evalExpr = fn(e, x ->
 let betaReduct = fn(x, y, z ->
     let [from, to, ast] = [x, y, z];
     match (type ast) {
+        #Let => {
+            @{ "class": #Let, "value": [ast.value[0], betaReduct from to ast.value[1]] }
+        },
         #Apply | #Add | #Sub | #Mul | #Div | #Mod | #Pow => {
             @{ "class": type ast, "value": map (betaReduct from to) ast.value }
         },
@@ -65,7 +75,7 @@ let betaReduct = fn(x, y, z ->
         },
         #Lambda => {
             let [args, body] = ast.value;
-            @{ "class": type ast, "value": [args, {
+            @{ "class": #Lambda, "value": [args, {
                 if (args == from) 
                     body 
                 else 
@@ -76,24 +86,36 @@ let betaReduct = fn(x, y, z ->
     }
 );
 
+let parseBlock = fn(source -> 
+    let [token, block] = [trim source, []];
+    for line in (tokenize [";"] token) {
+        if (parseStmt line) {
+            block += [it]
+        }
+    };
+    @{ "class": #Block, "value": block }
+); 
+
 let parseStmt = fn(source -> 
     let token = trim source;
     if (token["let"] == (0 ~ 3)) {
         let token = token - "let" / "=";
-        @{ "class": #Let, "value": map parseExpr [token[0], join token[1 ~ len(token)] "."] }
+        @{ "class": #Let, "value": map parseExpr [token[0], join token[1 ~ len(token)] "="] }
     } else {
         parseExpr token
     }
 ); 
 
 let parseExpr = fn(source ->
-    let tokenList = tokenize source;
-    let token = tokenList[len tokenList  - 1];
+    let tokenList = tokenize [" ", "　", "\n", "\t", "\r"] source;
+    let token = tokenList[len tokenList  - 1] |> trim;
     let token = { 
         if (token as number) {
             @{ "class": #Value, "value": it }
         } else if (token[0] == "(" & (token[len token - 1] == ")")) {
-            self token[1 ~ (len token - 1)]
+            token[1 ~ (len token - 1)] |> trim |> parseExpr
+        } else if (token[0] == "{" & (token[len token - 1] == "}")) {
+            token[1 ~ (len token - 1)] |> trim |> parseStmt 
         } else if (token[0] == "\"" & (token[len token - 1] == "\"")) {
             @{ "class": #Value, "value": token[1 ~ (len token - 1)] }
         } else if (token[0] == "λ" & token["."]) {
@@ -124,42 +146,41 @@ let parseExpr = fn(source ->
     }
 );
 
-let tokenize = fn(source ->
-    let tokens = [];
-    let current = "";
-    let nest = 0;
-    let quote = 0;
+let tokenize = fn(delimiter, source ->
+    let [tokens, current] = [[], ""];
+    let [nest, quote] = [0] * 2;
 
     for c in (source as list) {
         match c {
             "(" | "[" | "{" => {
                 if (quote == 0) {
-                    let current = current + c;
-                    let nest = nest + 1;
+                    current += c;
+                    nest += 1;
                 }
             },
             ")" | "]" | "}" => {
                 if (quote == 0) {
-                    let current = current + c;
-                    let nest = nest - 1;
+                    current += c;
+                    nest -= 1;
                 }
             },
-            " " | "　" => {
-                if ((nest == 0) & (quote == 0)) {
-                    if (current != "") {
-                        let tokens = tokens + [current];
-                        let current = "";
-                    }
-                } else {
-                    let current = current + c;
-                }
-            },
-            "\"" => {
+            "\"" | "\'" | "\`" => {
                 let quote = { if (quote == 1) 0 else 1 };
-                let current = current + c;
+                current += c;
             },
             _ => {
-                let current = current + c;
+                if (delimiter :: [c]) {
+                    if ((nest == 0) & (quote == 0)) {
+                        if (current != "") {
+                            tokens += [current];
+                            let current = "";
+                        }
+                    } else {
+                        current += c;
+                    } 
+                } else {
+                    current += c;
+                }
             }
         }
     };
@@ -174,6 +195,6 @@ let tokenize = fn(source ->
 print "LamLam\n";
 let scope = @{};
 while 1 {
-    let [scope, value] = evalExpr(scope, parseStmt(input ">>> "));
+    let [scope, value] = evalExpr(scope, parseBlock(input ">>> "));
     print value, "\n"
 }
