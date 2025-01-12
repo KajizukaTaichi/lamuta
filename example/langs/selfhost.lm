@@ -1,44 +1,44 @@
 load std;
 
-let evaluate = fn(e, x ->
+let evalExpr = fn(e, x ->
     let [scope, ast] = [e, x];
     match (type ast) {
         #Symbol => {
             [scope, scope[ast.value]]
         },
         #Apply => {
-            let [[scope, a], [scope, b]] = map (evaluate scope) ast.value;
+            let [[scope, a], [scope, b]] = map (evalExpr scope) ast.value;
             a.value scope b
         },
         #Add => {
-            let [[scope, a], [scope, b]] = map (evaluate scope) ast.value;
+            let [[scope, a], [scope, b]] = map (evalExpr scope) ast.value;
             [scope, @{ "class": #Value, "value": a.value + b.value }]
         },
         #Sub => {
-            let [[scope, a], [scope, b]] = map (evaluate scope) ast.value;
+            let [[scope, a], [scope, b]] = map (evalExpr scope) ast.value;
             [scope,@{ "class": #Value, "value": a.value - b.value }]
         },
         #Mul => {
-            let [[scope, a], [scope, b]] = map (evaluate scope) ast.value;
+            let [[scope, a], [scope, b]] = map (evalExpr scope) ast.value;
             [scope, @{ "class": #Value, "value": a.value * b.value }]
         },
         #Div => {
-            let [[scope, a], [scope, b]] = map (evaluate scope) ast.value;
+            let [[scope, a], [scope, b]] = map (evalExpr scope) ast.value;
             [scope, @{ "class": #Value, "value": a.value / b.value }]
         },
         #Mod => {
-            let [[scope, a], [scope, b]] = map (evaluate scope) ast.value;
+            let [[scope, a], [scope, b]] = map (evalExpr scope) ast.value;
             [scope, @{ "class": #Value, "value": a.value % b.value }]
         },
         #Pow => {
-            let [[scope, a], [scope, b]] = map (evaluate scope) ast.value;
+            let [[scope, a], [scope, b]] = map (evalExpr scope) ast.value;
             [scope, @{ "class": #Value, "value": a.value ^ b.value }]
         },
         _ => [scope, ast]
     }
 );
 
-let parse = fn(source ->
+let parseExpr = fn(source ->
     let tokenList = tokenize source;
     let token = tokenList[len tokenList  - 1];
     let token = { 
@@ -55,16 +55,16 @@ let parse = fn(source ->
                 "value": λe.λx.{
                     let funcScope = e;
                     funcScope[name] := x;
-                    evaluate funcScope body
+                    evalExpr funcScope body
                 }
             });
-           funcObj args (parse body)
+           funcObj args (parseExpr body)
         } else {
            @{ "class": #Symbol, "value": token }
         }
     };
     if (len tokenList >= 2 & tokenList[len tokenList - 2]) {
-        let hasLhs = λx.parse(join tokenList[0 ~ (len tokenList - x)] " ");
+        let hasLhs = λx.parseExpr(join tokenList[0 ~ (len tokenList - x)] " ");
         match (trim it) {
             "+" => @{ "class": #Add, "value": [hasLhs 2, token] },
             "-" => @{ "class": #Sub, "value": [hasLhs 2, token] },
@@ -129,6 +129,6 @@ let tokenize = fn(source ->
 print "LamLam\n";
 let scope = @{};
 while 1 {
-    let [scope, value] = evaluate(scope, parse(input ">>> "));
+    let [scope, value] = evalExpr(scope, parseExpr(input ">>> "));
     print value, "\n"
 }
