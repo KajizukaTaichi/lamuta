@@ -7,9 +7,10 @@ let evalExpr = fn(e, x ->
             [scope, scope[ast.value]]
         },
         #Apply => {
-            let [[scope, a], [scope, b]] = map (evalExpr scope) ast.value;
-            let [funcScope, expr] = [scope, betaReduct a.value[0] b a.value[1]];
-            evalExpr funcScope expr
+            let [[scope, func], [scope, value]] = map (evalExpr scope) ast.value;
+            let [[arg, body], funcScope] = [func.value, scope];
+            let body = betaReduct(arg, value, body);
+            evalExpr funcScope body
         },
         #Add => {
             let [[scope, a], [scope, b]] = map (evalExpr scope) ast.value;
@@ -77,6 +78,10 @@ let parseExpr = fn(source ->
             @{ "class": #Value, "value": token[1 ~ (len token - 1)] }
         } else if (token[0] == "λ" & token["."]) {
             let token = token - "λ" / ".";
+            let [args, body] = [token[0], join token[1 ~ len(token)] "."];
+            @{ "class": #Lambda, "value": [args, (parseExpr body)] } 
+        } else if (token[0] == "\\" & token["."]) {
+            let token = token - "\\" / ".";
             let [args, body] = [token[0], join token[1 ~ len(token)] "."];
             @{ "class": #Lambda, "value": [args, (parseExpr body)] } 
         } else {
