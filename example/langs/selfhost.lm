@@ -3,6 +3,16 @@ load std;
 let evalExpr = fn(e, x ->
     let [scope, ast] = [e, x];
     match (type ast) {
+        #Let => {
+            let name = ast.value[0];
+            let [scope, val] = evalExpr scope ast.value[1];
+            if (type name == #Symbol) {
+                scope[name.value] := val;
+                [scope, val]
+            } else {
+                fault "the program is not able to parse. check out is the syntax correct"
+            }
+        },
         #Symbol => {
             [scope, scope[ast.value]]
         },
@@ -65,6 +75,16 @@ let betaReduct = fn(x, y, z ->
         _ => ast
     }
 );
+
+let parseStmt = fn(source -> 
+    let token = trim source;
+    if (token["let"] == (0 ~ 3)) {
+        let token = token - "let" / "=";
+        @{ "class": #Let, "value": map parseExpr [token[0], join token[1 ~ len(token)] "."] }
+    } else {
+        parseExpr token
+    }
+); 
 
 let parseExpr = fn(source ->
     let tokenList = tokenize source;
@@ -154,6 +174,6 @@ let tokenize = fn(source ->
 print "LamLam\n";
 let scope = @{};
 while 1 {
-    let [scope, value] = evalExpr(scope, parseExpr(input ">>> "));
+    let [scope, value] = evalExpr(scope, parseStmt(input ">>> "));
     print value, "\n"
 }
