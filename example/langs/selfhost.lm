@@ -16,14 +16,13 @@ let evalExpr = fn(e, x ->
             }
         },
         #If => {
-            let [scope, cond] = evalExpr scope ast.value[0];
-            if cond {
+            if { let [scope, cond] = evalExpr scope ast.value[0] }
                 evalExpr scope ast.value[1]
-            } else if ast.value[3] {
+            else if ast.value[3] 
                 evalExpr scope it
-            } else {
+            else 
                 @{ "class": #Value, "value": null }
-            }
+            
         },
         #Block => {
             let result = @{ "class": #Value, "value": null };
@@ -78,21 +77,18 @@ let betaReduct = fn(x, y, z ->
         #Apply | #Add | #Sub | #Mul | #Div | #Mod | #Pow | #Block | #If => {
             @{ "class": type ast, "value": map (betaReduct from to) ast.value }
         },
-        #Symbol => {
-            if (ast.value == from) {
-                to
-            } else {
-                ast
-            }
-        },
+        #Symbol => { if (ast.value == from) to else ast },
         #Lambda => {
             let [args, body] = ast.value;
-            @{ "class": #Lambda, "value": [args, {
-                if (args == from) 
-                    body 
-                else 
-                    (betaReduct from to) body
-            }] }
+            @{
+                "class": #Lambda, 
+                "value": [args, {
+                    if (args == from) 
+                        body 
+                    else 
+                        (betaReduct from to) body
+                }]
+            }
         },
         _ => ast
     }
@@ -115,7 +111,15 @@ let parseStmt = fn(source ->
         @{ "class": #Let, "value": map parseExpr [token[0], join token[1 ~ len(token)] "="] }
     } else if (token["if"] == (0 ~ 2)) {
         let token = tokenize SPACE (token - "if");
-        @{ "class": #If, "value": map parseExpr { if [token[0], token[1], token[3]] it else [token[0], token[1]] } }
+        @{ 
+            "class": #If, 
+            "value": { 
+                if (token[2] == "else")
+                    [parseExpr token[0], parseExpr token[1], parseExpr token[3]] 
+                else 
+                    [parseExpr token[0], parseBlock token[1]] 
+            }
+        }
     } else {
         parseExpr token
     }
@@ -210,6 +214,6 @@ let tokenize = fn(delimiter, source ->
 print "LamLam\n";
 let scope = @{};
 while 1 {
-    let [scope, value] = evalExpr(scope, parseBlock(input ">>> "));
-    print value, "\n"
+    let [scope, result] = evalExpr(scope, parseBlock(input ">>> "));
+    print result.value, "\n"
 }
