@@ -6,6 +6,10 @@ let evaluate = fn(e, x ->
         #Symbol => {
             [scope, scope[ast.value]]
         },
+        #Apply => {
+            let [[scope, a], [scope, b]] = map (evaluate scope) ast.value;
+            a.value scope b
+        },
         #Add => {
             let [[scope, a], [scope, b]] = map (evaluate scope) ast.value;
             [scope, @{ "class": #Value, "value": a.value + b.value }]
@@ -46,9 +50,17 @@ let parse = fn(source ->
             @{ "class": #Value, "value": token[1 ~ (len token - 1)] }
         } else if (token[0] == "λ" & token["."]) {
             let [args, body] = token - "λ" / ".";
-            @{ "class": #Value, "value": fn(x -> self body) }
+            let funcObj = fn(name, body -> @{
+                "class": #Value,
+                "value": λe.λx.{
+                    let funcScope = e;
+                    funcScope[name] := x;
+                    evaluate funcScope body
+                }
+            });
+           funcObj args (parse body)
         } else {
-           @{ "class": #Symbol, "value": it }
+           @{ "class": #Symbol, "value": token }
         }
     };
     if (len tokenList >= 2 & tokenList[len tokenList - 2]) {
