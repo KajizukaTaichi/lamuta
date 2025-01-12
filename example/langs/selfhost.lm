@@ -18,7 +18,7 @@ let evalExpr = fn(e, x ->
             for i in ast.value {
                 [scope, result] := evalExpr(scope, i);
             };
-           [scope, result]
+            [scope, result]
         },
         #Symbol => {
             [scope, scope[ast.value]]
@@ -27,7 +27,7 @@ let evalExpr = fn(e, x ->
             let [[scope, func], [scope, value]] = map (evalExpr scope) ast.value;
             let [[arg, body], funcScope] = [func.value, scope];
             let body = betaReduct(arg, value, body);
-            evalExpr funcScope body
+            [scope, evalExpr funcScope body :: 1]
         },
         #Add => {
             let [[scope, a], [scope, b]] = map (evalExpr scope) ast.value;
@@ -63,12 +63,12 @@ let betaReduct = fn(x, y, z ->
         #Let => {
             @{ "class": #Let, "value": [ast.value[0], betaReduct from to ast.value[1]] }
         },
-        #Apply | #Add | #Sub | #Mul | #Div | #Mod | #Pow => {
+        #Apply | #Add | #Sub | #Mul | #Div | #Mod | #Pow | #Block => {
             @{ "class": type ast, "value": map (betaReduct from to) ast.value }
         },
         #Symbol => {
             if (ast.value == from) {
-                @{ "class": type to, "value": to.value }
+                to
             } else {
                 ast
             }
@@ -115,7 +115,7 @@ let parseExpr = fn(source ->
         } else if (token[0] == "(" & (token[len token - 1] == ")")) {
             token[1 ~ (len token - 1)] |> trim |> parseExpr
         } else if (token[0] == "{" & (token[len token - 1] == "}")) {
-            token[1 ~ (len token - 1)] |> trim |> parseStmt 
+            token[1 ~ (len token - 1)] |> trim |> parseBlock
         } else if (token[0] == "\"" & (token[len token - 1] == "\"")) {
             @{ "class": #Value, "value": token[1 ~ (len token - 1)] }
         } else if (token[0] == "λ" & token["."]) {
