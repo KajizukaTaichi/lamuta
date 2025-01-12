@@ -42,52 +42,60 @@ struct Cli {
     #[arg(short = 'a', long = "args", value_name = "ARGS", num_args = 0..)]
     args_option: Option<Vec<String>>,
 
-     /// Size of stack area in the Lamuta Runtime Engine (LRE)
-     #[arg(short = 's', long = "stack-size", value_name = "KB")]
-     stack_size: Option<usize>,
+    /// Size of stack area in the Lamuta Runtime Engine (LRE)
+    #[arg(short = 's', long = "stack-size", value_name = "KB")]
+    stack_size: Option<usize>,
 }
 
 fn main() {
     let cli = Cli::parse();
-    let mut engine = Engine::new(cli.stack_size);
+    let lre: Builder = Builder::new().name("Lamuta Runtime Engine".to_string());
+    let lre = if let Some(stack_size_kb) =  cli.stack_size 
+        { lre.stack_size(stack_size_kb * 1024) } else { lre };
 
-    if let (Some(args), _) | (_, Some(args)) = (cli.args_position, cli.args_option) {
-        crash!(engine.alloc(
-            &"cmdLineArgs".to_string(),
-            &Type::List(args.iter().map(|i| Type::Text(i.to_owned())).collect()),
-        ));
-    }
+    lre.spawn(move || {
+        let mut engine = Engine::new();
 
-    if let Some(file) = cli.file {
-        crash!(Operator::Apply(
-            Expr::Value(Type::Symbol("load".to_string())),
-            false,
-            Expr::Value(Type::Text(file)),
-        )
-        .eval(&mut engine))
-    } else {
-        println!("{title} {VERSION}", title = "Lamuta".blue().bold());
-        let mut rl = DefaultEditor::new().unwrap();
-        let mut session = 1;
+        if let (Some(args), _) | (_, Some(args)) = (cli.args_position, cli.args_option) {
+            crash!(engine.alloc(
+                &"cmdLineArgs".to_string(),
+                &Type::List(args.iter().map(|i| Type::Text(i.to_owned())).collect()),
+            ));
+        }
 
-        loop {
-            match rl.readline(&format!("[{session:0>3}]> ")) {
-                Ok(code) => {
-                    match Engine::parse(&code) {
-                        Ok(ast) => match engine.eval(&ast) {
-                            Ok(result) => repl_print!(green, result.format()),
+        if let Some(file) = cli.file {
+            crash!(Operator::Apply(
+                Expr::Value(Type::Symbol("load".to_string())),
+                false,
+                Expr::Value(Type::Text(file)),
+            )
+            .eval(&mut engine))
+        } else {
+            println!("{title} {VERSION}", title = "Lamuta".blue().bold());
+            let mut rl = DefaultEditor::new().unwrap();
+            let mut session = 1;
+
+            loop {
+                match rl.readline(&format!("[{session:0>3}]> ")) {
+                    Ok(code) => {
+                        match Engine::parse(&code) {
+                            Ok(ast) => match engine.eval(&ast) {
+                                Ok(result) => repl_print!(green, result.format()),
+                                Err(e) => fault!(e),
+                            },
                             Err(e) => fault!(e),
-                        },
-                        Err(e) => fault!(e),
+                        }
+                        session += 1;
                     }
-                    session += 1;
+                    Err(ReadlineError::Interrupted) => println!("^C"),
+                    Err(ReadlineError::Eof) => println!("^D"),
+                    _ => {}
                 }
-                Err(ReadlineError::Interrupted) => println!("^C"),
-                Err(ReadlineError::Eof) => println!("^D"),
-                _ => {}
             }
         }
-    }
+    })
+    .expect("Failed to create thread")
+    .join().expect("Failed to exit thread");
 }
 
 type Scope = IndexMap<String, Type>;
@@ -99,11 +107,7 @@ struct Engine {
 }
 
 impl Engine {
-    fn new(stack_size_kb: Option<usize>) -> Engine {
-        let builder = Builder::new().name("Lamuta Runtime Engine".to_string());
-        if let Some(stack_size_kb) = stack_size_kb {
-            let _ = builder.stack_size(stack_size_kb * 1024);
-        }
+    fn new() -> Engine {
         Engine {
             protect: BUILTIN.to_vec().iter().map(|i| i.to_string()).collect(),
             env: IndexMap::from([
