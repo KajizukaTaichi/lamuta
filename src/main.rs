@@ -8,7 +8,7 @@ use std::{
     fs::{read_to_string, File},
     io::{self, Write},
     process::exit,
-    thread::sleep,
+    thread::{sleep, Builder},
     time::Duration,
 };
 use thiserror::Error;
@@ -41,11 +41,15 @@ struct Cli {
     /// Optional command-line arguments
     #[arg(short = 'a', long = "args", value_name = "ARGS", num_args = 0..)]
     args_option: Option<Vec<String>>,
+
+     /// Size of stack area in the Lamuta Runtime Engine (LRE)
+     #[arg(short = 's', long = "stack-size", value_name = "KB")]
+     stack_size: Option<usize>,
 }
 
 fn main() {
     let cli = Cli::parse();
-    let mut engine = Engine::new();
+    let mut engine = Engine::new(cli.stack_size);
 
     if let (Some(args), _) | (_, Some(args)) = (cli.args_position, cli.args_option) {
         crash!(engine.alloc(
@@ -95,7 +99,11 @@ struct Engine {
 }
 
 impl Engine {
-    fn new() -> Engine {
+    fn new(stack_size_kb: Option<usize>) -> Engine {
+        let builder = Builder::new().name("Lamuta Runtime Engine".to_string());
+        if let Some(stack_size_kb) = stack_size_kb {
+            let _ = builder.stack_size(stack_size_kb * 1024);
+        }
         Engine {
             protect: BUILTIN.to_vec().iter().map(|i| i.to_string()).collect(),
             env: IndexMap::from([
