@@ -1355,11 +1355,9 @@ impl Operator {
                     Operator::Apply(
                         Expr::Infix(Box::new(Operator::Apply(
                             Expr::parse(&operator)?,
-                            false,
-                            has_lhs(2)?,
+                            false, has_lhs(2)?
                         ))),
-                        false,
-                        token,
+                        false, token
                     )
                 } else {
                     Operator::Apply(has_lhs(1)?, false, token)
