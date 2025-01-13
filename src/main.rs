@@ -7,6 +7,7 @@ use rustyline::{error::ReadlineError, DefaultEditor};
 use std::{
     fs::{read_to_string, File},
     io::{self, Write},
+    fmt::{self, Debug, Formatter},
     process::exit,
     thread::{sleep, Builder},
     time::Duration,
@@ -53,7 +54,7 @@ fn main() {
     let lre = if let Some(stack_size_kb) =  cli.stack_size 
         { lre.stack_size(stack_size_kb * 1024) } else { lre };
 
-    lre.spawn(move || {
+    crash!(crash!(lre.spawn(move || {
         let mut engine = Engine::new();
 
         if let (Some(args), _) | (_, Some(args)) = (cli.args_position, cli.args_option) {
@@ -93,9 +94,7 @@ fn main() {
                 }
             }
         }
-    })
-    .expect("Failed to create thread")
-    .join().expect("Failed to exit thread");
+    })).join());
 }
 
 type Scope = IndexMap<String, Type>;
@@ -1402,7 +1401,7 @@ impl Operator {
     }
 }
 
-#[derive(Debug, Error)]
+#[derive(Error)]
 enum Fault {
     #[error("can not apply function because `{}` is not lambda abstract", _0.format())]
     Apply(Type),
@@ -1442,6 +1441,12 @@ enum Fault {
 
     #[error("{}", if let Some(msg) = _0 { msg } else { "throwed by user-defined program" })]
     General(Option<String>),
+}
+
+impl Debug for Fault {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{self}")
+    }
 }
 
 #[derive(Debug, Clone)]
