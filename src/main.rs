@@ -5,9 +5,9 @@ use indexmap::{IndexMap, IndexSet};
 use reqwest::blocking;
 use rustyline::{error::ReadlineError, DefaultEditor};
 use std::{
+    fmt::{self, Debug, Formatter},
     fs::{read_to_string, File},
     io::{self, Write},
-    fmt::{self, Debug, Formatter},
     process::exit,
     thread::{sleep, Builder},
     time::Duration,
