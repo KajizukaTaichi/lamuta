@@ -77,8 +77,12 @@ macro_rules! fault {
 #[macro_export]
 macro_rules! crash {
     ($result: expr) => {
-        if let Err(e) = $result {
-            eprintln!("{}: {e}", "Fault".red())
+        match $result {
+            Ok(v) => v,
+            Err(e) => {
+                eprintln!("{}: {e:?}", "Fault".red());
+                std::process::exit(1);
+            }
         }
     };
 }
