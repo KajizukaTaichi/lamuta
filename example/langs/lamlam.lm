@@ -1,5 +1,4 @@
 load std;
-
 const SPACE: list = [" ", "　", "\n", "\t", "\r"];
 
 let evalExpr = fn(e, x ->
