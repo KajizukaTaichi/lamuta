@@ -70,7 +70,7 @@ macro_rules! repl_print {
 #[macro_export]
 macro_rules! fault {
     ($e: expr) => {
-        repl_print!(red, format!("Fault: {}", $e))
+        repl_print!(red, format!("Fault: {:?}", $e))
     };
 }
 
