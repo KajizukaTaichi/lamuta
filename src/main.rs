@@ -5,7 +5,7 @@ use indexmap::{IndexMap, IndexSet};
 use reqwest::blocking;
 use rustyline::{error::ReadlineError, DefaultEditor};
 use std::{
-    fmt::{self, Debug, Formatter},
+    fmt::{self, Debug, Display, Formatter},
     fs::{read_to_string, File},
     io::{self, Write},
     process::exit,
@@ -21,8 +21,18 @@ const RESERVED: [&str; 10] = [
     "print", "let", "const", "if", "else", "match", "for", "in", "while", "fault",
 ];
 const BUILTIN: [&str; 12] = [
-    "type", "std", "env", "free", "eval", "alphaConvert",
-    "input", "readFile", "load", "save", "sleep", "exit"
+    "type",
+    "std",
+    "env",
+    "free",
+    "eval",
+    "alphaConvert",
+    "input",
+    "readFile",
+    "load",
+    "save",
+    "sleep",
+    "exit",
 ];
 
 #[derive(Parser)]
@@ -51,8 +61,11 @@ struct Cli {
 fn main() {
     let cli = Cli::parse();
     let lre: Builder = Builder::new().name("Lamuta Runtime Engine".to_string());
-    let lre = if let Some(stack_size_kb) =  cli.stack_size 
-        { lre.stack_size(stack_size_kb * 1024) } else { lre };
+    let lre = if let Some(stack_size_kb) = cli.stack_size {
+        lre.stack_size(stack_size_kb * 1024)
+    } else {
+        lre
+    };
 
     crash!(crash!(lre.spawn(move || {
         let mut engine = Engine::new();
@@ -81,7 +94,7 @@ fn main() {
                     Ok(code) => {
                         match Engine::parse(&code) {
                             Ok(ast) => match engine.eval(&ast) {
-                                Ok(result) => repl_print!(green, result.format()),
+                                Ok(result) => repl_print!(green, result),
                                 Err(e) => fault!(e),
                             },
                             Err(e) => fault!(e),
@@ -94,7 +107,8 @@ fn main() {
                 }
             }
         }
-    })).join());
+    }))
+    .join());
 }
 
 type Scope = IndexMap<String, Type>;
@@ -215,13 +229,9 @@ impl Engine {
                                 continue;
                             }
                             if engine.clone().is_protect(k) {
-                                render += &format!(
-                                    "const {k}: {} = {};\n",
-                                    v.type_of().format(),
-                                    v.format()
-                                );
+                                render += &format!("const {k}: {} = {v};\n", v.type_of());
                             } else {
-                                render += &format!("let {k} = {};\n", v.format());
+                                render += &format!("let {k} = {v};\n");
                             }
                         }
                         if let Ok(mut file) = File::create(arg.get_text()?) {
@@ -330,7 +340,7 @@ impl Statement {
             Statement::Let(name, protect, sig, expr) => {
                 let val = expr.eval(engine)?;
                 if let Some(sig) = sig {
-                    if val.type_of().format() != sig.format() {
+                    if val.type_of() != *sig {
                         return Err(Fault::Type(val, sig.to_owned()));
                     }
                 }
@@ -517,79 +527,65 @@ impl Statement {
             Ok(Statement::Return(Expr::parse(code)?))
         }
     }
+}
 
-    fn format(&self) -> String {
-        match self {
-            Statement::Print(exprs) => format!(
-                "print {}",
-                exprs
-                    .iter()
-                    .map(|i| i.format())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
-            Statement::Let(name, false, Some(sig), val) => {
-                format!("let {}: {} = {}", name.format(), sig.format(), val.format())
-            }
-            Statement::Let(name, true, Some(sig), val) => {
-                format!(
-                    "const {}: {} = {}",
-                    name.format(),
-                    sig.format(),
-                    val.format()
-                )
-            }
-            Statement::Let(name, false, None, val) => {
-                format!("let {} = {}", name.format(), val.format())
-            }
-            Statement::Let(name, true, None, val) => {
-                format!("const {} = {}", name.format(), val.format())
-            }
-            Statement::If(cond, then, r#else) => {
-                if let Some(r#else) = r#else {
-                    format!(
-                        "if {} {} else {}",
-                        cond.format(),
-                        then.format(),
-                        r#else.format()
-                    )
-                } else {
-                    format!("if {} {}", cond.format(), then.format())
-                }
-            }
-            Statement::Match(expr, cond) => {
-                format!("match {} {{ {} }}", expr.format(), {
-                    cond.iter()
-                        .map(|case| {
-                            format!(
-                                "{} => {}",
-                                case.0
-                                    .iter()
-                                    .map(|i| i.format())
-                                    .collect::<Vec<String>>()
-                                    .join(" | "),
-                                case.1.format()
-                            )
-                        })
+impl Display for Statement {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Statement::Print(exprs) => format!(
+                    "print {}",
+                    exprs
+                        .iter()
+                        .map(|i| format!("{i}"))
                         .collect::<Vec<String>>()
                         .join(", ")
-                })
+                ),
+                Statement::Let(name, false, Some(sig), val) => {
+                    format!("let {name}: {sig} = {val}")
+                }
+                Statement::Let(name, true, Some(sig), val) =>
+                    format!("const {name}: {sig} = {val}"),
+                Statement::Let(name, false, None, val) => format!("let {name} = {val}"),
+                Statement::Let(name, true, None, val) => format!("const {name} = {val}"),
+                Statement::If(cond, then, r#else) =>
+                    if let Some(r#else) = r#else {
+                        format!("if {cond} {then} else {}", r#else)
+                    } else {
+                        format!("if {cond} {then}")
+                    },
+                Statement::Match(expr, cond) => {
+                    format!(
+                        "match {expr} {{ {} }}",
+                        cond.iter()
+                            .map(|case| {
+                                format!(
+                                    "{} => {}",
+                                    case.0
+                                        .iter()
+                                        .map(|i| format!("{i}"))
+                                        .collect::<Vec<String>>()
+                                        .join(" | "),
+                                    case.1
+                                )
+                            })
+                            .collect::<Vec<String>>()
+                            .join(", ")
+                    )
+                }
+                Statement::For(counter, iterator, code) => {
+                    format!("for {counter} in {iterator} {code}")
+                }
+                Statement::While(cond, code) => {
+                    format!("while {cond} {code}")
+                }
+                Statement::Fault(Some(msg)) => format!("fault {msg}"),
+                Statement::Fault(None) => "fault".to_string(),
+                Statement::Return(expr) => format!("{expr}"),
             }
-            Statement::For(counter, iterator, code) => {
-                format!(
-                    "for {} in {} {}",
-                    counter.format(),
-                    iterator.format(),
-                    code.format()
-                )
-            }
-            Statement::While(cond, code) => {
-                format!("while {} {}", cond.format(), code.format())
-            }
-            Statement::Fault(Some(msg)) => format!("fault {}", msg.format()),
-            Statement::Fault(None) => "fault".to_string(),
-            Statement::Return(expr) => expr.format(),
-        }
+        )
     }
 }
 
@@ -715,7 +711,7 @@ impl Expr {
                 let token = trim!(token, "`", "`");
                 let source = format!("λx.λy.(x {token} y)");
                 let expr = Expr::parse(&source)?;
-                if expr.format() != source {
+                if format!("{expr}") != source {
                     return Err(Fault::Syntax);
                 }
                 expr
@@ -794,35 +790,6 @@ impl Expr {
             } else {
                 return Err(Fault::Syntax);
             })
-        }
-    }
-
-    fn format(&self) -> String {
-        match self {
-            Expr::List(list) => format!(
-                "[{}]",
-                list.iter()
-                    .map(|i| i.format())
-                    .collect::<Vec<String>>()
-                    .join(", "),
-            ),
-            Expr::Infix(infix) => format!("({})", infix.format()),
-            Expr::Value(val) => val.format(),
-            Expr::Block(block) => format!(
-                "{{ {} }}",
-                block
-                    .iter()
-                    .map(|i| i.format())
-                    .collect::<Vec<String>>()
-                    .join("; ")
-            ),
-            Expr::Struct(st) => format!(
-                "@{{ {} }}",
-                st.iter()
-                    .map(|(k, x)| format!("{}: {}", k.format(), x.format()))
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ),
         }
     }
 
@@ -970,7 +937,7 @@ impl Expr {
                 Expr::Value(Type::Function(Function::UserDefined(
                     arg.to_string(),
                     // Protect from duplicate replacing
-                    if from.format() == "self" || from.format() == *arg {
+                    if format!("{from}") == "self" || format!("{from}") == *arg {
                         func.clone()
                     } else {
                         Box::new(func.replace(from, to))
@@ -989,6 +956,41 @@ impl Expr {
                 }
             }
         }
+    }
+}
+
+impl Display for Expr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Expr::List(list) => format!(
+                    "[{}]",
+                    list.iter()
+                        .map(|i| format!("{i}"))
+                        .collect::<Vec<String>>()
+                        .join(", "),
+                ),
+                Expr::Infix(infix) => format!("({infix})"),
+                Expr::Value(val) => format!("{val}"),
+                Expr::Block(block) => format!(
+                    "{{ {} }}",
+                    block
+                        .iter()
+                        .map(|i| format!("{i}"))
+                        .collect::<Vec<String>>()
+                        .join("; ")
+                ),
+                Expr::Struct(st) => format!(
+                    "@{{ {} }}",
+                    st.iter()
+                        .map(|(k, x)| format!("{k}: {x}"))
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                ),
+            }
+        )
     }
 }
 
@@ -1186,9 +1188,9 @@ impl Operator {
                         }
                         Type::List(query) => {
                             let index = ok!(
-                                list.windows(query.len())
-                                    .position(|i| Type::List(i.to_vec()).format()
-                                        == Type::List(query.clone()).format()),
+                                list.windows(query.len()).position(
+                                    |i| Type::List(i.to_vec()) == Type::List(query.clone())
+                                ),
                                 Fault::Key(rhs, lhs)
                             )?;
                             Type::Range(index, index + query.len())
@@ -1335,7 +1337,8 @@ impl Operator {
             "?" => Operator::Apply(has_lhs(2)?, true, token),
             "$" => Operator::Apply(
                 Expr::Infix(Box::new(Operator::Access(has_lhs(2)?, token))),
-                false, has_lhs(2)?,
+                false,
+                has_lhs(2)?,
             ),
             "::" => Operator::Access(has_lhs(2)?, token),
             "as" => Operator::As(has_lhs(2)?, token),
@@ -1354,9 +1357,11 @@ impl Operator {
                     Operator::Apply(
                         Expr::Infix(Box::new(Operator::Apply(
                             Expr::parse(&operator)?,
-                            false, has_lhs(2)?
+                            false,
+                            has_lhs(2)?,
                         ))),
-                        false, token
+                        false,
+                        token,
                     )
                 } else {
                     Operator::Apply(has_lhs(1)?, false, token)
@@ -1364,52 +1369,57 @@ impl Operator {
             }
         })
     }
+}
 
-    fn format(&self) -> String {
-        match self {
-            Operator::Add(lhs, rhs) => format!("{} + {}", lhs.format(), rhs.format()),
-            Operator::Sub(lhs, rhs) => format!("{} - {}", lhs.format(), rhs.format()),
-            Operator::Mul(lhs, rhs) => format!("{} * {}", lhs.format(), rhs.format()),
-            Operator::Div(lhs, rhs) => format!("{} / {}", lhs.format(), rhs.format()),
-            Operator::Mod(lhs, rhs) => format!("{} % {}", lhs.format(), rhs.format()),
-            Operator::Pow(lhs, rhs) => format!("{} ^ {}", lhs.format(), rhs.format()),
-            Operator::Equal(lhs, rhs) => format!("{} == {}", lhs.format(), rhs.format()),
-            Operator::NotEq(lhs, rhs) => format!("{} != {}", lhs.format(), rhs.format()),
-            Operator::LessThan(lhs, rhs) => format!("{} < {}", lhs.format(), rhs.format()),
-            Operator::LessThanEq(lhs, rhs) => format!("{} <= {}", lhs.format(), rhs.format()),
-            Operator::GreaterThan(lhs, rhs) => format!("{} > {}", lhs.format(), rhs.format()),
-            Operator::GreaterThanEq(lhs, rhs) => format!("{} >= {}", lhs.format(), rhs.format()),
-            Operator::And(lhs, rhs) => format!("{} & {}", lhs.format(), rhs.format()),
-            Operator::Or(lhs, rhs) => format!("{} | {}", lhs.format(), rhs.format()),
-            Operator::Not(val) => format!("!{}", val.format()),
-            Operator::Access(lhs, rhs) => format!("{} :: {}", lhs.format(), rhs.format()),
-            Operator::Derefer(to) => format!("*{}", to.format()),
-            Operator::As(lhs, rhs) => format!("{} as {}", lhs.format(), rhs.format()),
-            Operator::Assign(lhs, rhs) => format!("{} := {}", lhs.format(), rhs.format()),
-            Operator::PipeLine(lhs, rhs) => format!("{} |> {}", lhs.format(), rhs.format()),
-            Operator::Apply(lhs, true, rhs) => format!("{} ? {}", lhs.format(), rhs.format()),
-            Operator::Apply(lhs, false, rhs) => format!("{} {}", lhs.format(), rhs.format()),
-            Operator::AssignAdd(lhs, rhs) => format!("{} += {}", lhs.format(), rhs.format()),
-            Operator::AssignSub(lhs, rhs) => format!("{} -= {}", lhs.format(), rhs.format()),
-            Operator::AssignMul(lhs, rhs) => format!("{} *= {}", lhs.format(), rhs.format()),
-            Operator::AssignDiv(lhs, rhs) => format!("{} /= {}", lhs.format(), rhs.format()),
-            Operator::AssignMod(lhs, rhs) => format!("{} %= {}", lhs.format(), rhs.format()),
-            Operator::AssignPow(lhs, rhs) => format!("{} ^= {}", lhs.format(), rhs.format()),
-            Operator::To(lhs, rhs) => format!("{} ~ {}", lhs.format(), rhs.format()),
-        }
-        .to_string()
+impl Display for Operator {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Operator::Add(lhs, rhs) => format!("{lhs} + {rhs}"),
+                Operator::Sub(lhs, rhs) => format!("{lhs} - {rhs}"),
+                Operator::Mul(lhs, rhs) => format!("{lhs} * {rhs}"),
+                Operator::Div(lhs, rhs) => format!("{lhs} / {rhs}"),
+                Operator::Mod(lhs, rhs) => format!("{lhs} % {rhs}"),
+                Operator::Pow(lhs, rhs) => format!("{lhs} ^ {rhs}"),
+                Operator::Equal(lhs, rhs) => format!("{lhs} == {rhs}"),
+                Operator::NotEq(lhs, rhs) => format!("{lhs} != {rhs}"),
+                Operator::LessThan(lhs, rhs) => format!("{lhs} < {rhs}"),
+                Operator::LessThanEq(lhs, rhs) => format!("{lhs} <= {rhs}"),
+                Operator::GreaterThan(lhs, rhs) => format!("{lhs} > {rhs}"),
+                Operator::GreaterThanEq(lhs, rhs) => format!("{lhs} >= {rhs}"),
+                Operator::And(lhs, rhs) => format!("{lhs} & {rhs}"),
+                Operator::Or(lhs, rhs) => format!("{lhs} | {rhs}"),
+                Operator::Not(val) => format!("!{val}"),
+                Operator::Access(lhs, rhs) => format!("{lhs} :: {rhs}"),
+                Operator::Derefer(to) => format!("*{to}"),
+                Operator::As(lhs, rhs) => format!("{lhs} as {rhs}",),
+                Operator::Assign(lhs, rhs) => format!("{lhs} := {rhs}",),
+                Operator::PipeLine(lhs, rhs) => format!("{lhs} |> {rhs}"),
+                Operator::Apply(lhs, true, rhs) => format!("{lhs} ? {rhs}"),
+                Operator::Apply(lhs, false, rhs) => format!("{lhs} {rhs}"),
+                Operator::AssignAdd(lhs, rhs) => format!("{lhs} += {rhs}"),
+                Operator::AssignSub(lhs, rhs) => format!("{lhs} -= {rhs}"),
+                Operator::AssignMul(lhs, rhs) => format!("{lhs} *= {rhs}"),
+                Operator::AssignDiv(lhs, rhs) => format!("{lhs} /= {rhs}"),
+                Operator::AssignMod(lhs, rhs) => format!("{lhs} %= {rhs}"),
+                Operator::AssignPow(lhs, rhs) => format!("{lhs} ^= {rhs}"),
+                Operator::To(lhs, rhs) => format!("{lhs} ~ {rhs}",),
+            }
+        )
     }
 }
 
 #[derive(Error)]
 enum Fault {
-    #[error("can not apply function because `{}` is not lambda abstract", _0.format())]
+    #[error("can not apply function because `{0}` is not lambda abstract")]
     Apply(Type),
 
-    #[error("key `{}` is not found in the struct `{}`", _0.format(), _1.format())]
+    #[error("key `{0}` is not found in the struct `{1}`")]
     Key(Type, Type),
 
-    #[error("index `{}` is out of the sequence `{}`", _0.format(), _1.format())]
+    #[error("index `{0}` is out of the sequence `{1}`")]
     Index(Type, Type),
 
     #[error("access is denied because it's protected memory area")]
@@ -1418,13 +1428,13 @@ enum Fault {
     #[error("can not access undefined variable `{0}`")]
     Refer(String),
 
-    #[error("can not type cast `{}` to {}", _0.format(), _1.format())]
+    #[error("can not type cast `{0}` to {1}")]
     Cast(Type, Signature),
 
     #[error("at the IO processing has problem")]
     IO,
 
-    #[error("the value `{}` is different to expected type `{}`", _0.format(), _1.format())]
+    #[error("the value `{0}` is different to expected type `{1}`")]
     Type(Type, Signature),
 
     #[error("missmatching of arguments length when function application")]
@@ -1433,13 +1443,13 @@ enum Fault {
     #[error("the program is not able to parse. check out is the syntax correct")]
     Syntax,
 
-    #[error("can not evaluate expression `{}`", _0.format())]
+    #[error("can not evaluate expression `{0}`")]
     Infix(Operator),
 
-    #[error("the logical operation `{}` has bankruptcy", _0.format())]
+    #[error("the logical operation `{0}` has bankruptcy")]
     Logic(Operator),
 
-    #[error("{}", if let Some(msg) = _0 { msg } else { "throwed by user-defined program" })]
+    #[error("{}", _0.clone().unwrap_or("throwed by user-defined program".to_string()))]
     General(Option<String>),
 }
 
@@ -1505,10 +1515,10 @@ impl Type {
                         .eval(engine)?
                         .get_text()?
                     } else {
-                        self.format()
+                        format!("{self}")
                     }
                 }
-                _ => self.format(),
+                _ => format!("{self}"),
             }),
             Signature::List => Type::List(match self {
                 Type::List(list) => list.to_owned(),
@@ -1532,42 +1542,6 @@ impl Type {
             Signature::Signature => Type::Signature(Signature::parse(&self.get_text()?)?),
             _ => return err,
         })
-    }
-
-    fn format(&self) -> String {
-        match self {
-            Type::Symbol(s) => s.to_string(),
-            Type::Text(text) => format!(
-                "\"{}\"",
-                text.replace("\\", "\\\\")
-                    .replace("'", "\\'")
-                    .replace("\"", "\\\"")
-                    .replace("`", "\\`")
-                    .replace("\n", "\\n")
-                    .replace("\t", "\\t")
-                    .replace("\r", "\\r")
-            ),
-            Type::Number(n) => n.to_string(),
-            Type::Null => "null".to_string(),
-            Type::Function(Function::BuiltIn(obj)) => format!("λx.{obj:?}"),
-            Type::Function(Function::UserDefined(arg, code)) => {
-                format!("λ{arg}.{}", code.format())
-            }
-            Type::List(l) => format!(
-                "[{}]",
-                l.iter().map(|i| i.format()).collect::<Vec<_>>().join(", ")
-            ),
-            Type::Range(start, end) => format!("({start} ~ {end})",),
-            Type::Signature(sig) => sig.format(),
-            Type::Refer(to) => format!("&{to}"),
-            Type::Struct(val) => format!(
-                "@{{ {} }}",
-                val.iter()
-                    .map(|(k, v)| format!("\"{k}\": {}", v.format()))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ),
-        }
     }
 
     fn get_number(&self) -> Result<f64, Fault> {
@@ -1654,10 +1628,10 @@ impl Type {
                 }
             }
             true
-        } else if pattern.format() == "_" {
+        } else if format!("{pattern}") == "_" {
             true
         } else {
-            self.format() == pattern.format()
+            self == pattern
         }
     }
 
@@ -1748,6 +1722,55 @@ impl Type {
     }
 }
 
+impl Display for Type {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Type::Symbol(s) => s.to_string(),
+                Type::Text(text) => format!(
+                    "\"{}\"",
+                    text.replace("\\", "\\\\")
+                        .replace("'", "\\'")
+                        .replace("\"", "\\\"")
+                        .replace("`", "\\`")
+                        .replace("\n", "\\n")
+                        .replace("\t", "\\t")
+                        .replace("\r", "\\r")
+                ),
+                Type::Number(n) => n.to_string(),
+                Type::Null => "null".to_string(),
+                Type::Function(Function::BuiltIn(obj)) => format!("λx.{obj:?}"),
+                Type::Function(Function::UserDefined(arg, code)) => format!("λ{arg}.{code}"),
+                Type::List(l) => format!(
+                    "[{}]",
+                    l.iter()
+                        .map(|i| format!("{i}"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+                Type::Range(start, end) => format!("({start} ~ {end})",),
+                Type::Signature(sig) => format!("{sig}"),
+                Type::Refer(to) => format!("&{to}"),
+                Type::Struct(val) => format!(
+                    "@{{ {} }}",
+                    val.iter()
+                        .map(|(k, v)| format!("\"{k}\": {v}"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+            }
+        )
+    }
+}
+
+impl PartialEq for Type {
+    fn eq(&self, other: &Type) -> bool {
+        format!("{self}") == format!("{other}")
+    }
+}
+
 #[derive(Debug, Clone)]
 enum Signature {
     Number,
@@ -1794,20 +1817,32 @@ impl Signature {
             return Err(Fault::Syntax);
         })
     }
+}
 
-    fn format(&self) -> String {
-        match self {
-            Signature::Number => "number".to_string(),
-            Signature::Symbol => "symbol".to_string(),
-            Signature::Text => "text".to_string(),
-            Signature::Refer => "refer".to_string(),
-            Signature::List => "list".to_string(),
-            Signature::Range => "range".to_string(),
-            Signature::Function => "function".to_string(),
-            Signature::Signature => "signature".to_string(),
-            Signature::Struct => "struct".to_string(),
-            Signature::Class(s) => format!("#{s}"),
-        }
+impl Display for Signature {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Signature::Number => "number".to_string(),
+                Signature::Symbol => "symbol".to_string(),
+                Signature::Text => "text".to_string(),
+                Signature::Refer => "refer".to_string(),
+                Signature::List => "list".to_string(),
+                Signature::Range => "range".to_string(),
+                Signature::Function => "function".to_string(),
+                Signature::Signature => "signature".to_string(),
+                Signature::Struct => "struct".to_string(),
+                Signature::Class(s) => format!("#{s}"),
+            }
+        )
+    }
+}
+
+impl PartialEq for Signature {
+    fn eq(&self, other: &Signature) -> bool {
+        format!("{self}") == format!("{other}")
     }
 }
 
