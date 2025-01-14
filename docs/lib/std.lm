@@ -68,10 +68,8 @@ const zip: function = λa.λb.{
 
 const reverse: function = λt.{
     let result = { if (type t == text) "" else [] };
-    let index = len t;
-    while (index != 0) {
-        index -= 1;
-        result += { if (type t == text) t[index] else [t[index]] };
+    for i in (t as list) {
+        let result = { if (type t == text) i else [i] } + result
     };
     result
 };
