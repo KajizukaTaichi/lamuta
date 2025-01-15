@@ -98,7 +98,7 @@ const trim: function = λx.{
 
 const replace: function = λx.λy.λz.{
     while x[y]
-        self (x - y);
+        self(x - y);
     x
 };
 
