@@ -96,4 +96,11 @@ const trim: function = λx.{
     reverse(trimStart(reverse(trimStart(t))))
 };
 
+const replace: function = λx.λy.λz.{
+    if x[y]
+        self (x - y)
+    else
+        x
+};
+
 const compose: function = λf.λg.λx.f(g(x));
