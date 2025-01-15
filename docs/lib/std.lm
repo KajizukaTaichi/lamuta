@@ -97,10 +97,9 @@ const trim: function = λx.{
 };
 
 const replace: function = λx.λy.λz.{
-    if x[y]
-        self (x - y)
-    else
-        x
+    while x[y]
+        self (x - y);
+    x
 };
 
 const compose: function = λf.λg.λx.f(g(x));
