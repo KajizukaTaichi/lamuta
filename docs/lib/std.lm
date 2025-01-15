@@ -96,10 +96,12 @@ const trim: function = λx.{
     reverse(trimStart(reverse(trimStart(t))))
 };
 
-const replace: function = λx.λy.λz.{
-    while x[y]
-        self(x - y);
-    x
+const removeAll: function = λx.λy.{
+    let [object, query] = [x, y];
+    while object[query] {
+        object -= query
+    };
+    object
 };
 
 const compose: function = λf.λg.λx.f(g(x));
