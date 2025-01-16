@@ -93,10 +93,13 @@ fn main() {
                 match rl.readline(&format!("[{session:0>3}]> ")) {
                     Ok(code) => {
                         match Engine::parse(&code) {
-                            Ok(ast) => match engine.eval(&ast) {
-                                Ok(result) => repl_print!(green, result),
-                                Err(e) => fault!(e),
-                            },
+                            Ok(ast) => {
+                                fault!(engine.static_load(&ast));
+                                match engine.eval(&ast) {
+                                    Ok(result) => repl_print!(green, result),
+                                    Err(e) => fault!(e),
+                                }
+                            }
                             Err(e) => fault!(e),
                         }
                         session += 1;
