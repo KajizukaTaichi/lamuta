@@ -116,14 +116,16 @@ type Program = Vec<Statement>;
 #[derive(Debug, Clone)]
 struct Engine {
     env: Scope,
+    r#static: Scope,
     protect: IndexSet<String>,
 }
 
 impl Engine {
     fn new() -> Engine {
         Engine {
+            env: IndexMap::new(),
             protect: BUILTIN.to_vec().iter().map(|i| i.to_string()).collect(),
-            env: IndexMap::from([
+            r#static: IndexMap::from([
                 (
                     "type".to_string(),
                     Type::Function(Function::BuiltIn(|expr, _| {
@@ -208,10 +210,14 @@ impl Engine {
                     Type::Function(Function::BuiltIn(|expr, engine| {
                         let name = expr.get_text()?;
                         if let Ok(module) = read_to_string(&name) {
-                            engine.eval(&Engine::parse(&module)?)
+                            let ast = &Engine::parse(&module)?;
+                            engine.static_load(ast)?;
+                            engine.eval(ast)
                         } else if let Ok(module) = blocking::get(name) {
                             if let Ok(code) = module.text() {
-                                engine.eval(&Engine::parse(&code)?)
+                                let ast = &Engine::parse(&code)?;
+                                engine.static_load(ast)?;
+                                engine.eval(ast)
                             } else {
                                 Err(Fault::IO)
                             }
@@ -293,6 +299,32 @@ impl Engine {
         } else {
             Err(Fault::Syntax)
         }
+    }
+
+    fn static_load(&mut self, program: &Program) -> Result<(), Fault> {
+        for line in program {
+            if let Statement::Let(
+                Expr::Value(Type::Symbol(name)),
+                is_protect,
+                sig,
+                Expr::Value(Type::Function(Function::UserDefined(arg, body))),
+            ) = line
+            {
+                if let Some(sig) = sig {
+                    if *sig != Signature::Function {
+                        return Err(Fault::Syntax);
+                    }
+                }
+                self.r#static.insert(
+                    name.to_string(),
+                    Type::Function(Function::UserDefined(arg.to_string(), body.clone())),
+                );
+                if *is_protect {
+                    self.add_protect(name);
+                }
+            }
+        }
+        Ok(())
     }
 
     fn free(&mut self, name: &String) -> Result<(), Fault> {
@@ -1239,9 +1271,9 @@ impl Operator {
                 lhs.cast(&rhs.get_signature()?, engine)?
             }
             Operator::Apply(lhs, is_lazy, rhs) => {
-                let lhs = lhs.eval(engine)?;
-                if let Type::Function(func) = lhs.clone() {
-                    match func {
+                let func = lhs.eval(engine)?;
+                if let Type::Function(obj) = func.clone() {
+                    match obj {
                         Function::BuiltIn(func) => func(rhs.eval(engine)?, engine)?,
                         Function::UserDefined(parameter, code) => {
                             let code = code
@@ -1255,13 +1287,19 @@ impl Operator {
                                 )
                                 .replace(
                                     &Expr::Value(Type::Symbol("self".to_string())),
-                                    &Expr::Value(lhs),
+                                    &Expr::Value(func),
                                 );
-                            code.eval(&mut engine.clone())?
+                            let func_engine = &mut engine.clone();
+                            if let Expr::Value(Type::Symbol(name)) = lhs {
+                                if engine.r#static.contains_key(name) {
+                                    func_engine.env = engine.r#static.clone();
+                                }
+                            }
+                            code.eval(func_engine)?
                         }
                     }
                 } else {
-                    return Err(Fault::Apply(lhs));
+                    return Err(Fault::Apply(func));
                 }
             }
             Operator::PipeLine(lhs, rhs) => {
