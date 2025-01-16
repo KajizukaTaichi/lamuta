@@ -93,7 +93,7 @@ fn main() {
                 match rl.readline(&format!("[{session:0>3}]> ")) {
                     Ok(code) => {
                         match Engine::parse(&code) {
-                            Ok(ast) => match engine.static_load(&ast) {
+                            Ok(mut ast) => match engine.static_load(&mut ast) {
                                 Ok(_) => match engine.eval(&ast) {
                                     Ok(result) => repl_print!(green, result),
                                     Err(e) => fault!(e),
@@ -213,14 +213,14 @@ impl Engine {
                     Type::Function(Function::BuiltIn(|expr, engine| {
                         let name = expr.get_text()?;
                         if let Ok(module) = read_to_string(&name) {
-                            let ast = &Engine::parse(&module)?;
-                            engine.static_load(ast)?;
-                            engine.eval(ast)
+                            let mut ast = Engine::parse(&module)?;
+                            engine.static_load(&mut ast)?;
+                            engine.eval(&ast)
                         } else if let Ok(module) = blocking::get(name) {
                             if let Ok(code) = module.text() {
-                                let ast = &Engine::parse(&code)?;
-                                engine.static_load(ast)?;
-                                engine.eval(ast)
+                                let mut ast = Engine::parse(&code)?;
+                                engine.static_load(&mut ast)?;
+                                engine.eval(&ast)
                             } else {
                                 Err(Fault::IO)
                             }
@@ -304,14 +304,14 @@ impl Engine {
         }
     }
 
-    fn static_load(&mut self, program: &Program) -> Result<(), Fault> {
-        for line in program {
+    fn static_load(&mut self, program: &mut Program) -> Result<(), Fault> {
+        for line in program.clone() {
             if let Statement::Let(
                 Expr::Value(Type::Symbol(name)),
                 is_protect,
-                sig,
+                ref sig,
                 Expr::Value(Type::Function(Function::UserDefined(arg, body))),
-            ) = line
+            ) = line.clone()
             {
                 if let Some(sig) = sig {
                     if *sig != Signature::Function {
@@ -322,9 +322,13 @@ impl Engine {
                     name.to_string(),
                     Type::Function(Function::UserDefined(arg.to_string(), body.clone())),
                 );
-                if *is_protect {
-                    self.add_protect(name);
+                if is_protect {
+                    self.add_protect(&name.to_string());
                 }
+                let index = ok!(program
+                    .iter()
+                    .position(|x| format!("{x}") == format!("{line}")))?;
+                program.remove(index);
             }
         }
         Ok(())
