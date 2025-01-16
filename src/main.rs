@@ -1298,7 +1298,6 @@ impl Operator {
                             if let Expr::Value(Type::Symbol(name)) = lhs {
                                 if engine.r#static.contains_key(name) {
                                     func_engine.env = engine.r#static.clone();
-                                    dbg!(&func_engine.env);
                                 }
                             }
                             code.eval(&mut func_engine)?
