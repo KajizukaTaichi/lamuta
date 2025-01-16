@@ -93,13 +93,13 @@ fn main() {
                 match rl.readline(&format!("[{session:0>3}]> ")) {
                     Ok(code) => {
                         match Engine::parse(&code) {
-                            Ok(ast) => {
-                                fault!(engine.static_load(&ast));
-                                match engine.eval(&ast) {
+                            Ok(ast) => match engine.static_load(&ast) {
+                                Ok(_) => match engine.eval(&ast) {
                                     Ok(result) => repl_print!(green, result),
                                     Err(e) => fault!(e),
-                                }
-                            }
+                                },
+                                Err(e) => fault!(e),
+                            },
                             Err(e) => fault!(e),
                         }
                         session += 1;
@@ -1294,13 +1294,14 @@ impl Operator {
                                     &Expr::Value(Type::Symbol("self".to_string())),
                                     &Expr::Value(func),
                                 );
-                            let func_engine = &mut engine.clone();
+                            let mut func_engine = engine.clone();
                             if let Expr::Value(Type::Symbol(name)) = lhs {
                                 if engine.r#static.contains_key(name) {
                                     func_engine.env = engine.r#static.clone();
+                                    dbg!(&func_engine.env);
                                 }
                             }
-                            code.eval(func_engine)?
+                            code.eval(&mut func_engine)?
                         }
                     }
                 } else {
