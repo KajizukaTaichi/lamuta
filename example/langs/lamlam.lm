@@ -1,4 +1,5 @@
 load std;
+const SPACE: list = [" ", "　", "\n", "\t", "\r"];
 
 let evalExpr = fn(e, x ->
     let [scope, ast] = [e, x];
@@ -151,7 +152,7 @@ let parseStmt = fn(source ->
         let token = token - "let" / "=";
         @{ "class": #Let, "value": map parseExpr [token[0], join token[1 ~ len(token)] "="] }
     } else if (token["if"] == (0 ~ 2)) {
-        let token = tokenize [" ", "　", "\n", "\t", "\r"] (token - "if");
+        let token = tokenize SPACE (token - "if");
         @{
             "class": #If,
             "value": {
@@ -159,17 +160,17 @@ let parseStmt = fn(source ->
                     let index = it as list :: 0;
                     [
                         parseExpr token[0],
-                        parseExpr (join token[1 ~ index] " "),
-                        parseBlock (join token[index + 1 ~ len(token)] " ")
+                        parseExpr (join token[1 ~ index] SPACE[0]),
+                        parseBlock (join token[index + 1 ~ len(token)] SPACE[0])
                     ]
                 } else [
                     parseExpr token[0],
-                    parseExpr (join token[1 ~ len(token)] " ")
+                    parseExpr (join token[1 ~ len(token)] SPACE[0])
                 ]
             }
         }
      } else if (token["for"] == (0 ~ 3)) {
-        let token = tokenize [" ", "　", "\n", "\t", "\r"] (token - "for");
+        let token = tokenize SPACE (token - "for");
         @{
             "class": #For,
             "value": {
@@ -186,7 +187,7 @@ let parseStmt = fn(source ->
 );
 
 let parseExpr = fn(source ->
-    let tokenList = tokenize [" ", "　", "\n", "\t", "\r"] source;
+    let tokenList = tokenize SPACE source;
     let token = tokenList[len tokenList  - 1] |> trim;
     let token = {
         // Number 64-bit float;
