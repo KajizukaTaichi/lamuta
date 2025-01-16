@@ -119,16 +119,14 @@ type Program = Vec<Statement>;
 #[derive(Debug, Clone)]
 struct Engine {
     env: Scope,
-    r#static: Scope,
     protect: IndexSet<String>,
 }
 
 impl Engine {
     fn new() -> Engine {
         Engine {
-            env: IndexMap::new(),
             protect: BUILTIN.to_vec().iter().map(|i| i.to_string()).collect(),
-            r#static: IndexMap::from([
+            env: IndexMap::from([
                 (
                     "type".to_string(),
                     Type::Function(Function::BuiltIn(|expr, _| {
@@ -310,11 +308,11 @@ impl Engine {
                 line.clone()
             {
                 let val = val.eval(self)?;
-                if *sig != val.type_of() {
-                    return Err(Fault::Syntax);
+                if val.type_of() != *sig {
+                    return Err(Fault::Type(val, sig.to_owned()));
                 }
-                self.r#static.insert(name.to_string(), val);
-                self.add_protect(&name.to_string());
+                self.alloc(&name, &val)?;
+                self.add_protect(&name);
                 let index = ok!(program
                     .iter()
                     .position(|x| format!("{x}") == format!("{line}")))?;
@@ -649,8 +647,6 @@ impl Expr {
             Expr::Value(Type::Symbol(name)) => {
                 if name == "_" {
                     Type::Symbol(name.to_string())
-                } else if let Some(refer) = engine.r#static.get(name.as_str()) {
-                    refer.clone()
                 } else if let Some(refer) = engine.env.get(name.as_str()) {
                     refer.clone()
                 } else {
