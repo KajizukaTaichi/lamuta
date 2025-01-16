@@ -306,35 +306,8 @@ impl Engine {
 
     fn static_load(&mut self, program: &mut Program) -> Result<(), Fault> {
         for line in program.clone() {
-            if let Statement::Let(
-                Expr::Value(Type::Symbol(name)),
-                is_protect,
-                ref sig,
-                Expr::Value(Type::Function(Function::UserDefined(arg, body))),
-            ) = line.clone()
-            {
-                if let Some(sig) = sig {
-                    if *sig != Signature::Function {
-                        return Err(Fault::Syntax);
-                    }
-                }
-                self.r#static.insert(
-                    name.to_string(),
-                    Type::Function(Function::UserDefined(arg.to_string(), body.clone())),
-                );
-                if is_protect {
-                    self.add_protect(&name.to_string());
-                }
-                let index = ok!(program
-                    .iter()
-                    .position(|x| format!("{x}") == format!("{line}")))?;
-                program.remove(index);
-            } else if let Statement::Let(
-                Expr::Value(Type::Symbol(name)),
-                true,
-                Some(ref sig),
-                val,
-            ) = line.clone()
+            if let Statement::Let(Expr::Value(Type::Symbol(name)), true, Some(ref sig), val) =
+                line.clone()
             {
                 let val = val.eval(self)?;
                 if *sig != val.type_of() {
