@@ -652,6 +652,8 @@ impl Expr {
             Expr::Value(Type::Symbol(name)) => {
                 if name == "_" {
                     Type::Symbol(name.to_string())
+                } else if let Some(refer) = engine.r#static.get(name.as_str()) {
+                    refer.clone()
                 } else if let Some(refer) = engine.env.get(name.as_str()) {
                     refer.clone()
                 } else {
