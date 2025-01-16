@@ -329,6 +329,23 @@ impl Engine {
                     .iter()
                     .position(|x| format!("{x}") == format!("{line}")))?;
                 program.remove(index);
+            } else if let Statement::Let(
+                Expr::Value(Type::Symbol(name)),
+                true,
+                Some(ref sig),
+                val,
+            ) = line.clone()
+            {
+                let val = val.eval(self)?;
+                if *sig != val.type_of() {
+                    return Err(Fault::Syntax);
+                }
+                self.r#static.insert(name.to_string(), val);
+                self.add_protect(&name.to_string());
+                let index = ok!(program
+                    .iter()
+                    .position(|x| format!("{x}") == format!("{line}")))?;
+                program.remove(index);
             }
         }
         Ok(())
