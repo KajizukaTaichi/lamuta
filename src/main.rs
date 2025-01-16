@@ -1288,13 +1288,7 @@ impl Operator {
                                     &Expr::Value(Type::Symbol("self".to_string())),
                                     &Expr::Value(func),
                                 );
-                            let mut func_engine = engine.clone();
-                            if let Expr::Value(Type::Symbol(name)) = lhs {
-                                if engine.r#static.contains_key(name) {
-                                    func_engine.env = engine.r#static.clone();
-                                }
-                            }
-                            code.eval(&mut func_engine)?
+                            code.eval(&mut engine.clone())?
                         }
                     }
                 } else {
