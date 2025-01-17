@@ -104,4 +104,22 @@ const removeAll: function = λx.λy.{
     object
 };
 
+const justLeft: function = \x.\y.\z.{
+    let [val, cols, altchar] = [x as text, y as number, z as text];
+    let result = val;
+    while (len result < cols) {
+        result += altchar;
+    };
+    result
+};
+
+const justRight: function = \x.\y.\z.{
+    let [val, cols, altchar] = [x as text, y as number, z as text];
+    let result = val;
+    while (len result < cols) {
+        result := (altchar + result);
+    };
+    result
+};
+
 const compose: function = λf.λg.λx.f(g(x));
