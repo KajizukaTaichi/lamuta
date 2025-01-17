@@ -93,7 +93,7 @@ fn main() {
                 match rl.readline(&format!("[{session:0>3}]> ")) {
                     Ok(code) => {
                         match Engine::parse(&code) {
-                            Ok(mut ast) => match engine.static_load(&mut ast) {
+                            Ok(mut ast) => match engine.static_scan(&mut ast) {
                                 Ok(_) => match engine.eval(&ast) {
                                     Ok(result) => repl_print!(green, result),
                                     Err(e) => fault!(e),
