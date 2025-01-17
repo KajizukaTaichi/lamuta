@@ -302,7 +302,7 @@ impl Engine {
         }
     }
 
-    fn static_load(&mut self, program: &mut Program) -> Result<(), Fault> {
+    fn static_scan(&mut self, program: &mut Program) -> Result<(), Fault> {
         for line in program.clone() {
             if let Statement::Let(Expr::Value(Type::Symbol(name)), true, Some(ref sig), val) =
                 line.clone()
