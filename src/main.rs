@@ -212,12 +212,12 @@ impl Engine {
                         let name = expr.get_text()?;
                         if let Ok(module) = read_to_string(&name) {
                             let mut ast = Engine::parse(&module)?;
-                            engine.static_load(&mut ast)?;
+                            engine.static_scan(&mut ast)?;
                             engine.eval(&ast)
                         } else if let Ok(module) = blocking::get(name) {
                             if let Ok(code) = module.text() {
                                 let mut ast = Engine::parse(&code)?;
-                                engine.static_load(&mut ast)?;
+                                engine.static_scan(&mut ast)?;
                                 engine.eval(&ast)
                             } else {
                                 Err(Fault::IO)
