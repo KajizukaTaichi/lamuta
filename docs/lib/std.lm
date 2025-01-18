@@ -106,6 +106,7 @@ const removeAll: function = λx.λy.{
 
 const justLeft: function = \x.\y.\z.{
     let [val, cols, altchar] = [x as text, y as number, z as text];
+    if (len altchar < 1) { fault };
     let result = val;
     while (len result < cols) {
         result += altchar;
@@ -115,6 +116,7 @@ const justLeft: function = \x.\y.\z.{
 
 const justRight: function = \x.\y.\z.{
     let [val, cols, altchar] = [x as text, y as number, z as text];
+    if (len altchar < 1) { fault };
     let result = val;
     while (len result < cols) {
         result := (altchar + result);
