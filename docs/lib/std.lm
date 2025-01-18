@@ -124,4 +124,14 @@ const justRight: function = \x.\y.\z.{
     result
 };
 
+const justCenter: function = \x.\y.\z.{
+    let [val, cols, altchar] = [x as text, y as number, z as text];
+    if (len altchar < 1) { fault };
+    let result = val;
+    while (len result < cols) {
+        result := (altchar + result + altchar);
+    };
+    result
+};
+
 const compose: function = λf.λg.λx.f(g(x));
