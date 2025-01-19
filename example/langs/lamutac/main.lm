@@ -1,0 +1,114 @@
+load std;
+const SPACE: list = [" ", "　", "\n", "\t", "\r"];
+
+let parseExpr = fn(source ->
+    let tokenList = tokenize SPACE source;
+    let token = tokenList[len tokenList  - 1] |> trim;
+    let token = {
+        // Number 64-bit float;
+        if (token as number) {
+            @{ "class": #Value, "value": it }
+        } else {
+            fault
+        }
+    };
+    if (len tokenList >= 2 & tokenList[len tokenList - 2]) {
+        let hasLhs = λx.parseExpr(join tokenList[0 ~ (len tokenList - x)] " ");
+        let operatorGen = λx.@{ "class": x, "value": [hasLhs 2, token] };
+        match (trim it) {
+            "+" => operatorGen #Add,
+            "-" => operatorGen #Sub,
+            "*" => operatorGen #Mul,
+            "/" => operatorGen #Div
+        }
+    } else {
+        token
+    }
+);
+
+let tokenize = fn(delimiter, source ->
+    let [tokens, current] = [[], ""];
+    let [nest, quote] = [0] * 2;
+
+    for c in (source as list) {
+        match c {
+            "(" | "[" | "{" => {
+                if (quote == 0) {
+                    current += c;
+                    nest += 1;
+                }
+            },
+            ")" | "]" | "}" => {
+                if (quote == 0) {
+                    current += c;
+                    nest -= 1;
+                }
+            },
+            "\"" | "\'" | "\`" => {
+                let quote = { if (quote == 1) 0 else 1 };
+                current += c;
+            },
+            _ => {
+                if (delimiter :: [c]) {
+                    if ((nest == 0) & (quote == 0)) {
+                        if (current != "") {
+                            tokens += [current];
+                            let current = "";
+                        }
+                    } else {
+                        current += c;
+                    }
+                } else {
+                    current += c;
+                }
+            }
+        }
+    };
+
+    if (current != "") {
+        let tokens = tokens + [current];
+    };
+
+    tokens
+);
+
+let codeGenOpr = fn(c, x ->
+    [count, ast] := [c, x];
+    if (type ast == #Value) {
+        [count, ast.value as text]
+    } else {
+        let op = {
+            match type(ast) {
+                #Add => "add",
+                #Sub => "sub",
+                #Mul => "mul",
+                #Div => "sdiv"
+            }
+        };
+        let [count, lhs] = codeGenOpr count ast.value[0];
+        let [count, rhs] = codeGenOpr count ast.value[1];
+        if ((lhs as number) & (rhs as number)) {
+            [count + 1, f"%r{count + 1} = {op} i32 {lhs}, {rhs}"]
+        } else if (!(lhs as number) & (rhs as number)) {
+            [count + 1, f"{lhs}\n{SPACE[0] * 3 * 4}%r{count + 1} = {op} i32 %r{count}, {rhs}"]
+        }
+    }
+);
+
+let compile = fn(x ->
+    let [c, ast] = codeGenOpr 0 (parseExpr x);
+    let outputCode = f"
+        @str = private constant [3 x i8] c\"%d\\0A\"
+        declare i32 @printf(i8* %format, ...)
+
+        define i32 @main(i32 %argc, i8** %argv) \{
+            {ast}
+            call i32 @printf(i8* bitcast ([3 x i8]* @str to i8*), i32 %r{c})
+            ret i32 0
+        \}
+    ";
+    outputCode
+);
+
+print "Lamutac: the Lamuta\'s compiler\n";
+print compile (input ">> "), "\n";
