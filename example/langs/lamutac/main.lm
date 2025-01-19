@@ -7,7 +7,10 @@ let parseExpr = fn(source ->
     let token = {
         // Number 64-bit float;
         if (token as number) {
-            @{ "class": #Value, "value": it }
+            @{ "class": #Value, "value": it };
+        // Expression that override other operator
+        } else if (token[0] == "(" & (token[len token - 1] == ")")) {
+            token[1 ~ (len token - 1)] |> trim |> parseExpr;
         } else {
             fault
         }
@@ -90,7 +93,11 @@ let codeGenOpr = fn(c, x ->
         if ((lhs as number) & (rhs as number)) {
             [count + 1, f"%r{count + 1} = {op} i32 {lhs}, {rhs}"]
         } else if (!(lhs as number) & (rhs as number)) {
-            [count + 1, f"{lhs}\n{SPACE[0] * 3 * 4}%r{count + 1} = {op} i32 %r{count}, {rhs}"]
+            [count + 1, f"{lhs}\n{SPACE[0] * 12}%r{count + 1} = {op} i32 %r{count}, {rhs}"]
+        } else if ((lhs as number) & !(rhs as number)) {
+            [count + 1, f"{rhs}\n{SPACE[0] * 12}%r{count + 1} = {op} i32 {lhs}, %r{count}"]
+        } else if (!(lhs as number) & !(rhs as number)) {
+            [count + 1, f"{lhs}\n{SPACE[0] * 12}{rhs}\n{SPACE[0] * 12}%r{count + 1} = {op} i32 %r{count - 1}, %r{count}"]
         }
     }
 );
