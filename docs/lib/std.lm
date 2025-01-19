@@ -104,32 +104,20 @@ const removeAll: function = λx.λy.{
     object
 };
 
-const justLeft: function = \x.\y.\z.{
+const just: function = \t.\x.\y.\z.{
     let [val, cols, altchar] = [x as text, y as number, z as text];
     if (len altchar < 1) { fault };
     let result = val;
     while (len result < cols) {
-        result += altchar;
-    };
-    result
-};
-
-const justRight: function = \x.\y.\z.{
-    let [val, cols, altchar] = [x as text, y as number, z as text];
-    if (len altchar < 1) { fault };
-    let result = val;
-    while (len result < cols) {
-        result := (altchar + result);
-    };
-    result
-};
-
-const justCenter: function = \x.\y.\z.{
-    let [val, cols, altchar] = [x as text, y as number, z as text];
-    if (len altchar < 1) { fault };
-    let result = val;
-    while (len result < cols) {
-        result := (altchar + result + altchar);
+        if (t == "left") {
+            result += altchar;
+        } else if (t == "right") {
+            result := (altchar + result);
+        } else if (t == "center") {
+            result := (altchar + result + altchar);
+        } else {
+            fault "Unknown specific"
+        }
     };
     result
 };
