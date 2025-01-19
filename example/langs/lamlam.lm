@@ -145,11 +145,10 @@ let parseStmt = fn(source ->
         @{
             "class": #For,
             "value": {
-                if (token[1] == "in") {
+                if (token[1] == "in")
                     [parseExpr token[0], parseExpr token[2], parseExpr token[3]]
-                } else {
-                    fault
-                }
+                else
+                    fault "the program is not able to parse. check out is the syntax correct"
             }
         }
     } else {
