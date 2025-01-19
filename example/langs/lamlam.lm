@@ -69,9 +69,13 @@ let evalExpr = fn(e, x ->
             [scope, evalExpr funcScope body :: 1]
         },
         #Operator => {
-            let terms = ast.value[1 ~ len(ast.value)];
+            let [opr, terms] = [ast.value[0], ast.value[1 ~ len(ast.value)]];
             let [[scope, a], [scope, b]] = map (evalExpr scope) terms;
-            [scope, @{ "class": #Value, "value": ast.value[0] a.value b.value }]
+            let result = opr a.value b.value;
+            if (opr != `::`) {
+                result := @{ "class": #Value, "value": result }
+            };
+            [scope, result]
         },
         _ => [scope, ast]
     }
