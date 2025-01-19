@@ -109,14 +109,19 @@ const just: function = \t.\x.\y.\z.{
     if (len altchar < 1) { fault };
     let result = val;
     while (len result < cols) {
-        if (t == "left") {
-            result += altchar;
-        } else if (t == "right") {
-            result := (altchar + result);
-        } else if (t == "center") {
-            result := (altchar + result + altchar);
-        } else {
-            fault "Unknown specific"
+        match t {
+            "left" => {
+                result += altchar
+            },
+            "right" => {
+               result := (altchar + result)
+            },
+            "center" => {
+                result := (altchar + result + altchar)
+            },
+            _ => {
+                fault "Unknown specific"
+            }
         }
     };
     result
