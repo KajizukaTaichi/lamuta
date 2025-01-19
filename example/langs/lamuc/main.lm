@@ -16,10 +16,10 @@ let parseExpr = fn(source ->
         let hasLhs = λx.parseExpr(join tokenList[0 ~ (len tokenList - x)] " ");
         let operatorGen = λx.@{ "class": x, "value": [hasLhs 2, token] };
         match (trim it) {
-            "+"  => operatorGen #Add,
-            "-"  => operatorGen #Sub,
-            "*"  => operatorGen #Mul,
-            "/"  => operatorGen #Div
+            "+" => operatorGen #Add,
+            "-" => operatorGen #Sub,
+            "*" => operatorGen #Mul,
+            "/" => operatorGen #Div
         }
     } else {
         token
@@ -85,16 +85,18 @@ let codeGenOpr = fn(c, x ->
                 #Div => "sdiv"
             }
         };
-        let [count, lhs] = codeGenOpr (count + 1) ast.value[0];
-        let [count, rhs] = codeGenOpr (count + 1) ast.value[1];
+        let [count, lhs] = codeGenOpr count ast.value[0];
+        let [count, rhs] = codeGenOpr count ast.value[1];
         if ((lhs as number) & (rhs as number)) {
-            [count, f"%r{count} = {op} i32 {lhs}, {rhs}"]
+            [count + 1, f"%r{count + 1} = {op} i32 {lhs}, {rhs}"]
+        } else if (!(lhs as number) & (rhs as number)) {
+            [count + 1, f"{lhs}\n{SPACE[0] * 3 * 4}%r{count + 1} = {op} i32 %r{count}, {rhs}"]
         }
     }
 );
 
 let compile = fn(x ->
-    let [c, ast] = codeGenOpr 1 (parseExpr x);
+    let [c, ast] = codeGenOpr 0 (parseExpr x);
     let outputCode = f"
         @str = private constant [3 x i8] c\"%d\\0A\"
         declare i32 @printf(i8* %format, ...)
