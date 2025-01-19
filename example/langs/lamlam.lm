@@ -68,41 +68,10 @@ let evalExpr = fn(e, x ->
             let body = betaReduct(arg, value, body);
             [scope, evalExpr funcScope body :: 1]
         },
-        #Add => {
-            let [[scope, a], [scope, b]] = map (evalExpr scope) ast.value;
-            [scope, @{ "class": #Value, "value": a.value + b.value }]
-        },
-        #Sub => {
-            let [[scope, a], [scope, b]] = map (evalExpr scope) ast.value;
-            [scope,@{ "class": #Value, "value": a.value - b.value }]
-        },
-        #Mul => {
-            let [[scope, a], [scope, b]] = map (evalExpr scope) ast.value;
-            [scope, @{ "class": #Value, "value": a.value * b.value }]
-        },
-        #Div => {
-            let [[scope, a], [scope, b]] = map (evalExpr scope) ast.value;
-            [scope, @{ "class": #Value, "value": a.value / b.value }]
-        },
-        #Mod => {
-            let [[scope, a], [scope, b]] = map (evalExpr scope) ast.value;
-            [scope, @{ "class": #Value, "value": a.value % b.value }]
-        },
-        #Pow => {
-            let [[scope, a], [scope, b]] = map (evalExpr scope) ast.value;
-            [scope, @{ "class": #Value, "value": a.value ^ b.value }]
-        },
-        #Equal => {
-            let [[scope, a], [scope, b]] = map (evalExpr scope) ast.value;
-            [scope, @{ "class": #Value, "value": a.value == b.value }]
-        },
-        #As => {
-            let [[scope, a], [scope, b]] = map (evalExpr scope) ast.value;
-            [scope, @{ "class": #Value, "value": a.value as b.value }]
-        },
-        #Access => {
-            let [[scope, a], [scope, b]] = map (evalExpr scope) ast.value;
-            [scope, @{ "class": #Value, "value": (a.value :: b.value) }]
+        #Operator => {
+            let terms = ast.value[1 ~ len(ast.value)];
+            let [[scope, a], [scope, b]] = map (evalExpr scope) terms;
+            [scope, @{ "class": #Value, "value": ast.value[0] a.value b.value }]
         },
         _ => [scope, ast]
     }
@@ -114,9 +83,11 @@ let betaReduct = fn(x, y, z ->
         #Let => {
             @{ "class": #Let, "value": [ast.value[0], betaReduct from to ast.value[1]] }
         },
-        #Add | #Sub | #Mul | #Div | #Mod | #Pow
-        | #Apply | #Equal | #Block | #Print | #If | #For => {
+        #Apply | #Block | #Print | #If | #For => {
             @{ "class": type ast, "value": map (betaReduct from to) ast.value }
+        },
+        #Operator => {
+            @{ "class": #Operator, "value": [ast.value[0]] + (map (betaReduct from to) ast.value[1 ~ len(ast.value)]) }
         },
         #Symbol => { if (ast.value == from) to else ast },
         #Lambda => {
@@ -234,15 +205,10 @@ let parseExpr = fn(source ->
     if (len tokenList >= 2 & tokenList[len tokenList - 2]) {
         let hasLhs = λx.parseExpr(join tokenList[0 ~ (len tokenList - x)] " ");
         match (trim it) {
-            "+"  => @{ "class": #Add,    "value": [hasLhs 2, token] },
-            "-"  => @{ "class": #Sub,    "value": [hasLhs 2, token] },
-            "*"  => @{ "class": #Mul,    "value": [hasLhs 2, token] },
-            "/"  => @{ "class": #Div,    "value": [hasLhs 2, token] },
-            "%"  => @{ "class": #Mod,    "value": [hasLhs 2, token] },
-            "^"  => @{ "class": #Pow,    "value": [hasLhs 2, token] },
-            "==" => @{ "class": #Equal,  "value": [hasLhs 2, token] },
-            "as" => @{ "class": #As,     "value": [hasLhs 2, token] },
-            "::" => @{ "class": #Access, "value": [hasLhs 2, token] },
+            "+"  => @{ "class": #Operator, "value": [`+`, hasLhs 2, token] },
+            "-"  => @{ "class": #Operator, "value": [`-`, hasLhs 2, token] },
+            "*"  => @{ "class": #Operator, "value": [`*`, hasLhs 2, token] },
+            "/"  => @{ "class": #Operator, "value": [`/`, hasLhs 2, token] },
             _    => @{ "class": #Apply,  "value": [hasLhs 1, token] }
         }
     } else {
