@@ -471,20 +471,23 @@ impl Statement {
             Ok(Statement::Print(exprs))
         } else if let Some(code) = code.strip_prefix("let") {
             let splited = tokenize(code, &['='])?;
-            let (name, code) = (ok!(splited.get(0))?, ok!(splited.get(1))?);
+            let (name, code) = (
+                ok!(splited.get(0))?,
+                ok!(splited.get(1..))?.join(&SPACE[0].to_string()),
+            );
             if let Some((name, sig)) = name.rsplit_once(":") {
                 Ok(Statement::Let(
                     Expr::parse(name)?,
                     false,
                     Some(Signature::parse(sig)?),
-                    Expr::parse(code)?,
+                    Expr::parse(&code)?,
                 ))
             } else {
                 Ok(Statement::Let(
                     Expr::parse(name)?,
                     false,
                     None,
-                    Expr::parse(code)?,
+                    Expr::parse(&code)?,
                 ))
             }
         } else if let Some(code) = code.strip_prefix("const") {
