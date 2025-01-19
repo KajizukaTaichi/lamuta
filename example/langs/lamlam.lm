@@ -209,6 +209,8 @@ let parseExpr = fn(source ->
             "-"  => @{ "class": #Operator, "value": [`-`, hasLhs 2, token] },
             "*"  => @{ "class": #Operator, "value": [`*`, hasLhs 2, token] },
             "/"  => @{ "class": #Operator, "value": [`/`, hasLhs 2, token] },
+            "%"  => @{ "class": #Operator, "value": [`%`, hasLhs 2, token] },
+            "^"  => @{ "class": #Operator, "value": [`^`, hasLhs 2, token] },
             _    => @{ "class": #Apply,  "value": [hasLhs 1, token] }
         }
     } else {
