@@ -6,9 +6,8 @@ const AST: struct = @{
     "get": fn(sig, this ->
         if (type this == sig)
             this.value
-        else {
+        else
             fault f"expected {sig} but {this} is {type this}"
-        }
     ),
     "asText": fn(this ->
         match type(this) {
