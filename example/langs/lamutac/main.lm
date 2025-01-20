@@ -90,15 +90,21 @@ let codeGenOpr = fn(c, x ->
         };
         let [count, lhs] = codeGenOpr count ast.value[0]; lhsCnt := count;
         let [count, rhs] = codeGenOpr count ast.value[1]; rhsCnt := count;
-        if ((lhs as number) & (rhs as number)) {
-            [count + 1, f"%r{count + 1} = {op} i32 {lhs}, {rhs}"]
-        } else if (!(lhs as number) & (rhs as number)) {
-            [count + 1, f"{lhs}\n{SPACE[0] * 12}%r{count + 1} = {op} i32 %r{lhsCnt}, {rhs}"]
-        } else if ((lhs as number) & !(rhs as number)) {
-            [count + 1, f"{rhs}\n{SPACE[0] * 12}%r{count + 1} = {op} i32 {lhs}, %r{rhsCnt}"]
-        } else if (!(lhs as number) & !(rhs as number)) {
-            [count + 1, f"{lhs}\n{SPACE[0] * 12}{rhs}\n{SPACE[0] * 12}%r{count + 1} = {op} i32 %r{lhsCnt}, %r{rhsCnt}"]
-        }
+
+        count += 1;
+        const INDENT: text = SPACE[0] * 12;
+        let asmr = {
+            if ((lhs as number) & (rhs as number)) {
+                f"%r{count} = {op} i32 {lhs}, {rhs}"
+            } else if (!(lhs as number) & (rhs as number)) {
+                f"{lhs}\n{INDENT}%r{count} = {op} i32 %r{lhsCnt}, {rhs}"
+            } else if ((lhs as number) & !(rhs as number)) {
+                f"{rhs}\n{INDENT}%r{count} = {op} i32 {lhs}, %r{rhsCnt}"
+            } else if (!(lhs as number) & !(rhs as number)) {
+                f"{lhs}\n{INDENT}{rhs}\n{INDENT}%r{count} = {op} i32 %r{lhsCnt}, %r{rhsCnt}"
+            }
+        };
+        [count + 1, asmr]
     }
 );
 
