@@ -1,5 +1,4 @@
 COM = lamuta main.lm
-SRC ?= test.lm  # デフォルトのソースファイル
 ASM = $(SRC:.lm=.ll)
 OBJ = $(SRC:.lm=.bc)
 EXE = $(SRC:.lm=)
@@ -21,5 +20,4 @@ run: $(EXE)
 clean:
 	rm -f $(ASM) $(OBJ) $(EXE)
 
-# 明示的に指定するPHONYターゲット
 .PHONY: all clean run
