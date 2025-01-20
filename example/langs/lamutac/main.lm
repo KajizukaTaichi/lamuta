@@ -117,5 +117,8 @@ let compile = fn(x ->
     outputCode
 );
 
-print "Lamutac: the Lamuta\'s compiler\n";
-print compile (input ">> "), "\n";
+if cmdLineArgs[0] {
+    print compile (readFile it), "\n";
+} else {
+    print "Lamutac: the Lamuta\'s compiler\n";
+}
