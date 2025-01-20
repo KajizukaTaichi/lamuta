@@ -91,9 +91,9 @@ let codeGenOpr = fn(c, x ->
         let [count, lhs] = codeGenOpr count ast.value[0]; lhsCnt := count;
         let [count, rhs] = codeGenOpr count ast.value[1]; rhsCnt := count;
 
-        count += 1;
         const INDENT: text = SPACE[0] * 12;
         let asmr = {
+            count += 1;
             if ((lhs as number) & (rhs as number)) {
                 f"%r{count} = {op} i32 {lhs}, {rhs}"
             } else if (!(lhs as number) & (rhs as number)) {
@@ -104,7 +104,7 @@ let codeGenOpr = fn(c, x ->
                 f"{lhs}\n{INDENT}{rhs}\n{INDENT}%r{count} = {op} i32 %r{lhsCnt}, %r{rhsCnt}"
             }
         };
-        [count + 1, asmr]
+        [count, asmr]
     }
 );
 
