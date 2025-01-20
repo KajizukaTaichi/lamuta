@@ -88,16 +88,16 @@ let codeGenOpr = fn(c, x ->
                 #Div => "sdiv"
             }
         };
-        let [count, lhs] = codeGenOpr count ast.value[0];
-        let [count, rhs] = codeGenOpr count ast.value[1];
+        let [count, lhs] = codeGenOpr count ast.value[0]; lhsCnt := count;
+        let [count, rhs] = codeGenOpr count ast.value[1]; rhsCnt := count;
         if ((lhs as number) & (rhs as number)) {
             [count + 1, f"%r{count + 1} = {op} i32 {lhs}, {rhs}"]
         } else if (!(lhs as number) & (rhs as number)) {
-            [count + 1, f"{lhs}\n{SPACE[0] * 12}%r{count + 1} = {op} i32 %r{count}, {rhs}"]
+            [count + 1, f"{lhs}\n{SPACE[0] * 12}%r{count + 1} = {op} i32 %r{lhsCnt}, {rhs}"]
         } else if ((lhs as number) & !(rhs as number)) {
-            [count + 1, f"{rhs}\n{SPACE[0] * 12}%r{count + 1} = {op} i32 {lhs}, %r{count}"]
+            [count + 1, f"{rhs}\n{SPACE[0] * 12}%r{count + 1} = {op} i32 {lhs}, %r{rhsCnt}"]
         } else if (!(lhs as number) & !(rhs as number)) {
-            [count + 1, f"{lhs}\n{SPACE[0] * 12}{rhs}\n{SPACE[0] * 12}%r{count + 1} = {op} i32 %r{count - 1}, %r{count}"]
+            [count + 1, f"{lhs}\n{SPACE[0] * 12}{rhs}\n{SPACE[0] * 12}%r{count + 1} = {op} i32 %r{lhsCnt}, %r{rhsCnt}"]
         }
     }
 );
