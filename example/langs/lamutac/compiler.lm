@@ -100,12 +100,13 @@ let codeGenOpr = fn(c, f, x ->
     } else if (type ast == #Lambda) {
         let [arg, body] = ast.value; count += 1;
         let [fncCnt, funcs, body] = codeGenOpr 0 funcs body;
+        let name = f"@lambda_abstract_{count}";
         funcs += f"\n
-        define i32 @lambda{count}(i32 %{arg}) \{
+        define i32 {name}(i32 %{arg}) \{
             {body}
             ret i32 %r{fncCnt}
         \}";
-        [count, funcs, f"@lambda{count}"]
+        [count, funcs, name]
     } else if (type ast == #Symbol) {
         [count, funcs, f"%{ast.value}"]
     } else {
