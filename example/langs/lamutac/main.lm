@@ -11,8 +11,20 @@ let parseExpr = fn(source ->
         // Expression that override other operator
         } else if (token[0] == "(" & (token[len token - 1] == ")")) {
             token[1 ~ (len token - 1)] |> trim |> parseExpr;
+        // Lambda abstract that is true formula
+        } else if (token[0] == "λ" & token["."]) {
+            let token = token - "λ" / ".";
+            let [args, body] = [token[0], join token[1 ~ len(token)] "."];
+            @{ "class": #Lambda, "value": [args, (parseExpr body)] };
+
+        // Lambda abstract using back-slash instead
+        } else if (token[0] == "\\" & token["."]) {
+            let token = token - "\\" / ".";
+            let [args, body] = [token[0], join token[1 ~ len(token)] "."];
+            @{ "class": #Lambda, "value": [args, (parseExpr body)] };
+        // Symbol
         } else {
-            fault
+            @{ "class": #Lambda, "value": [args, (parseExpr token)] }
         }
     };
     if (len tokenList >= 2 & tokenList[len tokenList - 2]) {
@@ -77,33 +89,32 @@ let tokenize = fn(delimiter, source ->
 
 let codeGenOpr = fn(c, f, x ->
     [count, funcs, ast] := [c, f, x];
+    const INDENT: text = SPACE[0] * 12;
     if (type ast == #Value) {
         [count, funcs, ast.value as text]
     } else if (type ast == #Lambda) {
         let [arg, body] = ast.value;
         let [fncCnt, body] = codeGenOpr 0 body;
         funcs += f"\n
-        define i32 @lambda{count}(i32 %{}) \{
-            {}
-            ret i32 %{fncCnt}
+        define i32 @lambda{count}(i32 %{arg}) \{
+            {body}
+            ret i32 %r{fncCnt}
         \}";
         [count, funcs, f"@lambda{count}"]
     } else if (type ast == #Symbol) {
-        [count, funcs, f"%r{rast.value}"]
+        [count, funcs, f"%r{ast.value}"]
     } else if (type ast == #Apply) {
         let [count, func, lhs] = codeGenOpr count ast.value[0]; lhsCnt := count;
         let [count, func, rhs] = codeGenOpr count ast.value[1]; rhsCnt := count;
 
-        const INDENT: text = SPACE[0] * 12;
         let asmr = {
             count += 1;
-            let beforeCode = "":
+            let beforeCode = "";
             for term in [lhs, rhs] {
                 if term["="] {
                     beforeCode += f"{term}\n{INDENT}";
                 }
             };
-
             f"{beforeCode}%r{count} = call i32 {lhs}(i32 {rhs})"
         };
         [count, func, asmr]
@@ -119,16 +130,14 @@ let codeGenOpr = fn(c, f, x ->
         let [count, func, lhs] = codeGenOpr count ast.value[0]; lhsCnt := count;
         let [count, func, rhs] = codeGenOpr count ast.value[1]; rhsCnt := count;
 
-        const INDENT: text = SPACE[0] * 12;
         let asmr = {
             count += 1;
-            let beforeCode = "":
+            let beforeCode = "";
             for term in [lhs, rhs] {
                 if term["="] {
                     beforeCode += f"{term}\n{INDENT}";
                 }
             };
-
             f"{beforeCode}%r{count} = {op} i32 {lhs}, {rhs}"
         };
         [count, func, asmr]
