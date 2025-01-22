@@ -108,30 +108,7 @@ let codeGenOpr = fn(c, f, x ->
         [count + 1, funcs, f"@lambda{count}"]
     } else if (type ast == #Symbol) {
         [count, funcs, f"%{ast.value}"]
-    } else if (type ast == #Apply) {
-        let [count, funcs, lhs] = codeGenOpr count funcs ast.value[0]; lhsCnt := count;
-        let [count, funcs, rhs] = codeGenOpr count funcs ast.value[1]; rhsCnt := count;
-
-        count += 1;
-        let beforeCode = "";
-        if lhs["="] {
-            beforeCode += f"{lhs}\n{INDENT}";
-            let lhs = f"%r{lhsCnt}";
-        };
-        if rhs["="] {
-            beforeCode += f"{rhs}\n{INDENT}";
-            let rhs = f"%r{rhsCnt}";
-        };
-        [count, funcs, f"{beforeCode}%r{count} = call i32 {lhs}(i32 {rhs})"]
     } else {
-        let op = {
-            match type(ast) {
-                #Add => "add",
-                #Sub => "sub",
-                #Mul => "mul",
-                #Div => "sdiv"
-            }
-        };
         let [count, funcs, lhs] = codeGenOpr count funcs ast.value[0]; lhsCnt := count;
         let [count, funcs, rhs] = codeGenOpr count funcs ast.value[1]; rhsCnt := count;
 
@@ -145,7 +122,21 @@ let codeGenOpr = fn(c, f, x ->
             beforeCode += f"{rhs}\n{INDENT}";
             let rhs = f"%r{rhsCnt}";
         };
-        [count, funcs, f"{beforeCode}%r{count} = {op} i32 {lhs}, {rhs}"]
+        [count, funcs, {
+            if (type ast == #Apply) {
+                f"{beforeCode}%r{count} = call i32 {lhs}(i32 {rhs})"
+            } else {
+                let op = {
+                    match type(ast) {
+                        #Add => "add",
+                        #Sub => "sub",
+                        #Mul => "mul",
+                        #Div => "sdiv"
+                    }
+                };
+                f"{beforeCode}%r{count} = {op} i32 {lhs}, {rhs}"
+            }
+        }]
     }
 );
 
