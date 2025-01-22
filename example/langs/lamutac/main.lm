@@ -75,10 +75,19 @@ let tokenize = fn(delimiter, source ->
     tokens
 );
 
-let codeGenOpr = fn(c, x ->
-    [count, ast] := [c, x];
+let codeGenOpr = fn(c, f, x ->
+    [count, funcs, ast] := [c, f, x];
     if (type ast == #Value) {
-        [count, ast.value as text]
+        [count, funcs, ast.value as text]
+    } else if (type ast == #Lambda) {
+        let [arg, body] = ast.value;
+        let [fncCnt, body] = codeGenOpr 0 body;
+        funcs += f"\n
+        define i32 @lambda{count}(i32 %{}) \{
+            {}
+            ret i32 %{fncCnt}
+        \}";
+        [count, funcs, ]
     } else {
         let op = {
             match type(ast) {
@@ -88,8 +97,8 @@ let codeGenOpr = fn(c, x ->
                 #Div => "sdiv"
             }
         };
-        let [count, lhs] = codeGenOpr count ast.value[0]; lhsCnt := count;
-        let [count, rhs] = codeGenOpr count ast.value[1]; rhsCnt := count;
+        let [count, func, lhs] = codeGenOpr count ast.value[0]; lhsCnt := count;
+        let [count, func, rhs] = codeGenOpr count ast.value[1]; rhsCnt := count;
 
         const INDENT: text = SPACE[0] * 12;
         let asmr = {
@@ -104,15 +113,16 @@ let codeGenOpr = fn(c, x ->
                 f"{lhs}\n{INDENT}{rhs}\n{INDENT}%r{count} = {op} i32 %r{lhsCnt}, %r{rhsCnt}"
             }
         };
-        [count, asmr]
+        [count, func, asmr]
     }
 );
 
 let compile = fn(x ->
-    let [c, ast] = codeGenOpr 0 (parseExpr x);
+    let [c, func, ast] = codeGenOpr 0 (parseExpr x);
     let outputCode = f"
         @str = private constant [3 x i8] c\"%d\\0A\"
         declare i32 @printf(i8* %format, ...)
+        {func}
 
         define i32 @main(i32 %argc, i8** %argv) \{
             {ast}
