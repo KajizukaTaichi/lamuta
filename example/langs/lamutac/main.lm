@@ -29,7 +29,7 @@ let parseExpr = fn(source ->
 
         // Symbol
         } else {
-            @{ "class": #Lambda, "value": [args, parseExpr token] }
+            @{ "class": #Symbol, "value": token }
         }
     };
     if (len tokenList >= 2 & tokenList[len tokenList - 2]) {
@@ -107,7 +107,7 @@ let codeGenOpr = fn(c, f, x ->
         \}";
         [count, funcs, f"@lambda{count}"]
     } else if (type ast == #Symbol) {
-        [count, funcs, f"%r{ast.value}"]
+        [count, funcs, f"%{ast.value}"]
     } else if (type ast == #Apply) {
         let [count, funcs, lhs] = codeGenOpr count funcs ast.value[0]; lhsCnt := count;
         let [count, funcs, rhs] = codeGenOpr count funcs ast.value[1]; rhsCnt := count;
