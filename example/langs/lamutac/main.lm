@@ -87,7 +87,26 @@ let codeGenOpr = fn(c, f, x ->
             {}
             ret i32 %{fncCnt}
         \}";
-        [count, funcs, ]
+        [count, funcs, f"@lambda{count}"]
+    } else if (type ast == #Symbol) {
+        [count, funcs, f"%r{rast.value}"]
+    } else if (type ast == #Apply) {
+        let [count, func, lhs] = codeGenOpr count ast.value[0]; lhsCnt := count;
+        let [count, func, rhs] = codeGenOpr count ast.value[1]; rhsCnt := count;
+
+        const INDENT: text = SPACE[0] * 12;
+        let asmr = {
+            count += 1;
+            let beforeCode = "":
+            for term in [lhs, rhs] {
+                if term["="] {
+                    beforeCode += f"{term}\n{INDENT}";
+                }
+            };
+
+            f"{beforeCode}%r{count} = call i32 {lhs}(i32 {rhs})"
+        };
+        [count, func, asmr]
     } else {
         let op = {
             match type(ast) {
@@ -103,15 +122,14 @@ let codeGenOpr = fn(c, f, x ->
         const INDENT: text = SPACE[0] * 12;
         let asmr = {
             count += 1;
-            if ((lhs as number) & (rhs as number)) {
-                f"%r{count} = {op} i32 {lhs}, {rhs}"
-            } else if (!(lhs as number) & (rhs as number)) {
-                f"{lhs}\n{INDENT}%r{count} = {op} i32 %r{lhsCnt}, {rhs}"
-            } else if ((lhs as number) & !(rhs as number)) {
-                f"{rhs}\n{INDENT}%r{count} = {op} i32 {lhs}, %r{rhsCnt}"
-            } else if (!(lhs as number) & !(rhs as number)) {
-                f"{lhs}\n{INDENT}{rhs}\n{INDENT}%r{count} = {op} i32 %r{lhsCnt}, %r{rhsCnt}"
-            }
+            let beforeCode = "":
+            for term in [lhs, rhs] {
+                if term["="] {
+                    beforeCode += f"{term}\n{INDENT}";
+                }
+            };
+
+            f"{beforeCode}%r{count} = {op} i32 {lhs}, {rhs}"
         };
         [count, func, asmr]
     }
