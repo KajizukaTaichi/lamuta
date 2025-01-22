@@ -98,14 +98,14 @@ let codeGenOpr = fn(c, f, x ->
     if (type ast == #Value) {
         [count, funcs, ast.value as text]
     } else if (type ast == #Lambda) {
-        let [arg, body] = ast.value;
+        let [arg, body] = ast.value; count += 1;
         let [fncCnt, funcs, body] = codeGenOpr 0 funcs body;
         funcs += f"\n
         define i32 @lambda{count}(i32 %{arg}) \{
             {body}
             ret i32 %r{fncCnt}
         \}";
-        [count + 1, funcs, f"@lambda{count}"]
+        [count, funcs, f"@lambda{count}"]
     } else if (type ast == #Symbol) {
         [count, funcs, f"%{ast.value}"]
     } else {
