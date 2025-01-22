@@ -143,13 +143,13 @@ let codeGenOpr = fn(c, f, x ->
 let compile = fn(x ->
     let [c, funcs, ast] = codeGenOpr 0 "" (parseExpr x);
     let outputCode = f"
-        @str = private constant [3 x i8] c\"%d\\0A\"
+        @format_str = private constant [3 x i8] c\"%d\\0A\"
         declare i32 @printf(i8* %format, ...)
         {funcs}
 
         define i32 @main(i32 %argc, i8** %argv) \{
             {ast}
-            call i32 @printf(i8* bitcast ([3 x i8]* @str to i8*), i32 %r{c})
+            call i32 @printf(i8* bitcast ([3 x i8]* @format_str to i8*), i32 %r{c})
             ret i32 0
         \}
     ";
