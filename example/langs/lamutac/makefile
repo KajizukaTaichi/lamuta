@@ -1,4 +1,4 @@
-COM = lamuta main.lm
+COM = lamuta compiler.lm
 ASM = $(SRC:.lm=.ll)
 OBJ = $(SRC:.lm=.bc)
 EXE = $(SRC:.lm=)
