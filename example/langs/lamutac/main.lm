@@ -8,9 +8,11 @@ let parseExpr = fn(source ->
         // Number 64-bit float;
         if (token as number) {
             @{ "class": #Value, "value": it };
+
         // Expression that override other operator
         } else if (token[0] == "(" & (token[len token - 1] == ")")) {
             token[1 ~ (len token - 1)] |> trim |> parseExpr;
+
         // Lambda abstract that is true formula
         } else if (token[0] == "λ" & token["."]) {
             let token = token - "λ" / ".";
@@ -21,10 +23,11 @@ let parseExpr = fn(source ->
         } else if (token[0] == "\\" & token["."]) {
             let token = token - "\\" / ".";
             let [args, body] = [token[0], join token[1 ~ len(token)] "."];
-            @{ "class": #Lambda, "value": [args, (parseExpr body)] };
+            @{ "class": #Lambda, "value": [args, parseExpr body] };
+
         // Symbol
         } else {
-            @{ "class": #Lambda, "value": [args, (parseExpr token)] }
+            @{ "class": #Lambda, "value": [args, parseExpr token] }
         }
     };
     if (len tokenList >= 2 & tokenList[len tokenList - 2]) {
@@ -94,7 +97,7 @@ let codeGenOpr = fn(c, f, x ->
         [count, funcs, ast.value as text]
     } else if (type ast == #Lambda) {
         let [arg, body] = ast.value;
-        let [fncCnt, body] = codeGenOpr 0 body;
+        let [fncCnt, funcs, body] = codeGenOpr 0 funcs body;
         funcs += f"\n
         define i32 @lambda{count}(i32 %{arg}) \{
             {body}
@@ -104,8 +107,8 @@ let codeGenOpr = fn(c, f, x ->
     } else if (type ast == #Symbol) {
         [count, funcs, f"%r{ast.value}"]
     } else if (type ast == #Apply) {
-        let [count, func, lhs] = codeGenOpr count ast.value[0]; lhsCnt := count;
-        let [count, func, rhs] = codeGenOpr count ast.value[1]; rhsCnt := count;
+        let [count, funcs, lhs] = codeGenOpr count funcs ast.value[0]; lhsCnt := count;
+        let [count, funcs, rhs] = codeGenOpr count funcs ast.value[1]; rhsCnt := count;
 
         let asmr = {
             count += 1;
@@ -117,7 +120,7 @@ let codeGenOpr = fn(c, f, x ->
             };
             f"{beforeCode}%r{count} = call i32 {lhs}(i32 {rhs})"
         };
-        [count, func, asmr]
+        [count, funcs, asmr]
     } else {
         let op = {
             match type(ast) {
@@ -127,8 +130,8 @@ let codeGenOpr = fn(c, f, x ->
                 #Div => "sdiv"
             }
         };
-        let [count, func, lhs] = codeGenOpr count ast.value[0]; lhsCnt := count;
-        let [count, func, rhs] = codeGenOpr count ast.value[1]; rhsCnt := count;
+        let [count, funcs, lhs] = codeGenOpr count funcs ast.value[0]; lhsCnt := count;
+        let [count, funcs, rhs] = codeGenOpr count funcs ast.value[1]; rhsCnt := count;
 
         let asmr = {
             count += 1;
@@ -140,16 +143,16 @@ let codeGenOpr = fn(c, f, x ->
             };
             f"{beforeCode}%r{count} = {op} i32 {lhs}, {rhs}"
         };
-        [count, func, asmr]
+        [count, funcs, asmr]
     }
 );
 
 let compile = fn(x ->
-    let [c, func, ast] = codeGenOpr 0 (parseExpr x);
+    let [c, funcs, ast] = codeGenOpr 0 "" (parseExpr x);
     let outputCode = f"
         @str = private constant [3 x i8] c\"%d\\0A\"
         declare i32 @printf(i8* %format, ...)
-        {func}
+        {funcs}
 
         define i32 @main(i32 %argc, i8** %argv) \{
             {ast}
