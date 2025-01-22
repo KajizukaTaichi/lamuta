@@ -1,5 +1,7 @@
 load std;
+
 const SPACE: list = [" ", "　", "\n", "\t", "\r"];
+const INDENT: text = SPACE[0] * 12;
 
 let parseExpr = fn(source ->
     let tokenList = tokenize SPACE source;
@@ -17,7 +19,7 @@ let parseExpr = fn(source ->
         } else if (token[0] == "λ" & token["."]) {
             let token = token - "λ" / ".";
             let [args, body] = [token[0], join token[1 ~ len(token)] "."];
-            @{ "class": #Lambda, "value": [args, (parseExpr body)] };
+            @{ "class": #Lambda, "value": [args, parseExpr body] };
 
         // Lambda abstract using back-slash instead
         } else if (token[0] == "\\" & token["."]) {
@@ -37,7 +39,8 @@ let parseExpr = fn(source ->
             "+" => operatorGen #Add,
             "-" => operatorGen #Sub,
             "*" => operatorGen #Mul,
-            "/" => operatorGen #Div
+            "/" => operatorGen #Div,
+            _ => @{ "class": #Apply, "value": [hasLhs 1, token] }
         }
     } else {
         token
@@ -92,7 +95,6 @@ let tokenize = fn(delimiter, source ->
 
 let codeGenOpr = fn(c, f, x ->
     [count, funcs, ast] := [c, f, x];
-    const INDENT: text = SPACE[0] * 12;
     if (type ast == #Value) {
         [count, funcs, ast.value as text]
     } else if (type ast == #Lambda) {
@@ -110,17 +112,14 @@ let codeGenOpr = fn(c, f, x ->
         let [count, funcs, lhs] = codeGenOpr count funcs ast.value[0]; lhsCnt := count;
         let [count, funcs, rhs] = codeGenOpr count funcs ast.value[1]; rhsCnt := count;
 
-        let asmr = {
-            count += 1;
-            let beforeCode = "";
-            for term in [lhs, rhs] {
-                if term["="] {
-                    beforeCode += f"{term}\n{INDENT}";
-                }
-            };
-            f"{beforeCode}%r{count} = call i32 {lhs}(i32 {rhs})"
+        count += 1;
+        let beforeCode = "";
+        for term in [lhs, rhs] {
+            if term["="] {
+                beforeCode += f"{term}\n{INDENT}";
+            }
         };
-        [count, funcs, asmr]
+        [count, funcs, f"{beforeCode}%r{count} = call i32 {lhs}(i32 {rhs})"]
     } else {
         let op = {
             match type(ast) {
@@ -133,17 +132,14 @@ let codeGenOpr = fn(c, f, x ->
         let [count, funcs, lhs] = codeGenOpr count funcs ast.value[0]; lhsCnt := count;
         let [count, funcs, rhs] = codeGenOpr count funcs ast.value[1]; rhsCnt := count;
 
-        let asmr = {
-            count += 1;
-            let beforeCode = "";
-            for term in [lhs, rhs] {
-                if term["="] {
-                    beforeCode += f"{term}\n{INDENT}";
-                }
-            };
-            f"{beforeCode}%r{count} = {op} i32 {lhs}, {rhs}"
+        count += 1;
+        let beforeCode = "";
+        for term in [lhs, rhs] {
+            if term["="] {
+                beforeCode += f"{term}\n{INDENT}";
+            }
         };
-        [count, funcs, asmr]
+        [count, funcs, f"{beforeCode}%r{count} = {op} i32 {lhs}, {rhs}"]
     }
 );
 
