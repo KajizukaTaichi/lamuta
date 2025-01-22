@@ -105,7 +105,7 @@ let codeGenOpr = fn(c, f, x ->
             {body}
             ret i32 %r{fncCnt}
         \}";
-        [count, funcs, f"@lambda{count}"]
+        [count + 1, funcs, f"@lambda{count}"]
     } else if (type ast == #Symbol) {
         [count, funcs, f"%{ast.value}"]
     } else if (type ast == #Apply) {
@@ -114,10 +114,13 @@ let codeGenOpr = fn(c, f, x ->
 
         count += 1;
         let beforeCode = "";
-        for term in [lhs, rhs] {
-            if term["="] {
-                beforeCode += f"{term}\n{INDENT}";
-            }
+        if lhs["="] {
+            beforeCode += f"{lhs}\n{INDENT}";
+            let lhs = f"%r{lhsCnt}";
+        };
+        if rhs["="] {
+            beforeCode += f"{rhs}\n{INDENT}";
+            let rhs = f"%r{rhsCnt}";
         };
         [count, funcs, f"{beforeCode}%r{count} = call i32 {lhs}(i32 {rhs})"]
     } else {
@@ -134,10 +137,13 @@ let codeGenOpr = fn(c, f, x ->
 
         count += 1;
         let beforeCode = "";
-        for term in [lhs, rhs] {
-            if term["="] {
-                beforeCode += f"{term}\n{INDENT}";
-            }
+        if lhs["="] {
+            beforeCode += f"{lhs}\n{INDENT}";
+            let lhs = f"%r{lhsCnt}";
+        };
+        if rhs["="] {
+            beforeCode += f"{rhs}\n{INDENT}";
+            let rhs = f"%r{rhsCnt}";
         };
         [count, funcs, f"{beforeCode}%r{count} = {op} i32 {lhs}, {rhs}"]
     }
