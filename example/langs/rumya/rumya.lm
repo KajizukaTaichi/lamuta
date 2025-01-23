@@ -344,17 +344,21 @@ let valueDisplay = fn(x ->
     }
 );
 
-print "Rumya 0.1.0\n";
-let [scope, line] = [@{}, 1];
-while 1 {
-    let prompt = just "right" line 3 "0";
-    let code = input f"[{prompt}]> ";
-    let ast = parseBlock code;
-    if evalExpr(scope, ast) {
-        let [scope, result] = it;
-        print f"=> {valueShow result}\n"
-    } else {
-        print f"=> Fault: {err}\n"
-    };
-    line += 1
+if cmdLineArgs[0] {
+    evalExpr(@{}, parseBlock (readFile it))
+} else {
+    print "Rumya 0.1.0\n";
+    let [scope, line] = [@{}, 1];
+    while 1 {
+        let prompt = just "right" line 3 "0";
+        let code = input f"[{prompt}]> ";
+        let ast = parseBlock code;
+        if evalExpr(scope, ast) {
+            let [scope, result] = it;
+            print f"=> {valueShow result}\n"
+        } else {
+            print f"=> Fault: {err}\n"
+        };
+        line += 1
+    }
 }
