@@ -4,5 +4,5 @@ fun fizzbuzz n =
   else if n % 5 = 0 then "Buzz"
   else n
 
-for i in 1 ~ 101 as list do
+for i in 1 ~ 101 do
   print i |> fizzbuzz
