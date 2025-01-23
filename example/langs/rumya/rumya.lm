@@ -7,7 +7,7 @@ let evalExpr = fn(e, x ->
         #Print => {
             for i in ast.value {
                 let [scope, val] = evalExpr scope i;
-                print valueShow val;
+                print valueDisplay val;
             };
             print "\n";
             [scope, @{ "class": #Value, "value": null }]
@@ -82,9 +82,10 @@ let evalExpr = fn(e, x ->
             let [opr, a, b] = ast.value;
             let [[scope, a], [scope, b]] = map (evalExpr scope) [a, b];
             let result = opr a.value b.value;
-            if (opr == `~`) {
-                result := map \x.@{ "class": #Value, "value": x } result
-            } else if (opr != `::`) {
+            if (type result == list) {
+                let result = map \x.{ if (type x == number) @{ "class": #Value, "value": x } else x } result
+            };
+            if (opr != `::`) {
                 result := @{ "class": #Value, "value": result }
             };
             [scope, result]
@@ -329,13 +330,26 @@ let valueShow = fn(x ->
     }
 );
 
+let valueDisplay = fn(x ->
+    match type(x) {
+        #Value => {
+            let val = x.value;
+            match (type val) {
+                list => map valueDisplay val,
+                text => val,
+                _ => val
+            }
+        },
+        _ => x
+    }
+);
+
 print "Rumya 0.1.0\n";
 let [scope, line] = [@{}, 1];
 while 1 {
     let prompt = just "right" line 3 "0";
     let code = input f"[{prompt}]> ";
     let ast = parseBlock code;
-    print ast;
     if evalExpr(scope, ast) {
         let [scope, result] = it;
         print f"=> {valueShow result}\n"
