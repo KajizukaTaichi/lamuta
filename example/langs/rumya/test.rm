@@ -1,1 +1,9 @@
-for i in 1 ~ 101 as list do print if i % 15 = 0 then "FizzBuzz" else if i % 3 = 0 then "Fizz" else if i % 5 = 0 then "Buzz" else i
+for i in 1 ~ 101 as list do
+    print
+        if i % 15 = 0
+            then "FizzBuzz"
+        else if i % 3 = 0
+            then "Fizz"
+        else if i % 5 = 0
+            then "Buzz"
+        else i
