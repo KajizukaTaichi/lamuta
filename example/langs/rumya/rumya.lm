@@ -125,7 +125,7 @@ let betaReduct = fn(x, y, z ->
 
 let parseBlock = fn(source ->
     let [token, block] = [trim source, []];
-    for line in (tokenize [";"] token) {
+    for line in (token / "\n\n") {
         block += [parseStmt line]
     };
     @{ "class": #Block, "value": block }
