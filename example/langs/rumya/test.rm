@@ -5,4 +5,4 @@ fun fizzbuzz n =
   else n
 
 for i in 1 ~ 101 as list do
-  print fizzbuzz i
+  print i |> fizzbuzz
