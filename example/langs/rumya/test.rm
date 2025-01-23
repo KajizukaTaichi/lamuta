@@ -1,10 +1,10 @@
 for i in
   1 ~ 101 as list
 do
-  print if i % 15 = 0
-    then "FizzBuzz"
+  if i % 15 = 0
+    then print "FizzBuzz"
   else if i % 3 = 0
-    then "Fizz"
+    then print "Fizz"
   else if i % 5 = 0
-    then "Buzz"
-  else i
+    then print "Buzz"
+  else print i
