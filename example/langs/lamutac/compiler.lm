@@ -101,7 +101,7 @@ let codeGenOpr = fn(c, f, x ->
     } else if (type ast == #Lambda) {
         let [arg, body] = ast.value; count += 1;
         let [fncCnt, funcs, body] = codeGenOpr 0 funcs body;
-        let name = f"@lambda_abstract_{count}";
+        let name = f"@lambda_{count}";
         funcs += f"\n
         define i32 {name}(i32 %{arg}) \{
             {body}
