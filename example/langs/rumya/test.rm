@@ -5,7 +5,7 @@ fun fizzbuzz n =
     then "Fizz"
   else if n % 5 = 0
     then "Buzz"
-  else n;
+  else n
 
 for i in
   1 ~ 101 as list
