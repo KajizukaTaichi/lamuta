@@ -1,0 +1,343 @@
+load std;
+const SPACE: list = [" ", "　", "\n", "\t", "\r"];
+
+let evalExpr = fn(e, x ->
+    let [scope, ast] = [e, x];
+    match (type ast) {
+        #Print => {
+            for i in ast.value {
+                let [scope, val] = evalExpr scope i;
+                print valueShow val;
+            };
+            print "\n";
+            [scope, @{ "class": #Value, "value": null }]
+        },
+        #Let => {
+            let name = ast.value[0];
+            let [scope, val] = evalExpr scope ast.value[1];
+            if (type name == #Symbol) {
+                scope[name.value] := val;
+                [scope, val]
+            } else if (type name == #List) {
+                for item in zip(name.value, val.value) {
+                    let [scope, _] = evalExpr scope @{ "class": #Let, "value": item }
+                };
+                [scope, val]
+            } else {
+                fault "the program is not able to parse. check out is the syntax correct"
+            }
+        },
+        #If => {
+            if { let [scope, cond] = evalExpr scope ast.value[0] }
+                evalExpr scope ast.value[1]
+            else if ast.value[2]
+                evalExpr scope it
+            else
+                [scope, @{ "class": #Value, "value": null }]
+        },
+        #For => {
+            let [counter, iter, body] = ast.value;
+            let result = @{ "class": #Value, "value": null };
+            let [scope, iter] = evalExpr scope iter;
+            for item in iter.value {
+                let [scope, _] = evalExpr scope @{ "class": #Let, "value": [counter, item] };
+                let [scope, result] = evalExpr scope body;
+            };
+            [scope, result]
+        },
+        #While => {
+            let [expr, body] = ast.value;
+            let result = @{ "class": #Value, "value": null };
+            while (evalExpr scope expr) {
+                let scope = it[0];
+                let [scope, result] = evalExpr scope body;
+            };
+            [scope, result]
+        },
+        #Block => {
+            let result = @{ "class": #Value, "value": null };
+            for i in ast.value {
+                [scope, result] := evalExpr(scope, i);
+            };
+            [scope, result]
+        },
+        #Symbol => {
+            [scope, scope[ast.value]]
+        },
+        #List => {
+            let result = [];
+            for i in ast.value {
+                [scope, val] := evalExpr(scope, i);
+                result += [val]
+            };
+            [scope, @{ "class": #Value, "value": result }]
+        },
+        #Apply => {
+            let [[scope, func], [scope, value]] = map (evalExpr scope) ast.value;
+            let [[arg, body], funcScope] = [func.value, scope];
+            let body = betaReduct(arg, value, body);
+            [scope, evalExpr funcScope body :: 1]
+        },
+        #Operator => {
+            let [opr, terms] = [ast.value[0], ast.value[1 ~ len(ast.value)]];
+            let [[scope, a], [scope, b]] = map (evalExpr scope) terms;
+            let result = opr a.value b.value;
+            if (opr != `::`) {
+                result := @{ "class": #Value, "value": result }
+            };
+            [scope, result]
+        },
+        _ => [scope, ast]
+    }
+);
+
+let betaReduct = fn(x, y, z ->
+    let [from, to, ast] = [x, y, z];
+    match (type ast) {
+        #Let => {
+            @{ "class": #Let, "value": [ast.value[0], betaReduct from to ast.value[1]] }
+        },
+        #Apply | #Block | #Print | #If | #For => {
+            @{ "class": type ast, "value": map (betaReduct from to) ast.value }
+        },
+        #Operator => {
+            @{ "class": #Operator, "value": [ast.value[0]] + (map (betaReduct from to) ast.value[1 ~ len(ast.value)]) }
+        },
+        #Symbol => { if (ast.value == from) to else ast },
+        #Lambda => {
+            let [args, body] = ast.value;
+            @{
+                "class": #Lambda,
+                "value": [args, {
+                    if (args == from)
+                        body
+                    else
+                        (betaReduct from to) body
+                }]
+            }
+        },
+        _ => ast
+    }
+);
+
+let parseBlock = fn(source ->
+    let [token, block] = [trim source, []];
+    for line in (tokenize [";"] token) {
+        block += [parseStmt line]
+    };
+    @{ "class": #Block, "value": block }
+);
+
+let parseStmt = fn(source ->
+    let token = trim source;
+    if (token["print"] == (0 ~ 5)) {
+        let token = tokenize [","] (token - "print");
+        @{ "class": #Print, "value": map parseBlock token }
+    } else if (token["let"] == (0 ~ 3)) {
+        let token = token - "let" / "=";
+        @{ "class": #Let, "value": map parseExpr [token[0], join token[1 ~ len(token)] "="] }
+    } else if (token["if"] == (0 ~ 2)) {
+        let token = tokenize SPACE (token - "if");
+        @{
+            "class": #If,
+            "value": {
+                if (token :: ["then"]) {
+                    let posThen = it as list :: 0;
+                    if (token :: ["else"]) {
+                        let posElse = it as list :: 0;
+                        [
+                            parseExpr (join token[0 ~ posThen] SPACE[0]),
+                            parseExpr (join token[posThen + 1 ~ posElse] SPACE[0]),
+                            parseBlock (join token[posElse + 1 ~ len(token)] SPACE[0])
+                        ]
+                    } else [
+                        parseExpr (join token[0 ~ posThen] SPACE[0]),
+                        parseExpr (join token[posThen + 1 ~ len(token)] SPACE[0])
+                    ]
+                }
+                else fault
+            }
+        }
+     } else if (token["for"] == (0 ~ 3)) {
+        let token = tokenize SPACE (token - "for");
+        @{
+            "class": #For,
+            "value": {
+                  if (token :: ["in"]) {
+                    let posIn = it as list :: 0;
+                    if (token :: ["do"]) {
+                        let posDo = it as list :: 0;
+                        [
+                            parseExpr (join token[0 ~ posIn] SPACE[0]),
+                            parseExpr (join token[posIn + 1 ~ posDo] SPACE[0]),
+                            parseBlock (join token[posDo + 1 ~ len(token)] SPACE[0])
+                        ]
+                    }
+                    else fault
+                }
+                else fault
+            }
+        }
+     } else if (token["while"] == (0 ~ 5)) {
+        let token = tokenize SPACE (token - "while");
+        @{
+            "class": #While,
+            "value": {
+                  if (token :: ["loop"]) {
+                    let posLoop = it as list :: 0;
+                    [
+                        parseExpr (join token[0 ~ posLoop] SPACE[0]),
+                        parseBlock (join token[posLoop + 1 ~ len(token)] SPACE[0])
+                    ]
+                }
+                else fault
+            }
+        }
+    } else {
+        parseExpr token
+    }
+);
+
+let parseExpr = fn(source ->
+    let tokenList = tokenize SPACE source;
+    let token = tokenList[len tokenList  - 1] |> trim;
+    let token = {
+        // Number 64-bit float;
+        if (token as number) {
+            @{ "class": #Value, "value": it };
+
+        // Type signature
+        } else if (token as signature) {
+            @{ "class": #Value, "value": it };
+
+        // Expression that override other operator
+        } else if (token[0] == "(" & (token[len token - 1] == ")")) {
+            token[1 ~ (len token - 1)] |> trim |> parseExpr;
+
+        // Code block that includes plural statement
+        } else if (token[0] == "{" & (token[len token - 1] == "}")) {
+            token[1 ~ (len token - 1)] |> trim |> parseBlock;
+
+        // List that can handle many different typed value
+        } else if (token[0] == "[" & (token[len token - 1] == "]")) {
+            @{ "class": #List, "value": map parseExpr (tokenize [","] token[1 ~ (len token - 1)]) };
+
+        // Text
+        } else if (token[0] == "\"" & (token[len token - 1] == "\"")) {
+            @{ "class": #Value, "value": token[1 ~ (len token - 1)] };
+
+        // Lambda abstract that is true formula
+        } else if (token[0] == "λ" & token["."]) {
+            let token = token - "λ" / ".";
+            let [args, body] = [token[0], join token[1 ~ len(token)] "."];
+            @{ "class": #Lambda, "value": [args, (parseExpr body)] };
+
+        // Lambda abstract using back-slash instead
+        } else if (token[0] == "\\" & token["."]) {
+            let token = token - "\\" / ".";
+            let [args, body] = [token[0], join token[1 ~ len(token)] "."];
+            @{ "class": #Lambda, "value": [args, (parseExpr body)] };
+
+        // Symbol
+        } else {
+           @{ "class": #Symbol, "value": token }
+        }
+    };
+    if (len tokenList >= 2 & tokenList[len tokenList - 2]) {
+        let hasLhs = λx.parseExpr(join tokenList[0 ~ (len tokenList - x)] " ");
+        let operatorGen = λx.@{ "class": #Operator, "value": [x, hasLhs 2, token] };
+        match (trim it) {
+            "+"  => operatorGen `+`,
+            "-"  => operatorGen `-`,
+            "*"  => operatorGen `*`,
+            "/"  => operatorGen `/`,
+            "%"  => operatorGen `%`,
+            "^"  => operatorGen `^`,
+            "=" => operatorGen `==`,
+            "!=" => operatorGen `!=`,
+            ">"  => operatorGen `>`,
+            "<"  => operatorGen `<`,
+            "::" => operatorGen `::`,
+            "as" => operatorGen `as`,
+            "~" => operatorGen `~`,
+            _    => @{ "class": #Apply,  "value": [hasLhs 1, token] }
+        }
+    } else {
+        token
+    }
+);
+
+let tokenize = fn(delimiter, source ->
+    let [tokens, current] = [[], ""];
+    let [nest, quote] = [0] * 2;
+
+    for c in (source as list) {
+        match c {
+            "(" | "[" | "{" => {
+                if (quote == 0) {
+                    current += c;
+                    nest += 1;
+                }
+            },
+            ")" | "]" | "}" => {
+                if (quote == 0) {
+                    current += c;
+                    nest -= 1;
+                }
+            },
+            "\"" | "\'" | "\`" => {
+                let quote = { if (quote == 1) 0 else 1 };
+                current += c;
+            },
+            _ => {
+                if (delimiter :: [c]) {
+                    if ((nest == 0) & (quote == 0)) {
+                        if (current != "") {
+                            tokens += [current];
+                            let current = "";
+                        }
+                    } else {
+                        current += c;
+                    }
+                } else {
+                    current += c;
+                }
+            }
+        }
+    };
+
+    if (current != "") {
+        let tokens = tokens + [current];
+    };
+
+    tokens
+);
+
+let valueShow = fn(x ->
+    match type(x) {
+        #Value => {
+            let val = x.value;
+            match (type val) {
+                list => map valueShow val,
+                text => f"\"{val}\"",
+                _ => val
+            }
+        },
+        _ => x
+    }
+);
+
+print "Rumya 0.1.0\n";
+let [scope, line] = [@{}, 1];
+while 1 {
+    let prompt = just "right" line 3 "0";
+    let code = input f"[{prompt}]> ";
+    let ast = parseBlock code;
+    if evalExpr(scope, ast) {
+        let [scope, result] = it;
+        print f"=> {valueShow result}\n"
+    } else {
+        print f"=> Fault: {err}\n"
+    };
+    line += 1
+}
