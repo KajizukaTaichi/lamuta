@@ -40,6 +40,7 @@ let parseExpr = fn(source ->
             "-" => operatorGen #Sub,
             "*" => operatorGen #Mul,
             "/" => operatorGen #Div,
+            "|>" => @{ "class": #Apply, "value": [token, hasLhs 2] },
             _ => @{ "class": #Apply, "value": [hasLhs 1, token] }
         }
     } else {
