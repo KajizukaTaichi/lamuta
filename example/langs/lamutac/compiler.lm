@@ -114,16 +114,20 @@ let codeGenOpr = fn(c, f, x ->
         let [count, funcs, lhs] = codeGenOpr count funcs ast.value[0]; lhsCnt := count;
         let [count, funcs, rhs] = codeGenOpr count funcs ast.value[1]; rhsCnt := count;
 
+        let prepareMnemonic = fn(x, y, z ->
+            let [term, cnt, beforeCode] = [x, y, z];
+            if term["="] {
+                beforeCode += f"{term}\n{INDENT}";
+                let term = f"%r{cnt}";
+            };
+            [term, beforeCode]
+        );
+
         count += 1;
         let beforeCode = "";
-        if lhs["="] {
-            beforeCode += f"{lhs}\n{INDENT}";
-            let lhs = f"%r{lhsCnt}";
-        };
-        if rhs["="] {
-            beforeCode += f"{rhs}\n{INDENT}";
-            let rhs = f"%r{rhsCnt}";
-        };
+        let [lhs, beforeCode] = prepareMnemonic lhs lhsCnt beforeCode;
+        let [rhs, beforeCode] = prepareMnemonic rhs rhsCnt beforeCode;
+
         [count, funcs, {
             if (type ast == #Apply) {
                 f"{beforeCode}%r{count} = call i32 {lhs}(i32 {rhs})"
