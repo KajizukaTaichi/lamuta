@@ -38,7 +38,10 @@ let evalExpr = fn(e, x ->
         #For => {
             let [counter, iter, body] = ast.value;
             let result = @{ "class": #Value, "value": null };
-            let [scope, iter] = evalExpr scope iter;
+            let [scope, iter] = evalExpr scope @{
+                "class": #Operator,
+                "value": [`as`, iter, @{ "class": #Value, "value": list } ]
+            };
             for item in iter.value {
                 let [scope, _] = evalExpr scope @{ "class": #Let, "value": [counter, item] };
                 let [scope, result] = evalExpr scope body;
