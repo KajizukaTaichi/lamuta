@@ -139,6 +139,11 @@ let parseStmt = fn(source ->
     } else if (token["let"] == (0 ~ 3)) {
         let token = token - "let" / "=";
         @{ "class": #Let, "value": map parseExpr [token[0], join token[1 ~ len(token)] "="] }
+    } else if (token["fun"] == (0 ~ 3)) {
+        let token = token - "fun" / "=";
+        let [name, body] = [token[0], join token[1 ~ len(token)] "="];
+        let [name, arg] = tokenize SPACE name;
+        @{ "class": #Let, "value": map parseExpr [name, @{ "class": #Lambda, "value": [arg, parseStmt body] }] }
     } else if (token["if"] == (0 ~ 2)) {
         let token = tokenize SPACE (token - "if");
         @{
