@@ -264,6 +264,8 @@ let parseExpr = fn(source ->
             "!=" => operatorGen `!=`,
             ">"  => operatorGen `>`,
             "<"  => operatorGen `<`,
+            ">=" => operatorGen `>=`,
+            "<=" => operatorGen `<=`,
             "::" => operatorGen `::`,
             "as" => operatorGen `as`,
             "~"  => operatorGen `~`,
