@@ -241,21 +241,9 @@ let parseExpr = fn(source ->
         } else if (token[0] == "[" & (token[len token - 1] == "]")) {
             @{ "class": #List, "value": map parseExpr (tokenize [","] token[1 ~ (len token - 1)]) };
 
-        // Text
+        // Text that sequence of UTF-8 character
         } else if ((QUOTE :: [token :: 0]) & (QUOTE :: [token :: (len token - 1)])) {
             @{ "class": #Value, "value": token[1 ~ (len token - 1)] };
-
-        // Lambda abstract that is true formula
-        } else if (token[0] == "λ" & token["."]) {
-            let token = token - "λ" / ".";
-            let [args, body] = [token[0], join token[1 ~ len(token)] "."];
-            @{ "class": #Lambda, "value": [args, (parseExpr body)] };
-
-        // Lambda abstract using back-slash instead
-        } else if (token[0] == "\\" & token["."]) {
-            let token = token - "\\" / ".";
-            let [args, body] = [token[0], join token[1 ~ len(token)] "."];
-            @{ "class": #Lambda, "value": [args, (parseExpr body)] };
 
         // Symbol
         } else {
