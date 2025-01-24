@@ -345,7 +345,7 @@ let valueShow = fn(x ->
                 _ => val
             }
         },
-        _ => x
+        _ => ""
     }
 );
 
@@ -359,7 +359,7 @@ let valueDisplay = fn(x ->
                 _ => val
             }
         },
-        _ => x
+        _ => ""
     }
 );
 
@@ -374,7 +374,9 @@ if cmdLineArgs[0] {
         let ast = parseBlock code;
         if evalExpr(scope, ast) {
             let [scope, result] = it;
-            print f"=> {valueShow result}\n"
+            if ("" != (valueShow result)) {
+                print f"=> {it}\n"
+            }
         } else {
             print f"=> Fault: {err}\n"
         };
