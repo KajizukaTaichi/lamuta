@@ -294,13 +294,13 @@ let tokenize = fn(x, y ->
     while (len source > index) {
         let char = source[index];
         let sliceTo = \x.source[index ~ (x + index)];
-        if (sliceTo 5 == "begin") {
+        if (sliceTo 5 == "begin" | (char == "(")) {
             if (quote == 0) {
                 current += "begin";
                 nest += 1;
             };
             index += 5;
-        } else if (sliceTo 3 == "end") {
+        } else if (sliceTo 3 == "end" | (char == ")")) {
             if (quote == 0) {
                 current += "end";
                 nest -= 1;
