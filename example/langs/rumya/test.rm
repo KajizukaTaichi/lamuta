@@ -5,4 +5,7 @@ fun fizzbuzz n =
   else n.
 
 for i in 1 ~ 101 do
-  print i |> fizzbuzz
+begin
+  let msg = i |> fizzbuzz.
+  print msg
+end
