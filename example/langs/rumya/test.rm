@@ -10,4 +10,4 @@ for i in 1 ~ 101 do
 begin
     let msg = i |> fizzbuzz.
     print msg
-end
+end.
