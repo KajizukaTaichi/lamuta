@@ -232,8 +232,8 @@ let parseExpr = fn(source ->
             token[1 ~ (len token - 1)] |> trim |> parseExpr;
 
         // Code block that includes plural statement
-        } else if (token[0] == "{" & (token[len token - 1] == "}")) {
-            token[1 ~ (len token - 1)] |> trim |> parseBlock;
+        } else if (token[0 ~ 5] == "begin" & (token[(len token - 3) ~ (len token)] == "end")) {
+            token[5 ~ (len token - 3)] |> trim |> parseBlock;
 
         // List that can handle many different typed value
         } else if (token[0] == "[" & (token[len token - 1] == "]")) {
@@ -317,7 +317,7 @@ let tokenize = fn(x, y ->
                     let current = "";
                 }
             } else {
-                current += c;
+                current += char;
             };
             index += 1;
         } else {
