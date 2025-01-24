@@ -294,21 +294,33 @@ let tokenize = fn(x, y ->
     while (len source > index) {
         let char = source[index];
         let sliceTo = \x.source[index ~ (x + index)];
-        if (sliceTo 5 == "begin" | (char == "(")) {
+        if (sliceTo 5 == "begin") {
             if (quote == 0) {
                 current += "begin";
                 nest += 1;
             };
             index += 5;
-        } else if (sliceTo 3 == "end" | (char == ")")) {
+        } else if (sliceTo 3 == "end") {
             if (quote == 0) {
                 current += "end";
                 nest -= 1;
             };
             index += 3;
-        } else if  ("\"\'\`" :: char) {
+        } else if  (["\"", "\'"] :: [char]) {
             let quote = { if (quote == 1) 0 else 1 };
             current += char;
+            index += 1;
+        } else if (["(", "["] :: [char]) {
+            if (quote == 0) {
+                current += char;
+                nest += 1;
+            };
+            index += 1;
+        } else if ([")", "]"] :: [char]) {
+            if (quote == 0) {
+                current += char;
+                nest -= 1;
+            };
             index += 1;
         } else if (delimiterList :: [char]) {
             if ((nest == 0) & (quote == 0)) {
