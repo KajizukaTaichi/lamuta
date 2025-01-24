@@ -342,7 +342,10 @@ let valueShow = fn(x ->
         #Value => {
             let val = x.value;
             match (type val) {
-                list => map valueShow val,
+                list => {
+                    let inner = join (map valueShow val) ", ";
+                    f"[{inner}]"
+                },
                 text => f"\"{val}\"",
                 _ => val
             }
@@ -356,7 +359,10 @@ let valueDisplay = fn(x ->
         #Value => {
             let val = x.value;
             match (type val) {
-                list => map valueDisplay val,
+                list => {
+                    let inner = join (map valueShow val) ", ";
+                    f"[{inner}]"
+                },
                 text => val,
                 _ => val
             }
