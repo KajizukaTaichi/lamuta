@@ -1,5 +1,7 @@
 load std;
+
 const SPACE: list = [" ", "　", "\n", "\t", "\r"];
+const QUOTE: list = ["\"", "\'", "\`"];
 
 let evalExpr = fn(e, x ->
     let [scope, ast] = [e, x];
@@ -240,7 +242,7 @@ let parseExpr = fn(source ->
             @{ "class": #List, "value": map parseExpr (tokenize [","] token[1 ~ (len token - 1)]) };
 
         // Text
-        } else if (token[0] == "\"" & (token[len token - 1] == "\"")) {
+        } else if ((QUOTE :: [token :: 0]) & (QUOTE :: [token :: (len token - 1)])) {
             @{ "class": #Value, "value": token[1 ~ (len token - 1)] };
 
         // Lambda abstract that is true formula
@@ -306,7 +308,7 @@ let tokenize = fn(x, y ->
                 nest -= 1;
             };
             index += 3;
-        } else if  (["\"", "\'"] :: [char]) {
+        } else if  (QUOTE :: [char]) {
             let quote = { if (quote == 1) 0 else 1 };
             current += char;
             index += 1;
