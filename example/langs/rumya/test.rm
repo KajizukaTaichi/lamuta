@@ -8,6 +8,6 @@ end.
 
 for i in 1 ~ 101 do
 begin
-    let msg = i |> fizzbuzz.
+    let msg = fizzbuzz i.
     print msg
 end.
