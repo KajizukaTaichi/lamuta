@@ -63,6 +63,15 @@ let evalExpr = fn(e, x ->
             };
             [scope, result]
         },
+        #Until => {
+            let [expr, body] = ast.value;
+            let result = @{ "class": #Value, "value": null };
+            while !(evalExpr scope expr) {
+                let scope = it[0];
+                let [scope, result] = evalExpr scope body;
+            };
+            [scope, result]
+        },
         #Block => {
             let result = @{ "class": #Value, "value": null };
             for i in ast.value {
@@ -212,6 +221,21 @@ let parseStmt = fn(source ->
         let token = tokenize SPACE (token - "while");
         @{
             "class": #While,
+            "value": {
+                  if (token :: ["loop"]) {
+                    let posLoop = it as list :: 0;
+                    [
+                        parseBlock (join token[0 ~ posLoop] SPACE[0]),
+                        parseBlock (join token[posLoop + 1 ~ len(token)] SPACE[0])
+                    ]
+                }
+                else fault
+            }
+        }
+     } else if (token["until"] == (0 ~ 5)) {
+        let token = tokenize SPACE (token - "until");
+        @{
+            "class": #Until,
             "value": {
                   if (token :: ["loop"]) {
                     let posLoop = it as list :: 0;
