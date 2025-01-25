@@ -1,12 +1,12 @@
-let nameList = ["world", "Rumya"].
-let index = 0.
+let nameList = [["world", 1], ["Rumya", 4]].
+let index: number = 0.
 
-while let name = nameList[index] loop
+while let item = nameList[index] loop
 begin
-    if let name = name as text then
+    if let [name, count] = item then
     begin
         let greeting = "Hello, " + name + "! ".
-        print greeting  * (index + 1)
+        print greeting  * count
     end.
     index += 1
 end.
