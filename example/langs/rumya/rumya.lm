@@ -31,8 +31,8 @@ let evalExpr = fn(e, x ->
                 if (len name.value != (len val.value)) {
                     fault ERRMSG
                 };
-                for item in zip(name.value, val.value) {
-                    let [scope, _] = evalExpr scope @{ "class": #Let, "value": item }
+                for [name, value] in zip(name.value, val.value) {
+                    let [scope, _] = evalExpr scope @{ "class": #Let, "value": [name, null, value] }
                 };
                 [scope, val]
             } else {
@@ -187,7 +187,7 @@ let parseStmt = fn(source ->
             let funcObj = @{ "class": #Lambda, "value": [arg, funcObj] };
         };
         let name = @{ "class": #Symbol, "value": name };
-        @{ "class": #Let, "value": [name, funcObj] }
+        @{ "class": #Let, "value": [name, null, funcObj] }
     } else if (token["if"] == (0 ~ 2)) {
         let token = tokenize SPACE (token - "if");
         @{
