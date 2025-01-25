@@ -96,7 +96,13 @@ let evalExpr = fn(e, x ->
             let [[scope, a], [scope, b]] = map (evalExpr scope) [a, b];
             let result = opr a.value b.value;
             if (type result == list) {
-                let result = map \x.{ if (type x == number) @{ "class": #Value, "value": x } else x } result
+                let result = map \x.{
+                    if ([number, text] :: [type x])
+                        @{ "class": #Value, "value": x }
+                    else
+                        x
+                }
+                result
             };
             if (opr != `::`) {
                 result := @{ "class": #Value, "value": result }
@@ -274,15 +280,15 @@ let parseExpr = fn(source ->
             "/"  => operatorGen `/`,
             "%"  => operatorGen `%`,
             "^"  => operatorGen `^`,
-            "="  => operatorGen `==`,
+            "=="  => operatorGen `==`,
             "!=" => operatorGen `!=`,
             ">"  => operatorGen `>`,
             "<"  => operatorGen `<`,
             ">=" => operatorGen `>=`,
             "<=" => operatorGen `<=`,
-            "::" => operatorGen `::`,
             "as" => operatorGen `as`,
             "~"  => operatorGen `~`,
+            "+=" => @{ "class": #Let,  "value": [hasLhs 2, operatorGen `+`] },
             "|>" => @{ "class": #Apply,  "value": [token, hasLhs 2] },
             _    => @{ "class": #Apply,  "value": [hasLhs 1, token] }
         }
