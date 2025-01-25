@@ -1,12 +1,16 @@
-fun fizzbuzz n =
+fun isPrime numToCheck =
 begin
-    if n % 15 = 0 then 'FizzBuzz'
-    else if n % 3 = 0 then 'Fizz'
-    else if n % 5 = 0 then 'Buzz'
-    else n
+    let divisorList = [];
+    for i in 2 ~ numToCheck do
+    begin
+        if numToCheck % i == 0 then
+            divisorList += [i]
+    end.
+    divisorList != []
 end.
 
-let arr = 1 ~ 101 as list.
+
+let arr = [].
 let idx = 0.
 
 while let val = arr[idx] loop
