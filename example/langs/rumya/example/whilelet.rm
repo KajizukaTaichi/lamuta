@@ -1,0 +1,7 @@
+let arr = ["a", "b", "c"].
+let idx = 0.
+while let val = arr[idx] loop
+begin
+    print val.
+    let idx = idx + 1.
+end
