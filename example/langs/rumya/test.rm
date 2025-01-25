@@ -13,4 +13,4 @@ while let val = arr[idx] loop
 begin
     print fizzbuzz val.
     let idx = idx + 1.
-end
+end.
