@@ -2,6 +2,7 @@ load std;
 
 const SPACE: list = [" ", "　", "\n", "\t", "\r"];
 const QUOTE: list = ["\"", "\'", "\`"];
+const ERRMSG: text =  "the program is not able to parse. check out is the syntax correct";
 
 let evalExpr = fn(e, x ->
     let [scope, ast] = [e, x];
@@ -21,12 +22,15 @@ let evalExpr = fn(e, x ->
                 scope[name.value] := val;
                 [scope, val]
             } else if (type name == #List) {
+                if (len name.value != (len val.value)) {
+                    fault ERRMSG
+                };
                 for item in zip(name.value, val.value) {
                     let [scope, _] = evalExpr scope @{ "class": #Let, "value": item }
                 };
                 [scope, val]
             } else {
-                fault "the program is not able to parse. check out is the syntax correct"
+                fault ERRMSG
             }
         },
         #If => {
@@ -165,12 +169,12 @@ let parseStmt = fn(source ->
                     if (token :: ["else"]) {
                         let posElse = it as list :: 0;
                         [
-                            parseExpr (join token[0 ~ posThen] SPACE[0]),
+                            parseBlock (join token[0 ~ posThen] SPACE[0]),
                             parseBlock (join token[posThen + 1 ~ posElse] SPACE[0]),
                             parseBlock (join token[posElse + 1 ~ len(token)] SPACE[0])
                         ]
                     } else [
-                        parseExpr (join token[0 ~ posThen] SPACE[0]),
+                        parseBlock (join token[0 ~ posThen] SPACE[0]),
                         parseBlock (join token[posThen + 1 ~ len(token)] SPACE[0])
                     ]
                 }
@@ -205,7 +209,7 @@ let parseStmt = fn(source ->
                   if (token :: ["loop"]) {
                     let posLoop = it as list :: 0;
                     [
-                        parseExpr (join token[0 ~ posLoop] SPACE[0]),
+                        parseBlock (join token[0 ~ posLoop] SPACE[0]),
                         parseBlock (join token[posLoop + 1 ~ len(token)] SPACE[0])
                     ]
                 }
