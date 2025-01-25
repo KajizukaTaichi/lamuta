@@ -30,7 +30,10 @@ let evalExpr = fn(e, x ->
                 };
                 [scope, val]
             } else {
-                fault ERRMSG
+                if (name != val) {
+                    fault ERRMSG
+                };
+                [scope, val]
             }
         },
         #If => {
