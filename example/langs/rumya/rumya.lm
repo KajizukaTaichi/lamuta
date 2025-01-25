@@ -70,7 +70,6 @@ let evalExpr = fn(e, x ->
             let [expr, body] = ast.value;
             let result = @{ "class": #Value, "value": null };
             while !(evalExpr scope expr) {
-                let scope = it[0];
                 let [scope, result] = evalExpr scope body;
             };
             [scope, result]
