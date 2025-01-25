@@ -1,0 +1,12 @@
+let nameList = ["world", "Rumya"].
+let index = 0.
+
+while let name = nameList[index] loop
+begin
+    if let name = name as text then
+    begin
+        let greetingMsg = "Hello, " + name + "! ".
+        print greetingMsg  * (index + 1)
+    end.
+    index += 1
+end.
