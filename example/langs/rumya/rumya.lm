@@ -83,9 +83,13 @@ let evalExpr = fn(e, x ->
         },
         #Apply => {
             let [[scope, func], [scope, value]] = map (evalExpr scope) ast.value;
-            let [[arg, body], funcScope] = [func.value, scope];
-            let body = betaReduct(arg, value, body);
-            [scope, evalExpr funcScope body :: 1]
+            if (type func == #Lambda) {
+                let [[arg, body], funcScope] = [func.value, scope];
+                let body = betaReduct(arg, value, body);
+                [scope, evalExpr funcScope body :: 1]
+            } else {
+                func scope value
+            }
         },
         #Operator => {
             let [opr, a, b] = ast.value;
@@ -381,11 +385,18 @@ let valueDisplay = fn(x ->
     }
 );
 
+let scope = @{
+    "input": fn(e, x ->
+        let [scope, arg] = [e, x];
+        [scope, @{ "class": #Value, "value":  input arg.value }]
+    )
+};
+
 if cmdLineArgs[0] {
-    evalExpr(@{}, parseBlock (readFile it))
+    evalExpr(scope, parseBlock (readFile it))
 } else {
     print "Rumya 0.1.0\n";
-    let [scope, line] = [@{}, 1];
+    let line =  1;
     while 1 {
         let prompt = just "right" line 3 "0";
         let code = input f"[{prompt}]> ";
