@@ -245,6 +245,12 @@ let parseExpr = fn(source ->
         } else if (token[0] == "[" & (token[len token - 1] == "]")) {
             @{ "class": #List, "value": map parseExpr (tokenize [","] token[1 ~ (len token - 1)]) };
 
+        // Access list value by index specification
+        } else if (token["["] & (token[len token - 1] == "]")) {
+            let token = token[0 ~ (len token - 1)] / "[";
+            let [token, accessor] = [token[0], join token[1 ~ len(token)] "["];
+            @{ "class": #Operator, "value": [`::`, parseExpr token, parseExpr accessor] };
+
         // Text that sequence of UTF-8 character
         } else if ((QUOTE :: [token :: 0]) & (QUOTE :: [token :: (len token - 1)])) {
             @{ "class": #Value, "value": token[1 ~ (len token - 1)] };
