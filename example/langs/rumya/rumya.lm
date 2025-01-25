@@ -17,7 +17,13 @@ let evalExpr = fn(e, x ->
         },
         #Let => {
             let name = ast.value[0];
-            let [scope, val] = evalExpr scope ast.value[1];
+            let annotate = ast.value[1];
+            let [scope, val] = evalExpr scope ast.value[2];
+
+            if (type val.value != annotate) {
+                fault ERRMSG
+            };
+
             if (type name == #Symbol) {
                 scope[name.value] := val;
                 [scope, val]
@@ -165,7 +171,12 @@ let parseStmt = fn(source ->
         @{ "class": #Print, "value": map parseBlock token }
     } else if (token["let"] == (0 ~ 3)) {
         let token = token - "let" / "=";
-        @{ "class": #Let, "value": map parseExpr [token[0], join token[1 ~ len(token)] "="] }
+        let [name, value] = [token[0], join token[1 ~ len(token)] "="];
+        if { let [name, annotate] = name / ":" } {
+            @{ "class": #Let, "value": [parseExpr name, parseExpr annotate, parseExpr value]  }
+        } else {
+            @{ "class": #Let, "value": [parseExpr name, null, parseExpr value]  }
+        }
     } else if (token["fun"] == (0 ~ 3)) {
         let token = token - "fun" / "=";
         let [name, body] = [token[0], join token[1 ~ len(token)] "="];
