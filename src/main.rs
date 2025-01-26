@@ -330,12 +330,12 @@ impl Engine {
         Ok(())
     }
 
-    fn add_protect(&mut self, name: &String) {
-        self.protect.insert(name.clone());
+    fn add_protect(&mut self, name: &str) {
+        self.protect.insert(name.to_string());
     }
 
-    fn is_protect(&mut self, name: &String) -> bool {
-        self.protect.contains(name)
+    fn is_protect(&mut self, name: &str) -> bool {
+        self.protect.contains(&name.to_string())
     }
 }
 
@@ -535,8 +535,8 @@ impl Statement {
             }
             Ok(Statement::Match(expr, body))
         } else if let Some(code) = code.strip_prefix("for") {
-            let code = tokenize(&code, SPACE.as_ref())?;
-            if code.get(1).and_then(|x| Some(x == "in")).unwrap_or(false) {
+            let code = tokenize(code, SPACE.as_ref())?;
+            if code.get(1).map(|x| x == "in").unwrap_or(false) {
                 Ok(Statement::For(
                     Expr::parse(ok!(code.get(0))?)?,
                     Expr::parse(ok!(code.get(2))?)?,
@@ -934,7 +934,7 @@ impl Expr {
                         Statement::If(cond, then, r#else) => Statement::If(
                             cond.replace(from, to),
                             then.replace(from, to),
-                            r#else.clone().and_then(|j| Some(j.replace(from, to))),
+                            r#else.clone().map(|j| j.replace(from, to)),
                         ),
                         Statement::Match(expr, cond) => Statement::Match(
                             expr.replace(from, to),
