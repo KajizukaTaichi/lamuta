@@ -511,7 +511,7 @@ impl Statement {
                 ))
             } else {
                 Ok(Statement::If(
-                    Expr::Block(Engine::parse(&ok!(code.get(0))?)?),
+                    Expr::parse(ok!(code.get(0))?)?,
                     Expr::parse(&ok!(code.get(1..))?.join(&SPACE[0].to_string()))?,
                     None,
                 ))
@@ -548,7 +548,7 @@ impl Statement {
         } else if let Some(code) = code.strip_prefix("while") {
             let code = tokenize(code, SPACE.as_ref())?;
             Ok(Statement::While(
-                Expr::Block(Engine::parse(&ok!(code.get(0))?)?),
+                Expr::parse(ok!(code.get(0))?)?,
                 Expr::parse(ok!(code.get(1))?)?,
             ))
         } else if let Some(code) = code.strip_prefix("fault") {
