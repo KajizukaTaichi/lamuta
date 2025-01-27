@@ -34,7 +34,8 @@ const filter: function = λf.λl.{
     result
 };
 
-const reduce: function = λf.λl.{
+const reduce: function = λf.λx.{
+    let l: list = x as list;
     let result = l[0];
     for i in l[1 ~ (len l)] {
         let result = f result i
