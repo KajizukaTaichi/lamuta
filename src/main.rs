@@ -769,8 +769,8 @@ impl Expr {
             } else if token.starts_with("fn(") && token.contains("->") && token.ends_with(")") {
                 let token = trim!(token, "fn(", ")");
                 let (args, body) = ok!(token.split_once("->"))?;
-                let mut args: Vec<&str> = args.split(",").collect();
-                args.reverse();
+                let args: Vec<&str> = args.split(",").collect();
+                let args: Vec<&str> = args.into_iter().rev().collect();
                 let mut func = Expr::Value(Type::Function(Function::UserDefined(
                     ok!(args.first())?.trim().to_string(),
                     Box::new(Expr::Block(Engine::parse(body)?)),
